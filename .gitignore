@@ -12,3 +12,9 @@ data/vectors/
 .env
 keys.env
 config/keys.env
+# local secrets
+config/keys.env
+data/key.env
+data/*.env
+.env
+keys.env
