@@ -5,6 +5,7 @@
 - SQLite local memory engine
 - Companion Reaction Engine v0.1
 - Companion Console v0.1
+- Response Style Learning v0.1
 
 ## Run commands
 
@@ -13,6 +14,7 @@ python scripts/reset_dev_memory.py
 python scripts/init_memory.py
 python scripts/test_memory.py
 python scripts/test_reaction_engine.py
+python scripts/test_style_learning.py
 python scripts/run_companion_console.py
 ```
 

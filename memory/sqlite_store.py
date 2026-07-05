@@ -187,5 +187,43 @@ class AuraMemoryStore:
         )
         return [dict(row) for row in cur.fetchall()]
 
+    def add_response_feedback(
+        self,
+        user_id: int,
+        response_text: str,
+        rating: str,
+        feedback_text: str | None = None,
+        situation: str | None = None,
+        tone: str | None = None,
+    ) -> int:
+        allowed_ratings = {"good", "bad", "neutral"}
+        if rating not in allowed_ratings:
+            raise ValueError(f"rating must be one of: {', '.join(sorted(allowed_ratings))}")
+
+        cur = self.conn.execute(
+            """
+            INSERT INTO response_feedback (
+                user_id, response_text, rating, feedback_text, situation, tone
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, response_text, rating, feedback_text, situation, tone),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_recent_response_feedback(self, user_id: int, limit: int = 10) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT rating, feedback_text, response_text, situation, tone, created_at
+            FROM response_feedback
+            WHERE user_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
     def close(self) -> None:
         self.conn.close()

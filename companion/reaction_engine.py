@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from companion.style_policy import StylePolicy
 from memory.sqlite_store import AuraMemoryStore
 
 
 class CompanionReactionEngine:
     def __init__(self, store: AuraMemoryStore) -> None:
         self.store = store
+        self.style_policy = StylePolicy(store)
 
     def build_context(self, user_id: int) -> dict[str, Any]:
         return {
@@ -153,7 +155,9 @@ class CompanionReactionEngine:
     def generate_reaction(self, user_id: int) -> dict[str, Any]:
         context = self.build_context(user_id)
         inference = self.infer_situation(context)
-        response = self._compose_response(inference, context)
+        style_context = self.style_policy.build_style_context(user_id)
+        raw_response = self._compose_response(inference, context, style_context)
+        response = self.style_policy.polish_response(raw_response, style_context)
 
         return {
             "situation": inference["situation"],
@@ -170,7 +174,12 @@ class CompanionReactionEngine:
                 return str(fact.get("fact_value"))
         return None
 
-    def _compose_response(self, inference: dict[str, Any], context: dict[str, Any]) -> str:
+    def _compose_response(
+        self,
+        inference: dict[str, Any],
+        context: dict[str, Any],
+        style_context: dict[str, Any],
+    ) -> str:
         tone = inference["tone"]
         emotional_need = inference["emotional_need"]
         has_anxiety = inference.get("has_anxiety_signal", False)

@@ -87,3 +87,15 @@ CREATE TABLE IF NOT EXISTS emergency_contacts (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS response_feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    response_text TEXT NOT NULL,
+    rating TEXT NOT NULL,
+    feedback_text TEXT,
+    situation TEXT,
+    tone TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);

@@ -56,6 +56,29 @@ def main() -> None:
         for action in memory_actions:
             print(f"- {action}")
 
+        rating = input("\nFeedback optional [good/bad/neutral or Enter]: ").strip().lower()
+        if rating in {"good", "bad", "neutral"}:
+            feedback_note = input("Feedback note optional: ").strip()
+            store.add_response_feedback(
+                user_id,
+                response_text=response,
+                rating=rating,
+                feedback_text=feedback_note or None,
+                situation=result["situation"],
+                tone=tone,
+            )
+            if rating == "bad" and feedback_note:
+                note_lower = feedback_note.lower()
+                if "robotic" in note_lower or "fake" in note_lower:
+                    store.remember_fact(
+                        user_id,
+                        fact_key="avoid_robotic_replies",
+                        fact_value="User specifically disliked a response because it felt robotic or fake. AURA should respond more naturally and contextually.",
+                        confidence=0.9,
+                        source="feedback",
+                    )
+                    print("Memory updated: avoid_robotic_replies")
+
     store.close()
 
 
