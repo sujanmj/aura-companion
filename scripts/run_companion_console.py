@@ -9,6 +9,7 @@ from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
 from config.env_loader import load_env_file
 from memory.sqlite_store import AuraMemoryStore
+from perception.camera import CameraObserver, get_default_camera_observer
 from perception.stt import WindowsSpeechRecognizer
 from perception.tts import WindowsTTSSpeaker, get_speaker_from_env
 
@@ -67,6 +68,55 @@ def get_user_message(recognizer: WindowsSpeechRecognizer | None, mic_enabled: bo
             return confirmed
 
 
+def get_observation(
+    store: AuraMemoryStore,
+    user_id: int,
+    camera_enabled: bool,
+    camera_observer: CameraObserver | None,
+) -> str:
+    if not camera_enabled or camera_observer is None:
+        return input("Observation optional: ").strip()
+
+    raw = input(
+        "\nPress Enter to capture camera observation, or type observation manually: "
+    ).strip()
+
+    if raw:
+        store.add_observation(
+            user_id,
+            event_type="manual_observation",
+            event_summary=raw,
+            confidence=0.7,
+            source="console",
+        )
+        return raw
+
+    result = camera_observer.capture_observation()
+    if result.get("ok"):
+        store.add_observation(
+            user_id,
+            event_type=result["event_type"],
+            event_summary=result["event_summary"],
+            confidence=float(result["confidence"]),
+            source="camera",
+        )
+        summary = str(result["event_summary"])
+        print(f"Camera observation: {summary}")
+        return summary
+
+    print("Camera unavailable. Type observation manually if needed.")
+    manual = input("Observation optional: ").strip()
+    if manual:
+        store.add_observation(
+            user_id,
+            event_type="manual_observation",
+            event_summary=manual,
+            confidence=0.7,
+            source="console",
+        )
+    return manual
+
+
 def main(enable_microphone: bool | None = None) -> None:
     load_env_file()
 
@@ -94,6 +144,9 @@ def main(enable_microphone: bool | None = None) -> None:
 
     recognizer = WindowsSpeechRecognizer() if mic_enabled else None
 
+    camera_enabled = input("Enable camera observation? [y/N]: ").strip().lower() == "y"
+    camera_observer = get_default_camera_observer() if camera_enabled else None
+
     print("AURA_COMPANION_CONSOLE_READY")
     print("Type 'exit' to stop.")
 
@@ -102,15 +155,7 @@ def main(enable_microphone: bool | None = None) -> None:
         if message.lower() == "exit":
             break
 
-        observation = input("Observation optional: ").strip()
-        if observation:
-            store.add_observation(
-                user_id,
-                event_type="manual_observation",
-                event_summary=observation,
-                confidence=0.7,
-                source="console",
-            )
+        get_observation(store, user_id, camera_enabled, camera_observer)
 
         memory_actions = extractor.process_user_message(user_id, message)
         result = engine.generate_reaction(user_id)

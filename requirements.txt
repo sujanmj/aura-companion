@@ -1,7 +1,7 @@
 # AURA Companion dependencies
-# Phase 0 uses only Python standard library.
-# Future camera support:
-# opencv-python
+# Phase 0 core features use mostly the Python standard library.
+# OpenCV 4.x required for Haar cascade face detection (5.x removed CascadeClassifier).
+opencv-python>=4.8.0,<5
 # Future local STT:
 # faster-whisper
 # sounddevice

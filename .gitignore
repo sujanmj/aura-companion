@@ -5,6 +5,7 @@ __pycache__/
 data/*.db
 data/*.sqlite
 data/media/
+data/media/snapshots/
 data/logs/
 data/backups/
 data/vectors/
