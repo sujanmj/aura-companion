@@ -1,0 +1,8 @@
+# AURA Companion dependencies
+# Phase 0 uses only Python standard library.
+# Future camera support:
+# opencv-python
+# Future local STT:
+# faster-whisper
+# sounddevice
+# numpy

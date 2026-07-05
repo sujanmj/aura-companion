@@ -1,5 +1,11 @@
 ﻿# AURA Companion
 
+## Recommended dev runtime
+
+Python **3.11** virtual environment on Windows.
+
+See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup steps.
+
 ## Current milestones
 
 - SQLite local memory engine
@@ -42,6 +48,7 @@ Context Relevance v0.2: generic greetings bypass the LLM to prevent stale memory
 ## Run commands
 
 ```bash
+python scripts/check_runtime.py
 python scripts/reset_dev_memory.py
 python scripts/init_memory.py
 python scripts/test_memory.py
