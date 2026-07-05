@@ -15,7 +15,9 @@ def main() -> None:
 
     user_id = store.get_or_create_user(name="Sujan M J", preferred_name="Sujan")
     extractor = MemoryExtractor(store)
-    engine = CompanionReactionEngine(store)
+
+    use_ollama = input("Use local Ollama brain? [y/N]: ").strip().lower() == "y"
+    engine = CompanionReactionEngine(store, use_llm=use_ollama)
 
     print("AURA_COMPANION_CONSOLE_READY")
     print("Type 'exit' to stop.")

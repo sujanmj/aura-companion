@@ -6,6 +6,7 @@
 - Companion Reaction Engine v0.1
 - Companion Console v0.1
 - Response Style Learning v0.1
+- LLM Brain Adapter v0.1
 
 ## Run commands
 
@@ -15,8 +16,11 @@ python scripts/init_memory.py
 python scripts/test_memory.py
 python scripts/test_reaction_engine.py
 python scripts/test_style_learning.py
+python scripts/test_llm_brain_adapter.py
 python scripts/run_companion_console.py
 ```
+
+Ollama is optional. If Ollama is not running, AURA uses the local reaction fallback.
 
 ## Example console inputs
 

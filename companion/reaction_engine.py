@@ -2,14 +2,19 @@ from __future__ import annotations
 
 from typing import Any
 
+from brain.llm_provider import LLMProvider
+from brain.prompt_builder import PromptBuilder
 from companion.style_policy import StylePolicy
 from memory.sqlite_store import AuraMemoryStore
 
 
 class CompanionReactionEngine:
-    def __init__(self, store: AuraMemoryStore) -> None:
+    def __init__(self, store: AuraMemoryStore, use_llm: bool = False) -> None:
         self.store = store
+        self.use_llm = use_llm
         self.style_policy = StylePolicy(store)
+        self.prompt_builder = PromptBuilder(store)
+        self.llm_provider = LLMProvider()
 
     def build_context(self, user_id: int) -> dict[str, Any]:
         return {
@@ -157,7 +162,18 @@ class CompanionReactionEngine:
         inference = self.infer_situation(context)
         style_context = self.style_policy.build_style_context(user_id)
         raw_response = self._compose_response(inference, context, style_context)
-        response = self.style_policy.polish_response(raw_response, style_context)
+        fallback_response = self.style_policy.polish_response(raw_response, style_context)
+        reasons = list(inference["reasons"])
+
+        response = fallback_response
+        if self.use_llm:
+            prompt = self.prompt_builder.build_companion_prompt(user_id, inference)
+            llm_response = self.llm_provider.generate(prompt)
+            if llm_response:
+                response = self.style_policy.polish_response(llm_response, style_context)
+                reasons.append("LLM provider generated response")
+            else:
+                reasons.append("LLM unavailable, used local reaction fallback")
 
         return {
             "situation": inference["situation"],
@@ -165,7 +181,7 @@ class CompanionReactionEngine:
             "tone": inference["tone"],
             "response": response,
             "confidence": inference["confidence"],
-            "reasons": inference["reasons"],
+            "reasons": reasons,
         }
 
     def _preferred_name(self, facts: list[dict[str, Any]]) -> str | None:
