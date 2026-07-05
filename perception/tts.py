@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 from pathlib import Path
 
+from config.env_loader import load_env_file
 
-class WindowsTTSSpeaker:
+
+class BaseSpeaker:
+    def speak(self, text: str) -> bool:
+        raise NotImplementedError
+
+
+class WindowsTTSSpeaker(BaseSpeaker):
     def __init__(self, enabled: bool = True, rate: int = 0, volume: int = 90) -> None:
         self.enabled = enabled
         self.rate = rate
@@ -78,6 +86,14 @@ class WindowsTTSSpeaker:
             else:
                 safe_lines.append(line)
         return "\n".join(safe_lines)
+
+
+def get_speaker_from_env() -> BaseSpeaker:
+    load_env_file()
+    provider = os.environ.get("AURA_TTS_PROVIDER", "windows").lower()
+    if provider != "windows":
+        print(f"AURA_TTS_INFO: provider '{provider}' is disabled; using windows.")
+    return WindowsTTSSpeaker(enabled=True)
 
 
 def get_default_speaker() -> WindowsTTSSpeaker:

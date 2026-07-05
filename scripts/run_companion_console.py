@@ -9,7 +9,7 @@ from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
 from config.env_loader import load_env_file
 from memory.sqlite_store import AuraMemoryStore
-from perception.tts import WindowsTTSSpeaker
+from perception.tts import WindowsTTSSpeaker, get_speaker_from_env
 
 
 def main() -> None:
@@ -22,13 +22,15 @@ def main() -> None:
     extractor = MemoryExtractor(store)
 
     provider = os.environ.get("AURA_BRAIN_PROVIDER", "local")
+    tts_provider = os.environ.get("AURA_TTS_PROVIDER", "windows")
     print(f"AURA_BRAIN_PROVIDER={provider}")
+    print(f"AURA_TTS_PROVIDER={tts_provider}")
 
     use_brain = input("Use configured cloud/local brain? [y/N]: ").strip().lower() == "y"
     engine = CompanionReactionEngine(store, use_llm=use_brain)
 
     voice_enabled = input("Enable voice output? [y/N]: ").strip().lower() == "y"
-    speaker = WindowsTTSSpeaker(enabled=voice_enabled)
+    speaker = get_speaker_from_env() if voice_enabled else WindowsTTSSpeaker(enabled=False)
 
     print("AURA_COMPANION_CONSOLE_READY")
     print("Type 'exit' to stop.")
@@ -62,7 +64,7 @@ def main() -> None:
 
         print("\nAURA:")
         print(response)
-        if speaker.enabled:
+        if voice_enabled:
             speaker.speak(response)
         print(f"Situation: {result['situation']}")
         print(f"Emotional need: {result['emotional_need']}")

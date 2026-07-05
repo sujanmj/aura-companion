@@ -14,7 +14,7 @@ Secrets live in `config/keys.env`. That file is ignored by git.
 
 When `AURA_BRAIN_PROVIDER=claude`, Claude is the primary cloud brain. You must also set `ANTHROPIC_MODEL` in `config/keys.env`. If Claude fails or is unavailable, AURA falls back to the local reaction engine.
 
-Voice v0.1 uses built-in Windows `System.Speech` through PowerShell. No cloud TTS yet.
+Voice output uses built-in Windows `System.Speech` through PowerShell. `AURA_TTS_PROVIDER` defaults to `windows`.
 
 ## Run commands
 

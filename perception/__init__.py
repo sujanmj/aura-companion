@@ -1,3 +1,8 @@
-from perception.tts import WindowsTTSSpeaker, get_default_speaker
+from perception.tts import BaseSpeaker, WindowsTTSSpeaker, get_default_speaker, get_speaker_from_env
 
-__all__ = ["WindowsTTSSpeaker", "get_default_speaker"]
+__all__ = [
+    "BaseSpeaker",
+    "WindowsTTSSpeaker",
+    "get_default_speaker",
+    "get_speaker_from_env",
+]
