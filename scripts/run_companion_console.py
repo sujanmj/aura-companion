@@ -9,10 +9,65 @@ from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
 from config.env_loader import load_env_file
 from memory.sqlite_store import AuraMemoryStore
+from perception.stt import WindowsSpeechRecognizer
 from perception.tts import WindowsTTSSpeaker, get_speaker_from_env
 
 
-def main() -> None:
+def _ask_typed_message() -> str:
+    return input("\nUser message: ").strip()
+
+
+def _confirm_transcript(recognizer: WindowsSpeechRecognizer, transcript: str) -> str | None:
+    while True:
+        print(f"You said: {transcript}")
+        choice = input("Use this transcript? [Y/edit/retry/n]: ").strip().lower()
+
+        if choice in {"", "y", "yes"}:
+            return transcript
+
+        if choice == "edit":
+            corrected = input("Corrected message: ").strip()
+            if corrected:
+                return corrected
+            continue
+
+        if choice == "retry":
+            retry_text = recognizer.listen_once()
+            if retry_text:
+                transcript = retry_text
+                continue
+            print("No speech recognized. Please type your message instead.")
+            typed = _ask_typed_message()
+            return typed if typed else None
+
+        if choice == "n":
+            typed = _ask_typed_message()
+            return typed if typed else None
+
+
+def get_user_message(recognizer: WindowsSpeechRecognizer | None, mic_enabled: bool) -> str:
+    if not mic_enabled or recognizer is None:
+        return _ask_typed_message()
+
+    while True:
+        raw = input("\nPress Enter and speak, or type message directly: ").strip()
+        if raw:
+            return raw
+
+        text = recognizer.listen_once()
+        if not text:
+            print("No speech recognized. Please type your message instead.")
+            typed = _ask_typed_message()
+            if typed:
+                return typed
+            continue
+
+        confirmed = _confirm_transcript(recognizer, text)
+        if confirmed:
+            return confirmed
+
+
+def main(enable_microphone: bool | None = None) -> None:
     load_env_file()
 
     store = AuraMemoryStore()
@@ -32,11 +87,18 @@ def main() -> None:
     voice_enabled = input("Enable voice output? [y/N]: ").strip().lower() == "y"
     speaker = get_speaker_from_env() if voice_enabled else WindowsTTSSpeaker(enabled=False)
 
+    if enable_microphone is None:
+        mic_enabled = input("Enable microphone input? [y/N]: ").strip().lower() == "y"
+    else:
+        mic_enabled = enable_microphone
+
+    recognizer = WindowsSpeechRecognizer() if mic_enabled else None
+
     print("AURA_COMPANION_CONSOLE_READY")
     print("Type 'exit' to stop.")
 
     while True:
-        message = input("\nUser message: ").strip()
+        message = get_user_message(recognizer, mic_enabled)
         if message.lower() == "exit":
             break
 

@@ -10,6 +10,7 @@
 - Cloud Brain Provider v0.1
 - Voice Output v0.1
 - Windows Voice Selection v0.1
+- Microphone Input v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -28,6 +29,10 @@ AURA_WINDOWS_VOICE=Microsoft Zira Desktop
 
 If `AURA_WINDOWS_VOICE` is not set, AURA prefers a Zira voice when installed, otherwise the Windows default.
 
+Microphone input uses Windows built-in speech recognition through PowerShell. No paid STT API yet. If recognition fails, AURA falls back to typed input. Microphone permission and the default input device must be working in Windows.
+
+Windows STT is experimental. Transcript confirmation is enabled in the companion console — you can accept, edit, retry, or reject a transcript before AURA stores or responds. Later we will replace this with Whisper/local STT for better accuracy.
+
 ## Run commands
 
 ```bash
@@ -40,7 +45,9 @@ python scripts/test_claude_provider.py
 python scripts/test_llm_brain_adapter.py
 python scripts/list_windows_voices.py
 python scripts/test_tts.py
+python scripts/test_stt.py
 python scripts/run_companion_console.py
+python scripts/run_voice_companion_console.py
 ```
 
 Ollama is optional. If the configured brain is unavailable, AURA uses the local reaction fallback.
