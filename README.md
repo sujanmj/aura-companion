@@ -7,6 +7,11 @@
 - Companion Console v0.1
 - Response Style Learning v0.1
 - LLM Brain Adapter v0.1
+- Cloud Brain Provider v0.1
+
+Secrets live in `config/keys.env`. That file is ignored by git.
+
+When `AURA_BRAIN_PROVIDER=claude`, Claude is the primary cloud brain. You must also set `ANTHROPIC_MODEL` in `config/keys.env`. If Claude fails or is unavailable, AURA falls back to the local reaction engine.
 
 ## Run commands
 
@@ -16,11 +21,12 @@ python scripts/init_memory.py
 python scripts/test_memory.py
 python scripts/test_reaction_engine.py
 python scripts/test_style_learning.py
+python scripts/test_claude_provider.py
 python scripts/test_llm_brain_adapter.py
 python scripts/run_companion_console.py
 ```
 
-Ollama is optional. If Ollama is not running, AURA uses the local reaction fallback.
+Ollama is optional. If the configured brain is unavailable, AURA uses the local reaction fallback.
 
 ## Example console inputs
 

@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -6,18 +7,24 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
+from config.env_loader import load_env_file
 from memory.sqlite_store import AuraMemoryStore
 
 
 def main() -> None:
+    load_env_file()
+
     store = AuraMemoryStore()
     store.apply_schema()
 
     user_id = store.get_or_create_user(name="Sujan M J", preferred_name="Sujan")
     extractor = MemoryExtractor(store)
 
-    use_ollama = input("Use local Ollama brain? [y/N]: ").strip().lower() == "y"
-    engine = CompanionReactionEngine(store, use_llm=use_ollama)
+    provider = os.environ.get("AURA_BRAIN_PROVIDER", "local")
+    print(f"AURA_BRAIN_PROVIDER={provider}")
+
+    use_brain = input("Use configured cloud/local brain? [y/N]: ").strip().lower() == "y"
+    engine = CompanionReactionEngine(store, use_llm=use_brain)
 
     print("AURA_COMPANION_CONSOLE_READY")
     print("Type 'exit' to stop.")
