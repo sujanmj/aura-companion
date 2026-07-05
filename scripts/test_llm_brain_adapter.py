@@ -20,7 +20,10 @@ def reset_dev_memory() -> None:
     for name in DB_FILES:
         path = DATA_DIR / name
         if path.exists():
-            path.unlink()
+            try:
+                path.unlink()
+            except PermissionError:
+                pass
 
 
 from companion.reaction_engine import CompanionReactionEngine

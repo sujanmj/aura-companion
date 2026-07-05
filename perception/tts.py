@@ -13,11 +13,67 @@ class BaseSpeaker:
         raise NotImplementedError
 
 
+def list_windows_voices() -> list[str]:
+    script = (
+        "Add-Type -AssemblyName System.Speech\n"
+        "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer\n"
+        "$s.GetInstalledVoices() | ForEach-Object { $_.VoiceInfo.Name }\n"
+    )
+
+    try:
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-Command", script],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            error_output = (result.stderr or result.stdout or "unknown error").strip()
+            print(f"AURA_TTS_VOICE_LIST_ERROR: {error_output}")
+            return []
+
+        return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    except Exception as exc:
+        print(f"AURA_TTS_VOICE_LIST_ERROR: {exc}")
+        return []
+
+
+def _escape_ps_single_quote(text: str) -> str:
+    return text.replace("'", "''")
+
+
+def _resolve_windows_voice(explicit_voice: str | None = None) -> str | None:
+    if explicit_voice:
+        return explicit_voice
+
+    env_voice = os.environ.get("AURA_WINDOWS_VOICE")
+    if env_voice:
+        return env_voice
+
+    for name in list_windows_voices():
+        if "zira" in name.lower():
+            return name
+
+    return None
+
+
+def get_selected_windows_voice(voice_name: str | None = None) -> str | None:
+    load_env_file()
+    return _resolve_windows_voice(voice_name)
+
+
 class WindowsTTSSpeaker(BaseSpeaker):
-    def __init__(self, enabled: bool = True, rate: int = 0, volume: int = 90) -> None:
+    def __init__(
+        self,
+        enabled: bool = True,
+        rate: int = 0,
+        volume: int = 90,
+        voice_name: str | None = None,
+    ) -> None:
         self.enabled = enabled
         self.rate = rate
         self.volume = volume
+        self.voice_name = voice_name if voice_name is not None else os.environ.get("AURA_WINDOWS_VOICE")
 
     def speak(self, text: str) -> bool:
         if not self.enabled:
@@ -29,10 +85,24 @@ class WindowsTTSSpeaker(BaseSpeaker):
 
         script_path: Path | None = None
         try:
+            load_env_file()
+            selected_voice = _resolve_windows_voice(self.voice_name)
             safe_text = self._sanitize_for_here_string(cleaned)
+            voice_block = ""
+            if selected_voice:
+                safe_voice = _escape_ps_single_quote(selected_voice)
+                voice_block = (
+                    f"try {{\n"
+                    f"    $speaker.SelectVoice('{safe_voice}')\n"
+                    f"}} catch {{\n"
+                    f"    # Use default voice if selection fails.\n"
+                    f"}}\n"
+                )
+
             script_content = (
                 "Add-Type -AssemblyName System.Speech\n"
                 "$speaker = New-Object System.Speech.Synthesis.SpeechSynthesizer\n"
+                f"{voice_block}"
                 f"$speaker.Rate = {int(self.rate)}\n"
                 f"$speaker.Volume = {int(self.volume)}\n"
                 "$text = @'\n"
