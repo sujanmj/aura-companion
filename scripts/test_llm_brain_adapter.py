@@ -29,6 +29,8 @@ def reset_dev_memory() -> None:
 from companion.reaction_engine import CompanionReactionEngine
 from memory.sqlite_store import AuraMemoryStore
 
+BANNED_GREETING_TERMS = ("presentation", "work", "nervous", "anxiety")
+
 
 def main() -> None:
     reset_dev_memory()
@@ -72,6 +74,13 @@ def main() -> None:
     engine = CompanionReactionEngine(store, use_llm=True)
     result = engine.generate_reaction(user_id)
 
+    store.add_conversation(
+        user_id,
+        role="user",
+        message="hello aura how are you?",
+    )
+    greeting_result = engine.generate_reaction(user_id)
+
     store.close()
 
     print("AURA_LLM_BRAIN_ADAPTER_TEST_OK")
@@ -81,6 +90,17 @@ def main() -> None:
     for reason in result["reasons"]:
         if "LLM" in reason:
             print(reason)
+
+    print("GREETING CHECK RESPONSE:")
+    greeting_response = greeting_result["response"]
+    print(greeting_response)
+
+    greeting_lower = greeting_response.lower()
+    if any(term in greeting_lower for term in BANNED_GREETING_TERMS):
+        print("AURA_LLM_GREETING_RELEVANCE_WARNING")
+
+    print("NOTE:")
+    print("Generic greeting should not force old presentation memory into the reply.")
 
 
 if __name__ == "__main__":

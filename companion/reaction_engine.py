@@ -4,6 +4,7 @@ from typing import Any
 
 from brain.llm_provider import LLMProvider
 from brain.prompt_builder import PromptBuilder
+from companion.context_relevance import ContextRelevanceFilter
 from companion.style_policy import StylePolicy
 from memory.sqlite_store import AuraMemoryStore
 
@@ -15,6 +16,7 @@ class CompanionReactionEngine:
         self.style_policy = StylePolicy(store)
         self.prompt_builder = PromptBuilder(store)
         self.llm_provider = LLMProvider()
+        self.relevance_filter = ContextRelevanceFilter()
 
     def build_context(self, user_id: int) -> dict[str, Any]:
         return {
@@ -27,6 +29,31 @@ class CompanionReactionEngine:
         facts = context.get("facts", [])
         observations = context.get("observations", [])
         conversations = context.get("conversations", [])
+
+        latest_user_message = self._latest_user_message(conversations)
+        latest_observation = observations[0].get("event_summary") if observations else None
+        preferred_name = self._preferred_name(facts)
+
+        if self.relevance_filter.is_generic_greeting(latest_user_message):
+            return {
+                "situation": "User is casually checking in.",
+                "emotional_need": "presence",
+                "tone": "friendly_warm",
+                "confidence": 0.7,
+                "reasons": ["Generic greeting; old memories not forced."],
+                "preferred_name": preferred_name,
+                "has_anxiety_signal": False,
+                "has_presentation_signal": False,
+                "has_work_mode_signal": False,
+                "has_low_mood_signal": False,
+                "has_work_event_signal": False,
+            }
+
+        filtered_facts = self.relevance_filter.filter_facts(
+            latest_user_message,
+            latest_observation,
+            facts,
+        )
 
         reasons: list[str] = []
         confidence_scores: list[float] = []
@@ -55,7 +82,7 @@ class CompanionReactionEngine:
                 reasons.append(text)
                 confidence_scores.append(score)
 
-        for fact in facts:
+        for fact in filtered_facts:
             fact_key = fact.get("fact_key", "")
             blob = f"{fact_key} {fact.get('fact_value', '')}".lower()
             score = float(fact.get("confidence", 0.7))
@@ -109,8 +136,6 @@ class CompanionReactionEngine:
                     score,
                 )
 
-        preferred_name = self._preferred_name(facts)
-
         if has_low_mood_signal:
             situation = "User may need quiet emotional support."
             emotional_need = "comfort"
@@ -159,12 +184,23 @@ class CompanionReactionEngine:
 
     def generate_reaction(self, user_id: int) -> dict[str, Any]:
         context = self.build_context(user_id)
+        latest_user_message = self._latest_user_message(context.get("conversations", []))
         inference = self.infer_situation(context)
         style_context = self.style_policy.build_style_context(user_id)
         raw_response = self._compose_response(inference, context, style_context)
         fallback_response = self.style_policy.polish_response(raw_response, style_context)
-        reasons = list(inference["reasons"])
 
+        if self.relevance_filter.is_generic_greeting(latest_user_message):
+            return {
+                "situation": "User is casually checking in.",
+                "emotional_need": "presence",
+                "tone": "friendly_warm",
+                "response": fallback_response,
+                "confidence": 0.7,
+                "reasons": ["Generic greeting; skipped LLM to avoid stale memory overuse."],
+            }
+
+        reasons = list(inference["reasons"])
         response = fallback_response
         if self.use_llm:
             prompt = self.prompt_builder.build_companion_prompt(user_id, inference)
@@ -184,6 +220,12 @@ class CompanionReactionEngine:
             "reasons": reasons,
         }
 
+    def _latest_user_message(self, conversations: list[dict[str, Any]]) -> str:
+        for conv in conversations:
+            if conv.get("role") == "user":
+                return str(conv.get("message", ""))
+        return ""
+
     def _preferred_name(self, facts: list[dict[str, Any]]) -> str | None:
         for fact in facts:
             if fact.get("fact_key") == "preferred_name":
@@ -202,6 +244,12 @@ class CompanionReactionEngine:
         has_presentation = inference.get("has_presentation_signal", False)
         has_work_mode = inference.get("has_work_mode_signal", False)
         has_work_event = inference.get("has_work_event_signal", False)
+
+        if tone == "friendly_warm" and emotional_need == "presence":
+            name = inference.get("preferred_name") or "Sujan"
+            return (
+                f"I'm here, {name}. I'm doing okay — more importantly, how are you feeling right now?"
+            )
 
         if tone == "soft_present" and emotional_need == "comfort":
             return (

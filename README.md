@@ -11,6 +11,8 @@
 - Voice Output v0.1
 - Windows Voice Selection v0.1
 - Microphone Input v0.1
+- Context Relevance Filter v0.1
+- Context Relevance v0.2
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -33,6 +35,10 @@ Microphone input uses Windows built-in speech recognition through PowerShell. No
 
 Windows STT is experimental. Transcript confirmation is enabled in the companion console — you can accept, edit, retry, or reject a transcript before AURA stores or responds. Later we will replace this with Whisper/local STT for better accuracy.
 
+AURA uses memory only when it is relevant to the current message or latest observation. Generic greetings should not trigger old test memories. This prevents the companion from feeling clingy or weird.
+
+Context Relevance v0.2: generic greetings bypass the LLM to prevent stale memory overuse. The prompt builder only includes relevant memory and the current user message. If the cloud brain times out or fails, AURA safely falls back to the local response.
+
 ## Run commands
 
 ```bash
@@ -41,6 +47,7 @@ python scripts/init_memory.py
 python scripts/test_memory.py
 python scripts/test_reaction_engine.py
 python scripts/test_style_learning.py
+python scripts/test_context_relevance.py
 python scripts/test_claude_provider.py
 python scripts/test_llm_brain_adapter.py
 python scripts/list_windows_voices.py
