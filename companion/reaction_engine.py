@@ -29,10 +29,18 @@ class CompanionReactionEngine:
         has_presentation_signal = False
         has_stress_signal = False
         has_work_mode_signal = False
+        has_low_mood_signal = False
+        has_work_event_signal = False
 
-        anxiety_terms = ("nervous", "anxious", "anxiety", "stress", "stressed", "worried", "worry")
-        presentation_terms = ("presentation", "present", "speak", "talk", "meeting")
+        anxiety_terms = ("nervous", "anxious", "anxiety", "stress", "stressed", "worried", "worry", "tension")
+        presentation_terms = ("presentation", "present", "speak", "talk", "meeting", "interview")
         work_mode_terms = ("office", "work", "formal", "dressed", "professional")
+        low_mood_terms = ("sad", "lonely", "alone", "low", "heavy", "down")
+        quiet_observation_terms = ("quiet", "still", "sitting", "silent")
+
+        anxiety_fact_keys = {"recent_anxiety", "presentation_anxiety"}
+        work_event_fact_keys = {"important_work_event", "presentation_anxiety"}
+        low_mood_fact_keys = {"recent_low_mood"}
 
         def add_reason(text: str, score: float) -> None:
             if text not in seen_reasons:
@@ -41,63 +49,90 @@ class CompanionReactionEngine:
                 confidence_scores.append(score)
 
         for fact in facts:
-            blob = f"{fact.get('fact_key', '')} {fact.get('fact_value', '')}".lower()
+            fact_key = fact.get("fact_key", "")
+            blob = f"{fact_key} {fact.get('fact_value', '')}".lower()
             score = float(fact.get("confidence", 0.7))
-            if any(term in blob for term in anxiety_terms):
+
+            if fact_key in anxiety_fact_keys or any(term in blob for term in anxiety_terms):
                 has_anxiety_signal = True
-                add_reason(f"Memory notes anxiety: {fact.get('fact_key')}", score)
-            if any(term in blob for term in presentation_terms):
+                add_reason(f"Memory notes anxiety: {fact_key}", score)
+
+            if fact_key in work_event_fact_keys or any(term in blob for term in presentation_terms):
                 has_presentation_signal = True
-                add_reason(f"Memory mentions presentation context: {fact.get('fact_key')}", score)
+                has_work_event_signal = True
+                add_reason(f"Memory mentions work event: {fact_key}", score)
+
+            if fact_key in low_mood_fact_keys or any(term in blob for term in low_mood_terms):
+                has_low_mood_signal = True
+                add_reason(f"Memory notes low mood: {fact_key}", score)
+
             if any(term in blob for term in ("stress", "stressed")):
                 has_stress_signal = True
 
         for conv in conversations:
+            if conv.get("role") != "user":
+                continue
             blob = f"{conv.get('message', '')} {conv.get('emotion_tag') or ''}".lower()
             if any(term in blob for term in anxiety_terms):
                 has_anxiety_signal = True
                 add_reason("Recent conversation suggests some nervousness.", 0.8)
             if any(term in blob for term in presentation_terms):
                 has_presentation_signal = True
-                add_reason("Recent conversation mentions a presentation.", 0.85)
+                has_work_event_signal = True
+                add_reason("Recent conversation mentions a work-related event.", 0.85)
+            if any(term in blob for term in low_mood_terms):
+                has_low_mood_signal = True
+                add_reason("Recent conversation suggests feeling low or alone.", 0.8)
             if any(term in blob for term in ("stress", "stressed")):
                 has_stress_signal = True
 
         for obs in observations:
             blob = f"{obs.get('event_type', '')} {obs.get('event_summary', '')}".lower()
+            score = float(obs.get("confidence", 0.5))
             if any(term in blob for term in work_mode_terms):
                 has_work_mode_signal = True
                 add_reason(
                     f"Observation suggests work/office mode: {obs.get('event_summary')}",
-                    float(obs.get("confidence", 0.5)),
+                    score,
+                )
+            if any(term in blob for term in quiet_observation_terms):
+                has_low_mood_signal = True
+                add_reason(
+                    f"Observation suggests quiet or stillness: {obs.get('event_summary')}",
+                    score,
                 )
 
         preferred_name = self._preferred_name(facts)
 
-        if (has_anxiety_signal or has_presentation_signal or has_stress_signal) and has_work_mode_signal:
+        if has_low_mood_signal:
+            situation = "User may need quiet emotional support."
+            emotional_need = "comfort"
+            tone = "soft_present"
+        elif (has_anxiety_signal or has_stress_signal) and (
+            has_work_event_signal or has_presentation_signal
+        ) and has_work_mode_signal:
             situation = "User may be heading into work or a presentation while carrying some nerves."
             emotional_need = "encouragement"
             tone = "warm_confident"
-            if not reasons:
-                reasons.append("Anxiety or presentation cues combined with work-mode context.")
+        elif (has_anxiety_signal or has_stress_signal) and (
+            has_work_event_signal or has_presentation_signal
+        ):
+            situation = "User has an important work event coming up and seems to be carrying some nerves."
+            emotional_need = "encouragement"
+            tone = "warm_confident"
         elif has_anxiety_signal or has_presentation_signal or has_stress_signal:
             situation = "User seems to have something weighing on them, possibly a presentation or stressful moment."
             emotional_need = "encouragement"
             tone = "warm_confident"
-            if not reasons:
-                reasons.append("Conversation or memory suggests nervousness or presentation stress.")
         elif has_work_mode_signal:
             situation = "User appears to be in work or office mode."
             emotional_need = "presence"
             tone = "calm_warm"
-            if not reasons:
-                reasons.append("Visual context suggests a work-ready setting.")
         else:
             situation = "No strong signals — a gentle check-in feels right."
             emotional_need = "presence"
             tone = "calm_warm"
-            reasons.append("No strong anxiety or work-mode cues in recent memory.")
-            confidence_scores.append(0.5)
+            add_reason("No strong emotional cues in recent memory.", 0.5)
 
         confidence = min(sum(confidence_scores) / len(confidence_scores), 1.0) if confidence_scores else 0.5
 
@@ -111,12 +146,13 @@ class CompanionReactionEngine:
             "has_anxiety_signal": has_anxiety_signal,
             "has_presentation_signal": has_presentation_signal,
             "has_work_mode_signal": has_work_mode_signal,
+            "has_low_mood_signal": has_low_mood_signal,
+            "has_work_event_signal": has_work_event_signal,
         }
 
     def generate_reaction(self, user_id: int) -> dict[str, Any]:
         context = self.build_context(user_id)
         inference = self.infer_situation(context)
-
         response = self._compose_response(inference, context)
 
         return {
@@ -137,15 +173,21 @@ class CompanionReactionEngine:
     def _compose_response(self, inference: dict[str, Any], context: dict[str, Any]) -> str:
         tone = inference["tone"]
         emotional_need = inference["emotional_need"]
-        name = inference.get("preferred_name")
         has_anxiety = inference.get("has_anxiety_signal", False)
         has_presentation = inference.get("has_presentation_signal", False)
         has_work_mode = inference.get("has_work_mode_signal", False)
+        has_work_event = inference.get("has_work_event_signal", False)
+
+        if tone == "soft_present" and emotional_need == "comfort":
+            return (
+                "I'm here with you. We don't have to fix everything right now. "
+                "Tell me one thing that felt heavy today, or I can just stay quiet with you for a bit."
+            )
 
         if tone == "warm_confident" and emotional_need == "encouragement":
-            if has_work_mode and (has_anxiety or has_presentation):
+            if has_work_mode and (has_anxiety or has_presentation or has_work_event):
                 opening = "You look ready today."
-                if has_presentation:
+                if has_presentation or has_work_event:
                     middle = (
                         "I remember that presentation was on your mind, "
                         "but you've handled bigger things than this."
@@ -158,9 +200,9 @@ class CompanionReactionEngine:
                 closing = "Take one deep breath and keep it calm."
                 return f"{opening} {middle} {closing}"
 
-            if has_presentation:
+            if has_presentation or has_work_event:
                 return (
-                    "That presentation has been sitting with you, and it makes sense to feel a little on edge. "
+                    "That important event has been sitting with you, and it makes sense to feel a little on edge. "
                     "You've prepared more than you think. One steady breath, then take it one step at a time."
                 )
 
@@ -169,6 +211,7 @@ class CompanionReactionEngine:
                 "You don't have to carry it all at once. Just the next small step."
             )
 
+        name = inference.get("preferred_name")
         if has_work_mode:
             if name:
                 return f"Hey {name} — you seem set for the day. I'm here if you want a quiet moment before diving in."

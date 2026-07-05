@@ -1,0 +1,63 @@
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from companion.memory_extractor import MemoryExtractor
+from companion.reaction_engine import CompanionReactionEngine
+from memory.sqlite_store import AuraMemoryStore
+
+
+def main() -> None:
+    store = AuraMemoryStore()
+    store.apply_schema()
+
+    user_id = store.get_or_create_user(name="Sujan M J", preferred_name="Sujan")
+    extractor = MemoryExtractor(store)
+    engine = CompanionReactionEngine(store)
+
+    print("AURA_COMPANION_CONSOLE_READY")
+    print("Type 'exit' to stop.")
+
+    while True:
+        message = input("\nUser message: ").strip()
+        if message.lower() == "exit":
+            break
+
+        observation = input("Observation optional: ").strip()
+        if observation:
+            store.add_observation(
+                user_id,
+                event_type="manual_observation",
+                event_summary=observation,
+                confidence=0.7,
+                source="console",
+            )
+
+        memory_actions = extractor.process_user_message(user_id, message)
+        result = engine.generate_reaction(user_id)
+        response = result["response"]
+        tone = result["tone"]
+
+        store.add_conversation(
+            user_id,
+            role="assistant",
+            message=response,
+            emotion_tag=tone,
+        )
+
+        print("\nAURA:")
+        print(response)
+        print(f"Situation: {result['situation']}")
+        print(f"Emotional need: {result['emotional_need']}")
+        print(f"Tone: {tone}")
+        print("Memory actions:")
+        for action in memory_actions:
+            print(f"- {action}")
+
+    store.close()
+
+
+if __name__ == "__main__":
+    main()
