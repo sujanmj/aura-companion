@@ -30,6 +30,8 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Sensor Node API v0.1
 - Sensor API Token Auth v0.2
 - Pi Sensor Node Simulator v0.1
+- Live Safety Monitor v0.1
+- Live Room Dashboard API v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -132,8 +134,14 @@ python scripts/generate_sensor_api_token.py
 python scripts/run_sensor_api.py
 python scripts/test_sensor_api_auth.py
 python scripts/test_sensor_api_client.py
+python scripts/test_sensor_api_event_status.py
+python scripts/test_dashboard_api.py
+python scripts/show_dashboard_status.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
+python scripts/test_event_action_status.py
+python scripts/test_live_safety_monitor.py
+python scripts/run_live_safety_monitor.py --once
 ```
 
 Pi Sensor Node Simulator v0.1 simulates future Raspberry Pi / camera / sensor nodes posting events to the hub API. See [docs/pi_node_simulator.md](docs/pi_node_simulator.md). No real sensors required. No real emergency calls happen.
@@ -144,6 +152,26 @@ python scripts/pi_node_simulator.py bedroom fall_detected
 python scripts/pi_node_simulator.py kitchen smoke_detected
 python scripts/pi_node_simulator.py balcony plant_moisture_low
 python scripts/test_pi_node_simulator.py
+python scripts/test_event_action_status.py
+python scripts/test_live_safety_monitor.py
+python scripts/run_live_safety_monitor.py --once
+```
+
+Live Safety Monitor v0.1 watches pending `device_events` (`action_status="none"`), evaluates safety, dispatches simulated actions once, and marks events `dispatched` or `ignored`. See [docs/live_safety_monitor.md](docs/live_safety_monitor.md).
+
+```powershell
+python scripts/test_event_action_status.py
+python scripts/test_live_safety_monitor.py
+python scripts/run_live_safety_monitor.py --once
+python scripts/list_recent_events.py
+python scripts/list_action_logs.py
+```
+
+Live Room Dashboard API v0.1 exposes JSON dashboard endpoints for future web/mobile UI: `/dashboard/status`, `/dashboard/events`, `/dashboard/actions`, `/dashboard/rooms`. Uses the same `X-AURA-API-Token` auth as the Sensor API. See [docs/dashboard_api.md](docs/dashboard_api.md).
+
+```powershell
+python scripts/test_dashboard_api.py
+python scripts/show_dashboard_status.py
 ```
 
 Dev inspection commands:
@@ -172,8 +200,14 @@ python scripts/run_sensor_api.py
 python scripts/generate_sensor_api_token.py
 python scripts/test_sensor_api_auth.py
 python scripts/test_sensor_api_client.py
+python scripts/test_sensor_api_event_status.py
+python scripts/test_dashboard_api.py
+python scripts/show_dashboard_status.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
+python scripts/test_event_action_status.py
+python scripts/test_live_safety_monitor.py
+python scripts/run_live_safety_monitor.py --once
 python scripts/list_recent_events.py
 python scripts/list_action_logs.py
 python scripts/list_emergency_contacts.py

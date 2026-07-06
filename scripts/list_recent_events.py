@@ -25,7 +25,7 @@ def main() -> None:
             print(
                 f"- {event['id']} | {event['event_type']} | {event.get('severity')} | "
                 f"{room} | {source} | requires_action={requires_action} | "
-                f"{event.get('created_at')}"
+                f"status={event.get('action_status') or 'none'} | {event.get('created_at')}"
             )
             print(f"  summary={event['event_summary']}")
 

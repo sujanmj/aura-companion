@@ -278,7 +278,58 @@ class AuraMemoryStore:
             """,
             (user_id, limit),
         )
-        return [dict(row) for row in cur.fetchall()]
+        return [self._parse_device_event_row(row) for row in cur.fetchall()]
+
+    @staticmethod
+    def _parse_device_event_row(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+        event = dict(row)
+        if "requires_action" in event:
+            event["requires_action"] = bool(event["requires_action"])
+        metadata_json = event.pop("metadata_json", None)
+        if metadata_json:
+            try:
+                event["metadata"] = json.loads(metadata_json)
+            except json.JSONDecodeError:
+                event["metadata"] = metadata_json
+        return event
+
+    def get_pending_device_events(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, event_type, event_summary, source, room, severity,
+                   confidence, requires_action, action_status, metadata_json, created_at
+            FROM device_events
+            WHERE user_id = ? AND action_status = 'none'
+            ORDER BY id ASC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [self._parse_device_event_row(row) for row in cur.fetchall()]
+
+    def update_device_event_action_status(self, event_id: int, action_status: str) -> None:
+        self.conn.execute(
+            """
+            UPDATE device_events
+            SET action_status = ?
+            WHERE id = ?
+            """,
+            (action_status, event_id),
+        )
+        self.conn.commit()
+
+    def get_device_event_by_id(self, event_id: int) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            """
+            SELECT id, user_id, event_type, event_summary, source, room, severity,
+                   confidence, requires_action, action_status, metadata_json, created_at
+            FROM device_events
+            WHERE id = ?
+            """,
+            (event_id,),
+        )
+        row = cur.fetchone()
+        return self._parse_device_event_row(row) if row else None
 
     def add_action_log(
         self,

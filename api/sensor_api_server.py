@@ -4,9 +4,10 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from actions.action_dispatcher import ActionDispatcher
+from api.dashboard_service import DashboardService
 from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
 from memory.sqlite_store import AuraMemoryStore
@@ -126,6 +127,14 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
                 )
             )
 
+    event_id = int(published["event_id"])
+    if safety_result.get("requires_action") and dispatch_results:
+        store.update_device_event_action_status(event_id, "dispatched")
+    elif not safety_result.get("requires_action"):
+        store.update_device_event_action_status(event_id, "ignored")
+    else:
+        print("AURA_SENSOR_API_EVENT_PENDING_NO_DISPATCH")
+
     return {
         "ok": True,
         "event": published,
@@ -183,8 +192,18 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             preferred_name=DEFAULT_PREFERRED_NAME,
         )
 
+    @staticmethod
+    def _parse_limit(query: dict[str, list[str]], default: int, maximum: int) -> int:
+        try:
+            value = int(query.get("limit", [str(default)])[0])
+        except (TypeError, ValueError, IndexError):
+            value = default
+        return max(1, min(value, maximum))
+
     def do_GET(self) -> None:
-        path = urlparse(self.path).path
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        query = parse_qs(parsed_url.query)
 
         try:
             if path == "/health":
@@ -211,6 +230,34 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
                 ]
                 self._send_json(200, {"ok": True, "events": events})
                 return
+
+            if path.startswith("/dashboard/"):
+                if not self._require_auth():
+                    return
+
+                store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                dashboard = DashboardService(store)
+
+                if path == "/dashboard/status":
+                    self._send_json(200, dashboard.build_status(user_id))
+                    return
+
+                if path == "/dashboard/events":
+                    limit = self._parse_limit(query, default=20, maximum=100)
+                    self._send_json(200, dashboard.build_events(user_id, limit=limit))
+                    return
+
+                if path == "/dashboard/actions":
+                    limit = self._parse_limit(query, default=20, maximum=100)
+                    self._send_json(200, dashboard.build_actions(user_id, limit=limit))
+                    return
+
+                if path == "/dashboard/rooms":
+                    limit = self._parse_limit(query, default=50, maximum=200)
+                    self._send_json(200, dashboard.build_rooms(user_id, limit=limit))
+                    return
 
             self._send_json(404, {"ok": False, "error": "not_found"})
         except Exception as exc:
