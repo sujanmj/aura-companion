@@ -35,6 +35,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Local Web Dashboard v0.1
 - Live Voice Safety Actions v0.1
 - Safety Confirmation Workflow v0.1
+- Confirmation Timeout Watcher v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -209,6 +210,13 @@ python scripts/test_confirmation_engine.py
 python scripts/test_confirmation_api.py
 ```
 
+Confirmation Timeout Watcher v0.1 expires unanswered pending confirmations and logs simulated escalation. See [docs/confirmation_timeout_watcher.md](docs/confirmation_timeout_watcher.md).
+
+```powershell
+python scripts/test_confirmation_timeout.py
+python scripts/run_confirmation_timeout_watcher.py --once
+```
+
 Dev inspection commands:
 
 ```powershell
@@ -243,6 +251,7 @@ python scripts/test_voice_runtime_config.py
 python scripts/test_voice_action_dispatcher.py
 python scripts/test_confirmation_engine.py
 python scripts/test_confirmation_api.py
+python scripts/test_confirmation_timeout.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
 python scripts/test_event_action_status.py

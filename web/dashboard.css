@@ -254,6 +254,31 @@ button:hover {
   color: var(--high);
 }
 
+.confirmation-status-pending {
+  background: rgba(255, 159, 67, 0.15);
+  color: var(--high);
+}
+
+.confirmation-status-confirmed_ok {
+  background: rgba(61, 220, 151, 0.15);
+  color: var(--success);
+}
+
+.confirmation-status-confirmed_escalate {
+  background: rgba(255, 92, 92, 0.15);
+  color: var(--critical);
+}
+
+.confirmation-status-cancelled {
+  background: rgba(154, 168, 184, 0.15);
+  color: var(--text-muted);
+}
+
+.confirmation-status-expired {
+  background: rgba(255, 92, 92, 0.18);
+  color: var(--critical);
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

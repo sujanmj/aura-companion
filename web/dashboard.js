@@ -62,6 +62,20 @@
     return "status-none";
   }
 
+  function confirmationStatusClass(value) {
+    var key = (value || "pending").toLowerCase();
+    if (
+      key === "pending" ||
+      key === "confirmed_ok" ||
+      key === "confirmed_escalate" ||
+      key === "cancelled" ||
+      key === "expired"
+    ) {
+      return "confirmation-status confirmation-status-" + key;
+    }
+    return "confirmation-status confirmation-status-pending";
+  }
+
   function escapeHtml(text) {
     return String(text)
       .replace(/&/g, "&amp;")
@@ -158,7 +172,7 @@
       html.push('<article class="confirmation-card" data-id="' + escapeHtml(id) + '">');
       html.push('<div class="confirmation-card-header">');
       html.push("<div><strong>#" + escapeHtml(id) + "</strong> · " + escapeHtml(eventType) + "</div>");
-      html.push('<span class="confirmation-status">' + escapeHtml(item.status || "pending") + "</span>");
+      html.push('<span class="' + confirmationStatusClass(item.status) + '">' + escapeHtml(item.status || "pending") + "</span>");
       html.push("</div>");
       html.push(
         '<div class="confirmation-meta">Created: ' +
@@ -272,6 +286,26 @@
       ],
       data.latest_events || [],
       "No recent events."
+    );
+
+    renderTable(
+      document.getElementById("recent-confirmations"),
+      [
+        { label: "ID", value: function (r) { return r.id; } },
+        { label: "Type", value: function (r) { return r.confirmation_type; } },
+        {
+          label: "Status",
+          value: function (r) { return r.status; },
+          render: function (value) {
+            return '<span class="' + confirmationStatusClass(value) + '">' + escapeHtml(value) + "</span>";
+          },
+        },
+        { label: "Response", value: function (r) { return r.response_text || "—"; } },
+        { label: "Created", value: function (r) { return r.created_at || "—"; } },
+        { label: "Responded", value: function (r) { return r.responded_at || "—"; } },
+      ],
+      data.recent_confirmations || [],
+      "No recent confirmations."
     );
 
     renderTable(

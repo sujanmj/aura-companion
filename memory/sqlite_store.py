@@ -687,6 +687,27 @@ class AuraMemoryStore:
         )
         return [self._parse_confirmation_row(row) for row in cur.fetchall()]
 
+    def get_expired_pending_confirmation_requests(
+        self,
+        user_id: int,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, user_id, source_event_id, confirmation_type, prompt, status,
+                   response_text, created_at, responded_at, expires_at, metadata_json
+            FROM confirmation_requests
+            WHERE user_id = ?
+              AND status = 'pending'
+              AND expires_at IS NOT NULL
+              AND expires_at <= CURRENT_TIMESTAMP
+            ORDER BY expires_at ASC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [self._parse_confirmation_row(row) for row in cur.fetchall()]
+
     def update_confirmation_request_status(
         self,
         confirmation_id: int,
