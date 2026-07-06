@@ -19,3 +19,8 @@ data/key.env
 data/*.env
 .env
 keys.env
+
+# SQLite runtime files
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
