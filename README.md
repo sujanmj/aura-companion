@@ -37,6 +37,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Safety Confirmation Workflow v0.1
 - Confirmation Timeout Watcher v0.1
 - AURA Runtime Supervisor v0.1
+- Incident Timeline v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -225,6 +226,13 @@ python scripts/run_aura_runtime.py
 python scripts/test_aura_runtime_supervisor.py
 ```
 
+Incident Timeline v0.1 connects events, actions, confirmations, and timeouts into one incident story. See [docs/incident_timeline.md](docs/incident_timeline.md).
+
+```powershell
+python scripts/test_incident_timeline_service.py
+python scripts/test_incident_api.py
+```
+
 Dev inspection commands:
 
 ```powershell
@@ -262,6 +270,8 @@ python scripts/test_confirmation_api.py
 python scripts/test_confirmation_timeout.py
 python scripts/run_aura_runtime.py
 python scripts/test_aura_runtime_supervisor.py
+python scripts/test_incident_timeline_service.py
+python scripts/test_incident_api.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
 python scripts/test_event_action_status.py

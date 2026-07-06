@@ -757,5 +757,214 @@ class AuraMemoryStore:
         row = cur.fetchone()
         return self._parse_confirmation_row(row) if row else None
 
+    @staticmethod
+    def _parse_incident_row(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+        item = dict(row)
+        metadata_json = item.pop("metadata_json", None)
+        if metadata_json:
+            try:
+                item["metadata"] = json.loads(metadata_json)
+            except json.JSONDecodeError:
+                item["metadata"] = metadata_json
+        else:
+            item["metadata"] = None
+        return item
+
+    @staticmethod
+    def _parse_timeline_row(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+        item = dict(row)
+        metadata_json = item.pop("metadata_json", None)
+        if metadata_json:
+            try:
+                item["metadata"] = json.loads(metadata_json)
+            except json.JSONDecodeError:
+                item["metadata"] = metadata_json
+        else:
+            item["metadata"] = None
+        return item
+
+    def add_incident(
+        self,
+        user_id: int,
+        incident_type: str,
+        title: str,
+        source_event_id: int | None = None,
+        room: str | None = None,
+        severity: str | None = None,
+        status: str = "open",
+        summary: str | None = None,
+        metadata: dict | None = None,
+    ) -> int:
+        allowed_statuses = {"open", "resolved", "expired", "cancelled", "simulated_escalated"}
+        if status not in allowed_statuses:
+            raise ValueError(f"status must be one of: {', '.join(sorted(allowed_statuses))}")
+
+        metadata_json = json.dumps(metadata) if metadata is not None else None
+        cur = self.conn.execute(
+            """
+            INSERT INTO incidents (
+                user_id, source_event_id, incident_type, title, room, severity,
+                status, summary, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                source_event_id,
+                incident_type,
+                title,
+                room,
+                severity,
+                status,
+                summary,
+                metadata_json,
+            ),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_incident_by_id(self, incident_id: int) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            """
+            SELECT id, user_id, source_event_id, incident_type, title, room, severity,
+                   status, summary, started_at, updated_at, closed_at, metadata_json
+            FROM incidents
+            WHERE id = ?
+            """,
+            (incident_id,),
+        )
+        row = cur.fetchone()
+        return self._parse_incident_row(row) if row else None
+
+    def get_incident_by_source_event_id(self, source_event_id: int) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            """
+            SELECT id, user_id, source_event_id, incident_type, title, room, severity,
+                   status, summary, started_at, updated_at, closed_at, metadata_json
+            FROM incidents
+            WHERE source_event_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (source_event_id,),
+        )
+        row = cur.fetchone()
+        return self._parse_incident_row(row) if row else None
+
+    def get_recent_incidents(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, user_id, source_event_id, incident_type, title, room, severity,
+                   status, summary, started_at, updated_at, closed_at, metadata_json
+            FROM incidents
+            WHERE user_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [self._parse_incident_row(row) for row in cur.fetchall()]
+
+    def get_open_incidents(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, user_id, source_event_id, incident_type, title, room, severity,
+                   status, summary, started_at, updated_at, closed_at, metadata_json
+            FROM incidents
+            WHERE user_id = ? AND status = 'open'
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [self._parse_incident_row(row) for row in cur.fetchall()]
+
+    def update_incident_status(
+        self,
+        incident_id: int,
+        status: str,
+        summary: str | None = None,
+        close: bool = False,
+    ) -> None:
+        allowed_statuses = {"open", "resolved", "expired", "cancelled", "simulated_escalated"}
+        if status not in allowed_statuses:
+            raise ValueError(f"status must be one of: {', '.join(sorted(allowed_statuses))}")
+
+        if close:
+            self.conn.execute(
+                """
+                UPDATE incidents
+                SET status = ?,
+                    summary = COALESCE(?, summary),
+                    updated_at = CURRENT_TIMESTAMP,
+                    closed_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (status, summary, incident_id),
+            )
+        else:
+            self.conn.execute(
+                """
+                UPDATE incidents
+                SET status = ?,
+                    summary = COALESCE(?, summary),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (status, summary, incident_id),
+            )
+        self.conn.commit()
+
+    def add_incident_timeline_item(
+        self,
+        incident_id: int,
+        item_type: str,
+        title: str,
+        summary: str | None = None,
+        status: str | None = None,
+        source_type: str | None = None,
+        source_id: int | None = None,
+        metadata: dict | None = None,
+    ) -> int:
+        metadata_json = json.dumps(metadata) if metadata is not None else None
+        cur = self.conn.execute(
+            """
+            INSERT INTO incident_timeline_items (
+                incident_id, item_type, source_type, source_id, title, summary, status, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                incident_id,
+                item_type,
+                source_type,
+                source_id,
+                title,
+                summary,
+                status,
+                metadata_json,
+            ),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_incident_timeline_items(
+        self,
+        incident_id: int,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, incident_id, item_type, source_type, source_id, title, summary,
+                   status, created_at, metadata_json
+            FROM incident_timeline_items
+            WHERE incident_id = ?
+            ORDER BY id ASC
+            LIMIT ?
+            """,
+            (incident_id, limit),
+        )
+        return [self._parse_timeline_row(row) for row in cur.fetchall()]
+
     def close(self) -> None:
         self.conn.close()

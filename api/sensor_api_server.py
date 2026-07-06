@@ -12,6 +12,7 @@ from api.dashboard_service import DashboardService
 from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
 from memory.sqlite_store import AuraMemoryStore
+from incidents.incident_service import IncidentService, incident_api_summary
 from safety.confirmation_engine import ConfirmationEngine
 from safety.escalation_engine import EscalationEngine
 from safety.safety_engine import SafetyEngine
@@ -101,7 +102,12 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
     )
     published["room"] = payload.get("room")
 
+    incident_service = IncidentService(store)
+    incident = incident_service.create_or_get_for_event(user_id, published)
+
     safety_result = safety_engine.evaluate_event(user_id, published)
+    if safety_result.get("requires_action"):
+        incident_service.record_safety_plan(int(incident["id"]), safety_result)
 
     escalation: dict[str, Any] | None = None
     dispatch_results: list[dict[str, Any]] = []
@@ -165,6 +171,12 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
     else:
         print("AURA_SENSOR_API_EVENT_PENDING_NO_DISPATCH")
 
+    incident = store.get_incident_by_id(int(incident["id"])) or incident
+    if dispatch_results:
+        incident_service.record_dispatch_results(int(incident["id"]), dispatch_results)
+    if confirmation is not None:
+        incident_service.record_confirmation_requested(int(incident["id"]), confirmation)
+
     return {
         "ok": True,
         "event": published,
@@ -172,6 +184,7 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
         "escalation": escalation,
         "confirmation": confirmation,
         "dispatch_results": dispatch_results,
+        "incident": incident_api_summary(incident),
     }
 
 
@@ -339,6 +352,60 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
                 limit = self._parse_limit(query, default=20, maximum=100)
                 confirmations = store.get_recent_confirmation_requests(user_id, limit=limit)
                 self._send_json(200, {"ok": True, "confirmations": confirmations})
+                return
+
+            if path == "/incidents/recent":
+                if not self._require_auth():
+                    return
+
+                store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                limit = self._parse_limit(query, default=20, maximum=100)
+                incidents = store.get_recent_incidents(user_id, limit=limit)
+                self._send_json(200, {"ok": True, "incidents": incidents})
+                return
+
+            if path == "/incidents/open":
+                if not self._require_auth():
+                    return
+
+                store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                limit = self._parse_limit(query, default=20, maximum=100)
+                incidents = store.get_open_incidents(user_id, limit=limit)
+                self._send_json(200, {"ok": True, "incidents": incidents})
+                return
+
+            if path.startswith("/incidents/") and path != "/incidents/recent" and path != "/incidents/open":
+                if not self._require_auth():
+                    return
+
+                incident_id_str = path.rsplit("/", 1)[-1]
+                try:
+                    incident_id = int(incident_id_str)
+                except ValueError:
+                    self._send_json(400, {"ok": False, "error": "invalid_incident_id"})
+                    return
+
+                store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                incident = store.get_incident_by_id(incident_id)
+                if incident is None or int(incident["user_id"]) != user_id:
+                    self._send_json(404, {"ok": False, "error": "not_found"})
+                    return
+
+                timeline = store.get_incident_timeline_items(incident_id, limit=100)
+                self._send_json(
+                    200,
+                    {
+                        "ok": True,
+                        "incident": incident,
+                        "timeline": timeline,
+                    },
+                )
                 return
 
             self._send_json(404, {"ok": False, "error": "not_found"})

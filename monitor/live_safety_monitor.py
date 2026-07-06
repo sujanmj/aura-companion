@@ -6,6 +6,7 @@ from typing import Any
 from actions.action_dispatcher import ActionDispatcher
 from devices.event_bus import DeviceEventBus
 from memory.sqlite_store import AuraMemoryStore
+from incidents.incident_service import IncidentService, incident_api_summary
 from safety.confirmation_engine import ConfirmationEngine
 from safety.escalation_engine import EscalationEngine
 from safety.safety_engine import SafetyEngine
@@ -40,6 +41,8 @@ class LiveSafetyMonitor:
         event_id = int(event["id"])
         processing_event = self._event_for_processing(event)
         dispatcher = ActionDispatcher(self.store, self.speaker)
+        incident_service = IncidentService(self.store)
+        incident = incident_service.create_or_get_for_event(user_id, processing_event)
 
         safety_result = self.safety_engine.evaluate_event(user_id, processing_event)
 
@@ -53,7 +56,10 @@ class LiveSafetyMonitor:
                 "escalation": None,
                 "confirmation": None,
                 "dispatch_results": [],
+                "incident": incident_api_summary(incident),
             }
+
+        incident_service.record_safety_plan(int(incident["id"]), safety_result)
 
         self.escalation_engine.ensure_default_plans(user_id)
         escalation = self.escalation_engine.build_escalation_response(
@@ -108,6 +114,12 @@ class LiveSafetyMonitor:
 
         self.event_bus.mark_event_status(event_id, "dispatched")
 
+        incident = self.store.get_incident_by_id(int(incident["id"])) or incident
+        if dispatch_results:
+            incident_service.record_dispatch_results(int(incident["id"]), dispatch_results)
+        if confirmation is not None:
+            incident_service.record_confirmation_requested(int(incident["id"]), confirmation)
+
         return {
             "event_id": event_id,
             "event_type": event["event_type"],
@@ -116,6 +128,7 @@ class LiveSafetyMonitor:
             "escalation": escalation,
             "confirmation": confirmation,
             "dispatch_results": dispatch_results,
+            "incident": incident_api_summary(incident),
         }
 
     def process_once(self, user_id: int, limit: int = 10) -> list[dict[str, Any]]:

@@ -209,3 +209,44 @@ CREATE INDEX IF NOT EXISTS idx_confirmation_requests_user_status
 
 CREATE INDEX IF NOT EXISTS idx_confirmation_requests_event
     ON confirmation_requests (source_event_id);
+
+CREATE TABLE IF NOT EXISTS incidents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    source_event_id INTEGER,
+    incident_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    room TEXT,
+    severity TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    summary TEXT,
+    started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    closed_at TEXT,
+    metadata_json TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (source_event_id) REFERENCES device_events(id)
+);
+
+CREATE TABLE IF NOT EXISTS incident_timeline_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    incident_id INTEGER NOT NULL,
+    item_type TEXT NOT NULL,
+    source_type TEXT,
+    source_id INTEGER,
+    title TEXT NOT NULL,
+    summary TEXT,
+    status TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    metadata_json TEXT,
+    FOREIGN KEY (incident_id) REFERENCES incidents(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_incidents_user_status
+    ON incidents (user_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_incidents_source_event
+    ON incidents (source_event_id);
+
+CREATE INDEX IF NOT EXISTS idx_incident_timeline_incident
+    ON incident_timeline_items (incident_id);

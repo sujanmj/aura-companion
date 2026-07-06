@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from incidents.incident_service import IncidentService
 from memory.sqlite_store import AuraMemoryStore
 
 OK_RESPONSES = {"ok", "i_am_ok", "safe"}
@@ -98,6 +99,16 @@ class ConfirmationEngine:
             )
 
             updated = self.store.get_confirmation_request_by_id(confirmation_id)
+            incident_service = IncidentService(self.store)
+            incident_service.record_confirmation_timeout(updated)
+            incident = incident_service._incident_for_confirmation(updated)
+            if incident is not None:
+                incident_service.record_timeout_dispatch_results(
+                    int(incident["id"]),
+                    timeout_action_log_id,
+                    notify_action_log_id,
+                )
+
             results.append(
                 {
                     "confirmation_id": confirmation_id,
@@ -159,6 +170,12 @@ class ConfirmationEngine:
         )
 
         updated = self.store.get_confirmation_request_by_id(confirmation_id)
+        IncidentService(self.store).record_confirmation_resolved(
+            updated or confirmation,
+            status,
+            response_text=response,
+        )
+
         return {
             "confirmation_id": confirmation_id,
             "status": status,

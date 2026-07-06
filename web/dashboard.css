@@ -279,6 +279,116 @@ button:hover {
   color: var(--critical);
 }
 
+.incidents-panel {
+  margin: 0 1.5rem 1rem;
+  padding: 1rem 1.1rem;
+}
+
+.incidents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.incident-card {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+}
+
+.incident-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.incident-meta {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.incident-summary {
+  margin: 0.5rem 0 0.75rem;
+  line-height: 1.45;
+}
+
+.incident-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.incident-status-open {
+  background: rgba(255, 159, 67, 0.15);
+  color: var(--high);
+}
+
+.incident-status-resolved {
+  background: rgba(61, 220, 151, 0.15);
+  color: var(--success);
+}
+
+.incident-status-expired,
+.incident-status-simulated_escalated {
+  background: rgba(255, 92, 92, 0.15);
+  color: var(--critical);
+}
+
+.incident-status-cancelled {
+  background: rgba(154, 168, 184, 0.15);
+  color: var(--text-muted);
+}
+
+.timeline-panel {
+  margin: 0 1.5rem 1rem;
+  padding: 1rem 1.1rem;
+}
+
+.timeline-panel.hidden {
+  display: none;
+}
+
+.timeline-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.timeline-item {
+  border-left: 3px solid var(--border);
+  padding: 0.5rem 0 0.5rem 0.85rem;
+}
+
+.timeline-item-type {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.timeline-item-title {
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
+.timeline-item-summary {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

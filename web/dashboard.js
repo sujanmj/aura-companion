@@ -10,6 +10,9 @@
   var tokenMessage = document.getElementById("token-message");
   var statusBadge = document.getElementById("status-badge");
   var lastRefreshed = document.getElementById("last-refreshed");
+  var timelinePanel = document.getElementById("timeline-panel");
+  var timelineTitle = document.getElementById("timeline-title");
+  var closeTimelineBtn = document.getElementById("close-timeline-btn");
 
   function getToken() {
     return localStorage.getItem(TOKEN_KEY) || "";
@@ -74,6 +77,20 @@
       return "confirmation-status confirmation-status-" + key;
     }
     return "confirmation-status confirmation-status-pending";
+  }
+
+  function incidentStatusClass(value) {
+    var key = (value || "open").toLowerCase();
+    if (
+      key === "open" ||
+      key === "resolved" ||
+      key === "expired" ||
+      key === "cancelled" ||
+      key === "simulated_escalated"
+    ) {
+      return "confirmation-status incident-status-" + key;
+    }
+    return "confirmation-status incident-status-open";
   }
 
   function escapeHtml(text) {
@@ -212,9 +229,129 @@
     });
   }
 
+  function renderIncidentList(containerId, incidents, emptyText) {
+    var container = document.getElementById(containerId);
+    if (!incidents || incidents.length === 0) {
+      container.innerHTML = '<p class="empty-state">' + escapeHtml(emptyText) + "</p>";
+      return;
+    }
+
+    var html = [];
+    incidents.forEach(function (item) {
+      html.push('<article class="incident-card" data-id="' + escapeHtml(item.id) + '">');
+      html.push('<div class="incident-card-header">');
+      html.push(
+        "<div><strong>#" +
+          escapeHtml(item.id) +
+          "</strong> · " +
+          escapeHtml(item.title || item.incident_type || "incident") +
+          "</div>"
+      );
+      html.push(
+        '<span class="' +
+          incidentStatusClass(item.status) +
+          '">' +
+          escapeHtml(item.status || "open") +
+          "</span>"
+      );
+      html.push("</div>");
+      html.push(
+        '<div class="incident-meta">Room: ' +
+          escapeHtml(item.room || "unknown") +
+          " · Severity: " +
+          escapeHtml(item.severity || "unknown") +
+          " · Started: " +
+          escapeHtml(item.started_at || "—") +
+          "</div>"
+      );
+      html.push('<p class="incident-summary">' + escapeHtml(item.summary || "") + "</p>");
+      html.push('<div class="incident-actions">');
+      html.push(
+        '<button type="button" class="btn-view-timeline" data-id="' +
+          escapeHtml(item.id) +
+          '">View Timeline</button>'
+      );
+      html.push("</div></article>");
+    });
+    container.innerHTML = html.join("");
+
+    container.querySelectorAll(".btn-view-timeline").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var incidentId = parseInt(button.getAttribute("data-id"), 10);
+        if (incidentId) {
+          loadIncidentTimeline(incidentId);
+        }
+      });
+    });
+  }
+
+  function renderTimelineItems(timeline) {
+    var container = document.getElementById("incident-timeline");
+    if (!timeline || timeline.length === 0) {
+      container.innerHTML = '<p class="empty-state">No timeline items.</p>';
+      return;
+    }
+
+    var html = [];
+    timeline.forEach(function (item) {
+      html.push('<article class="timeline-item">');
+      html.push(
+        '<div class="timeline-item-type">' +
+          escapeHtml(item.created_at || "—") +
+          " · " +
+          escapeHtml(item.item_type || "item") +
+          "</div>"
+      );
+      html.push('<div class="timeline-item-title">' + escapeHtml(item.title || "") + "</div>");
+      if (item.status) {
+        html.push(
+          '<div class="incident-meta">Status: ' + escapeHtml(item.status) + "</div>"
+        );
+      }
+      if (item.summary) {
+        html.push(
+          '<div class="timeline-item-summary">' + escapeHtml(item.summary) + "</div>"
+        );
+      }
+      html.push("</article>");
+    });
+    container.innerHTML = html.join("");
+  }
+
+  function loadIncidentTimeline(incidentId) {
+    var headers = { Accept: "application/json" };
+    var token = getToken();
+    if (token) {
+      headers["X-AURA-API-Token"] = token;
+    }
+
+    fetch("/incidents/" + incidentId, { headers: headers })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("timeline-fetch-failed");
+        }
+        return response.json();
+      })
+      .then(function (data) {
+        if (!data.ok) {
+          throw new Error("timeline-bad-response");
+        }
+        timelineTitle.textContent =
+          "Incident #" + incidentId + ": " + (data.incident && data.incident.title ? data.incident.title : "");
+        renderTimelineItems(data.timeline || []);
+        timelinePanel.classList.remove("hidden");
+        timelinePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      })
+      .catch(function () {
+        setTokenMessage("Failed to load incident timeline.");
+      });
+  }
+
   function renderDashboard(data) {
     renderSummary(data.summary || {});
     renderPendingConfirmations(data.pending_confirmations || []);
+    renderIncidentList("open-incidents", data.open_incidents || [], "No open incidents.");
+    renderIncidentList("recent-incidents", data.recent_incidents || [], "No recent incidents.");
 
     renderTable(
       document.getElementById("critical-alerts"),
@@ -365,6 +502,9 @@
 
   saveTokenBtn.addEventListener("click", saveToken);
   clearTokenBtn.addEventListener("click", clearToken);
+  closeTimelineBtn.addEventListener("click", function () {
+    timelinePanel.classList.add("hidden");
+  });
 
   loadTokenIntoField();
   refreshDashboard();
