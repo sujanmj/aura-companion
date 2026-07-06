@@ -27,6 +27,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Guest Introduction Flow v0.1
 - Emergency Contacts + Escalation Rules v0.1
 - Action Dispatcher v0.1
+- Sensor Node API v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -112,6 +113,13 @@ python scripts/test_action_dispatcher.py
 python scripts/test_full_safety_action_flow.py
 ```
 
+Sensor Node API v0.1 exposes a local HTTP API so Raspberry Pi, camera, and sensor nodes can send events over Wi-Fi. Uses built-in `http.server` — no FastAPI yet. See [docs/sensor_node_api.md](docs/sensor_node_api.md) for endpoint details and example payloads. **v0.1 has no authentication** — keep it on a trusted local network only. No real emergency calls happen in v0.1.
+
+```powershell
+python scripts/run_sensor_api.py
+python scripts/test_sensor_api_client.py
+```
+
 Install camera dependency in the Python 3.11 venv:
 
 ```powershell
@@ -127,6 +135,8 @@ python scripts/test_escalation_engine.py
 python scripts/test_safety_escalation_flow.py
 python scripts/test_action_dispatcher.py
 python scripts/test_full_safety_action_flow.py
+python scripts/run_sensor_api.py
+python scripts/test_sensor_api_client.py
 python scripts/list_emergency_contacts.py
 python scripts/test_people_registry.py
 python scripts/test_guest_introduction_flow.py

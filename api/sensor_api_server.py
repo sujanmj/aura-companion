@@ -1,0 +1,228 @@
+from __future__ import annotations
+
+import json
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
+from urllib.parse import urlparse
+
+from actions.action_dispatcher import ActionDispatcher
+from devices.event_bus import DeviceEventBus
+from memory.sqlite_store import AuraMemoryStore
+from safety.escalation_engine import EscalationEngine
+from safety.safety_engine import SafetyEngine
+
+DEFAULT_USER_NAME = "Sujan M J"
+DEFAULT_PREFERRED_NAME = "Sujan"
+API_VERSION = "0.1"
+
+
+def _serialize_event_row(event: dict[str, Any]) -> dict[str, Any]:
+    serialized = dict(event)
+    if "requires_action" in serialized:
+        serialized["requires_action"] = bool(serialized["requires_action"])
+    metadata_json = serialized.pop("metadata_json", None)
+    if metadata_json:
+        try:
+            serialized["metadata"] = json.loads(metadata_json)
+        except json.JSONDecodeError:
+            serialized["metadata"] = metadata_json
+    return serialized
+
+
+def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+    event_bus = DeviceEventBus(store)
+    safety_engine = SafetyEngine(store)
+    escalation_engine = EscalationEngine(store)
+    dispatcher = ActionDispatcher(store)
+
+    published = event_bus.publish_event(
+        user_id,
+        event_type=payload["event_type"],
+        event_summary=payload["event_summary"],
+        source=payload.get("source", "sensor_api"),
+        room=payload.get("room"),
+        severity=payload.get("severity", "low"),
+        confidence=float(payload.get("confidence", 0.5)),
+        requires_action=bool(payload.get("requires_action", False)),
+        metadata=payload.get("metadata"),
+    )
+    published["room"] = payload.get("room")
+
+    safety_result = safety_engine.evaluate_event(user_id, published)
+
+    escalation: dict[str, Any] | None = None
+    dispatch_results: list[dict[str, Any]] = []
+
+    if safety_result.get("requires_action"):
+        escalation_engine.ensure_default_plans(user_id)
+        escalation = escalation_engine.build_escalation_response(
+            user_id,
+            published,
+            safety_result,
+        )
+
+        spoken_response = escalation.get("spoken_response")
+        if spoken_response:
+            dispatch_results.append(
+                dispatcher.dispatch(
+                    user_id,
+                    action_type="speak_now",
+                    action_summary=spoken_response,
+                    target=published.get("room"),
+                    source_event_id=published["event_id"],
+                    speak_text=spoken_response,
+                )
+            )
+
+        if escalation.get("requires_user_confirmation"):
+            dispatch_results.append(
+                dispatcher.dispatch(
+                    user_id,
+                    action_type="ask_confirmation",
+                    action_summary=escalation["first_action"],
+                    target=published.get("room"),
+                    source_event_id=published["event_id"],
+                )
+            )
+
+        second_action = escalation.get("second_action")
+        if second_action:
+            dispatch_results.append(
+                dispatcher.dispatch(
+                    user_id,
+                    action_type="notify_contact_simulated",
+                    action_summary=second_action,
+                    target=escalation.get("top_contact"),
+                    source_event_id=published["event_id"],
+                )
+            )
+
+    return {
+        "ok": True,
+        "event": published,
+        "safety": safety_result,
+        "escalation": escalation,
+        "dispatch_results": dispatch_results,
+    }
+
+
+class AuraSensorAPIHandler(BaseHTTPRequestHandler):
+    server_version = "AuraSensorAPI/0.1"
+
+    def log_message(self, format: str, *args: Any) -> None:
+        print(f"[sensor-api] {self.address_string()} - {format % args}")
+
+    def _send_json(self, status_code: int, payload: dict[str, Any]) -> None:
+        body = json.dumps(payload, default=str).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _read_json_body(self) -> dict[str, Any] | None:
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            return None
+
+        if content_length <= 0:
+            return None
+
+        try:
+            raw = self.rfile.read(content_length)
+            parsed = json.loads(raw.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return None
+
+        if not isinstance(parsed, dict):
+            return None
+        return parsed
+
+    def _get_user_id(self, store: AuraMemoryStore) -> int:
+        return store.get_or_create_user(
+            name=DEFAULT_USER_NAME,
+            preferred_name=DEFAULT_PREFERRED_NAME,
+        )
+
+    def do_GET(self) -> None:
+        path = urlparse(self.path).path
+
+        try:
+            if path == "/health":
+                self._send_json(
+                    200,
+                    {
+                        "ok": True,
+                        "service": "aura-sensor-api",
+                        "version": API_VERSION,
+                    },
+                )
+                return
+
+            if path == "/events/latest":
+                store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                events = [
+                    _serialize_event_row(event)
+                    for event in store.get_recent_device_events(user_id, limit=10)
+                ]
+                self._send_json(200, {"ok": True, "events": events})
+                return
+
+            self._send_json(404, {"ok": False, "error": "not_found"})
+        except Exception as exc:
+            print(f"[sensor-api] GET error: {exc}")
+            self._send_json(500, {"ok": False, "error": "internal_server_error"})
+
+    def do_POST(self) -> None:
+        path = urlparse(self.path).path
+
+        if path != "/events":
+            self._send_json(404, {"ok": False, "error": "not_found"})
+            return
+
+        payload = self._read_json_body()
+        if payload is None:
+            self._send_json(400, {"ok": False, "error": "invalid_json"})
+            return
+
+        event_type = payload.get("event_type")
+        event_summary = payload.get("event_summary")
+        if not event_type or not event_summary:
+            self._send_json(
+                400,
+                {"ok": False, "error": "missing_event_type_or_summary"},
+            )
+            return
+
+        try:
+            store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+            store.apply_schema()
+            user_id = self._get_user_id(store)
+            result = process_sensor_event(store, user_id, payload)
+            self._send_json(200, result)
+        except Exception as exc:
+            print(f"[sensor-api] POST /events error: {exc}")
+            self._send_json(500, {"ok": False, "error": "internal_server_error"})
+
+
+def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
+    store = AuraMemoryStore()
+    store.apply_schema()
+
+    server = HTTPServer((host, port), AuraSensorAPIHandler)
+    server.aura_store = store  # type: ignore[attr-defined]
+
+    print(f"AURA_SENSOR_API_STARTING")
+    print(f"host={host}")
+    print(f"port={port}")
+
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nAURA_SENSOR_API_STOPPED")
+    finally:
+        store.close()
+        server.server_close()
