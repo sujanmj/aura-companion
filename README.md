@@ -36,6 +36,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Live Voice Safety Actions v0.1
 - Safety Confirmation Workflow v0.1
 - Confirmation Timeout Watcher v0.1
+- AURA Runtime Supervisor v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -217,6 +218,13 @@ python scripts/test_confirmation_timeout.py
 python scripts/run_confirmation_timeout_watcher.py --once
 ```
 
+AURA Runtime Supervisor v0.1 starts Sensor API, Live Safety Monitor, and Confirmation Timeout Watcher with one command. See [docs/aura_runtime_supervisor.md](docs/aura_runtime_supervisor.md).
+
+```powershell
+python scripts/run_aura_runtime.py
+python scripts/test_aura_runtime_supervisor.py
+```
+
 Dev inspection commands:
 
 ```powershell
@@ -252,6 +260,8 @@ python scripts/test_voice_action_dispatcher.py
 python scripts/test_confirmation_engine.py
 python scripts/test_confirmation_api.py
 python scripts/test_confirmation_timeout.py
+python scripts/run_aura_runtime.py
+python scripts/test_aura_runtime_supervisor.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
 python scripts/test_event_action_status.py
