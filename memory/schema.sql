@@ -158,3 +158,32 @@ CREATE TABLE IF NOT EXISTS person_events (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (person_id) REFERENCES known_people(id)
 );
+
+CREATE TABLE IF NOT EXISTS escalation_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    severity TEXT DEFAULT 'medium',
+    first_action TEXT NOT NULL,
+    second_action TEXT,
+    final_action TEXT,
+    wait_seconds_before_escalation INTEGER DEFAULT 30,
+    requires_user_confirmation INTEGER DEFAULT 1,
+    enabled INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS escalation_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    source_event_id INTEGER,
+    event_type TEXT NOT NULL,
+    severity TEXT DEFAULT 'medium',
+    escalation_stage TEXT NOT NULL,
+    action_summary TEXT NOT NULL,
+    status TEXT DEFAULT 'planned',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (source_event_id) REFERENCES device_events(id)
+);

@@ -430,5 +430,139 @@ class AuraMemoryStore:
         )
         return [dict(row) for row in cur.fetchall()]
 
+    def add_emergency_contact(
+        self,
+        user_id: int,
+        name: str,
+        phone: str | None = None,
+        email: str | None = None,
+        relation: str | None = None,
+        priority: int = 1,
+    ) -> int:
+        cur = self.conn.execute(
+            """
+            INSERT INTO emergency_contacts (user_id, name, phone, email, relation, priority)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, name, phone, email, relation, priority),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_emergency_contacts(self, user_id: int) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, name, phone, email, relation, priority, created_at
+            FROM emergency_contacts
+            WHERE user_id = ?
+            ORDER BY priority ASC, id ASC
+            """,
+            (user_id,),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+    def add_escalation_plan(
+        self,
+        user_id: int,
+        event_type: str,
+        severity: str,
+        first_action: str,
+        second_action: str | None = None,
+        final_action: str | None = None,
+        wait_seconds_before_escalation: int = 30,
+        requires_user_confirmation: bool = True,
+        enabled: bool = True,
+    ) -> int:
+        allowed_severities = {"low", "medium", "high", "critical"}
+        if severity not in allowed_severities:
+            raise ValueError(f"severity must be one of: {', '.join(sorted(allowed_severities))}")
+
+        cur = self.conn.execute(
+            """
+            INSERT INTO escalation_plans (
+                user_id, event_type, severity, first_action, second_action, final_action,
+                wait_seconds_before_escalation, requires_user_confirmation, enabled
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                event_type,
+                severity,
+                first_action,
+                second_action,
+                final_action,
+                wait_seconds_before_escalation,
+                int(requires_user_confirmation),
+                int(enabled),
+            ),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_escalation_plan(self, user_id: int, event_type: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            """
+            SELECT id, event_type, severity, first_action, second_action, final_action,
+                   wait_seconds_before_escalation, requires_user_confirmation, enabled, created_at
+            FROM escalation_plans
+            WHERE user_id = ? AND event_type = ? AND enabled = 1
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (user_id, event_type),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+    def add_escalation_log(
+        self,
+        user_id: int,
+        event_type: str,
+        escalation_stage: str,
+        action_summary: str,
+        severity: str = "medium",
+        status: str = "planned",
+        source_event_id: int | None = None,
+    ) -> int:
+        allowed_severities = {"low", "medium", "high", "critical"}
+        if severity not in allowed_severities:
+            raise ValueError(f"severity must be one of: {', '.join(sorted(allowed_severities))}")
+
+        cur = self.conn.execute(
+            """
+            INSERT INTO escalation_logs (
+                user_id, source_event_id, event_type, severity,
+                escalation_stage, action_summary, status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                source_event_id,
+                event_type,
+                severity,
+                escalation_stage,
+                action_summary,
+                status,
+            ),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_recent_escalation_logs(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, source_event_id, event_type, severity, escalation_stage,
+                   action_summary, status, created_at
+            FROM escalation_logs
+            WHERE user_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
     def close(self) -> None:
         self.conn.close()

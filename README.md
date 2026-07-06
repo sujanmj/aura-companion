@@ -25,6 +25,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Device Event Bus v0.1
 - People Registry v0.1
 - Guest Introduction Flow v0.1
+- Emergency Contacts + Escalation Rules v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -94,6 +95,15 @@ Console commands (inside `run_companion_console.py`):
 python scripts/test_guest_introduction_flow.py
 ```
 
+Emergency Contacts + Escalation Rules v0.1 adds a safe escalation layer for falls, fire/smoke, health signals, and unknown person events. Emergency contacts are stored locally. Escalation plans create **planned** actions only — no real police, ambulance, SMS, or Telegram calls happen yet. Later app/Telegram/SMS integration will use these plans. AURA requires user confirmation before serious escalation.
+
+```powershell
+python scripts/add_emergency_contact.py "Test Contact" "+910000000000" "family"
+python scripts/list_emergency_contacts.py
+python scripts/test_escalation_engine.py
+python scripts/test_safety_escalation_flow.py
+```
+
 Install camera dependency in the Python 3.11 venv:
 
 ```powershell
@@ -105,6 +115,9 @@ pip install -r requirements.txt
 ```bash
 python scripts/check_runtime.py
 python scripts/test_device_event_bus.py
+python scripts/test_escalation_engine.py
+python scripts/test_safety_escalation_flow.py
+python scripts/list_emergency_contacts.py
 python scripts/test_people_registry.py
 python scripts/test_guest_introduction_flow.py
 python scripts/list_known_people.py
