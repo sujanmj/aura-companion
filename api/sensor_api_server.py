@@ -84,6 +84,24 @@ def _serialize_event_row(event: dict[str, Any]) -> dict[str, Any]:
     return serialized
 
 
+def beat_sensor_api_heartbeat(
+    store: AuraMemoryStore,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    try:
+        store.apply_schema()
+        user_id = store.get_or_create_user(
+            name=DEFAULT_USER_NAME,
+            preferred_name=DEFAULT_PREFERRED_NAME,
+        )
+        RuntimeHeartbeat(store, user_id).beat(
+            "sensor_api",
+            metadata=metadata or {},
+        )
+    except Exception as exc:
+        print(f"AURA_SENSOR_API_HEARTBEAT_ERROR: {exc}")
+
+
 def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
     event_bus = DeviceEventBus(store)
     safety_engine = SafetyEngine(store)
@@ -269,19 +287,18 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
         return max(1, min(value, maximum))
 
     def do_GET(self) -> None:
+        store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+        beat_sensor_api_heartbeat(
+            store,
+            metadata={"path": self.path, "method": "GET"},
+        )
+
         parsed_url = urlparse(self.path)
         path = parsed_url.path
         query = parse_qs(parsed_url.query)
 
         try:
             if path == "/health":
-                store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
-                store.apply_schema()
-                user_id = self._get_user_id(store)
-                RuntimeHeartbeat(store, user_id).beat(
-                    "sensor_api",
-                    metadata={"endpoint": "/health"},
-                )
                 self._send_json(
                     200,
                     {
@@ -422,6 +439,12 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"ok": False, "error": "internal_server_error"})
 
     def do_POST(self) -> None:
+        store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+        beat_sensor_api_heartbeat(
+            store,
+            metadata={"path": self.path, "method": "POST"},
+        )
+
         path = urlparse(self.path).path
 
         if path == "/confirmations/respond":

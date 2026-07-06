@@ -239,6 +239,7 @@ Runtime Health Heartbeat v0.1 tracks whether local AURA services are online, sta
 ```powershell
 python scripts/test_runtime_heartbeat.py
 python scripts/show_runtime_health.py
+python scripts/test_runtime_dashboard_heartbeat.py
 ```
 
 Dev inspection commands:
@@ -282,6 +283,7 @@ python scripts/test_incident_timeline_service.py
 python scripts/test_incident_api.py
 python scripts/test_runtime_heartbeat.py
 python scripts/show_runtime_health.py
+python scripts/test_runtime_dashboard_heartbeat.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
 python scripts/test_event_action_status.py
