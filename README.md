@@ -33,6 +33,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Live Safety Monitor v0.1
 - Live Room Dashboard API v0.1
 - Local Web Dashboard v0.1
+- Live Voice Safety Actions v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -40,9 +41,10 @@ Secrets live in `config/keys.env`. That file is ignored by git.
 
 ```env
 AURA_SENSOR_API_TOKEN=change_this_local_token
+AURA_ENABLE_VOICE_ACTIONS=0
 ```
 
-Generate a real token with `python scripts/generate_sensor_api_token.py` and add it to `config/keys.env` locally.
+Generate a real token with `python scripts/generate_sensor_api_token.py` and add it to `config/keys.env` locally. Set `AURA_ENABLE_VOICE_ACTIONS=1` to enable live Windows TTS for safety `speak_now` actions. See [docs/live_voice_actions.md](docs/live_voice_actions.md).
 
 When `AURA_BRAIN_PROVIDER=claude`, Claude is the primary cloud brain. You must also set `ANTHROPIC_MODEL` in `config/keys.env`. If Claude fails or is unavailable, AURA falls back to the local reaction engine.
 
@@ -139,6 +141,8 @@ python scripts/test_sensor_api_event_status.py
 python scripts/test_dashboard_api.py
 python scripts/show_dashboard_status.py
 python scripts/test_web_dashboard_routes.py
+python scripts/test_voice_runtime_config.py
+python scripts/test_voice_action_dispatcher.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
 python scripts/test_event_action_status.py
@@ -175,15 +179,27 @@ Live Room Dashboard API v0.1 exposes JSON dashboard endpoints for future web/mob
 python scripts/test_dashboard_api.py
 python scripts/show_dashboard_status.py
 python scripts/test_web_dashboard_routes.py
+python scripts/test_voice_runtime_config.py
+python scripts/test_voice_action_dispatcher.py
 ```
 
 Local Web Dashboard v0.1 serves a browser UI at [http://127.0.0.1:8787/dashboard](http://127.0.0.1:8787/dashboard). Paste your `AURA_SENSOR_API_TOKEN` in the page (stored in browser `localStorage` only). See [docs/local_web_dashboard.md](docs/local_web_dashboard.md).
 
 ```powershell
 python scripts/test_web_dashboard_routes.py
+python scripts/test_voice_runtime_config.py
+python scripts/test_voice_action_dispatcher.py
 ```
 
 Open: `http://127.0.0.1:8787/dashboard`
+
+Live Voice Safety Actions v0.1 optionally speaks safety alerts through Windows TTS when `AURA_ENABLE_VOICE_ACTIONS=1`. Disabled by default.
+
+```powershell
+python scripts/test_voice_runtime_config.py
+python scripts/test_voice_action_dispatcher.py
+python scripts/test_live_voice_smoke.py
+```
 
 Dev inspection commands:
 
@@ -215,6 +231,8 @@ python scripts/test_sensor_api_event_status.py
 python scripts/test_dashboard_api.py
 python scripts/show_dashboard_status.py
 python scripts/test_web_dashboard_routes.py
+python scripts/test_voice_runtime_config.py
+python scripts/test_voice_action_dispatcher.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
 python scripts/test_event_action_status.py

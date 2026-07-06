@@ -5,6 +5,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from actions.voice_runtime import create_runtime_speaker
 from memory.sqlite_store import AuraMemoryStore
 from monitor.live_safety_monitor import LiveSafetyMonitor
 
@@ -34,7 +35,8 @@ def main() -> None:
     store.apply_schema()
 
     user_id = store.get_or_create_user(name="Sujan M J", preferred_name="Sujan")
-    monitor = LiveSafetyMonitor(store)
+    speaker = create_runtime_speaker()
+    monitor = LiveSafetyMonitor(store, speaker=speaker)
 
     if args.once:
         results = monitor.process_once(user_id, limit=args.limit)

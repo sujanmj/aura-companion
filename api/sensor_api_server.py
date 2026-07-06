@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 from actions.action_dispatcher import ActionDispatcher
+from actions.voice_runtime import create_runtime_speaker
 from api.dashboard_service import DashboardService
 from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
@@ -28,6 +29,19 @@ WEB_STATIC_FILES = {
         "application/javascript; charset=utf-8",
     ),
 }
+
+_RUNTIME_SPEAKER = None
+_RUNTIME_SPEAKER_INITIALIZED = False
+
+
+def get_runtime_speaker_once():
+    global _RUNTIME_SPEAKER, _RUNTIME_SPEAKER_INITIALIZED
+
+    if not _RUNTIME_SPEAKER_INITIALIZED:
+        _RUNTIME_SPEAKER = create_runtime_speaker()
+        _RUNTIME_SPEAKER_INITIALIZED = True
+    return _RUNTIME_SPEAKER
+
 
 def get_sensor_api_token() -> str | None:
     token = os.environ.get("AURA_SENSOR_API_TOKEN")
@@ -71,7 +85,7 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
     event_bus = DeviceEventBus(store)
     safety_engine = SafetyEngine(store)
     escalation_engine = EscalationEngine(store)
-    dispatcher = ActionDispatcher(store)
+    dispatcher = ActionDispatcher(store, speaker=get_runtime_speaker_once())
 
     published = event_bus.publish_event(
         user_id,

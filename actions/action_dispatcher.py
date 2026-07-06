@@ -20,8 +20,15 @@ class ActionDispatcher:
         status = "logged"
 
         if action_type == "speak_now":
-            if self.speaker is not None and speak_text:
-                status = "spoken" if self.speaker.speak(speak_text) else "logged"
+            text_to_speak = speak_text or action_summary
+            if self.speaker is not None and text_to_speak:
+                try:
+                    spoke = self.speaker.speak(text_to_speak)
+                    status = "spoken" if spoke else "voice_error_logged"
+                except Exception:
+                    status = "voice_error_logged"
+            else:
+                status = "logged"
         elif action_type == "ask_confirmation":
             status = "confirmation_needed"
         elif action_type == "notify_contact_simulated":
