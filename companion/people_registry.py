@@ -29,6 +29,7 @@ class PeopleRegistry:
                 source="manual",
                 room=room,
             )
+            self.store.update_person_last_seen(user_id, person_id)
             return {
                 "person_id": person_id,
                 "display_name": existing["display_name"],
@@ -53,6 +54,7 @@ class PeopleRegistry:
             source="manual",
             room=room,
         )
+        self.store.update_person_last_seen(user_id, person_id)
 
         return {
             "person_id": person_id,

@@ -47,6 +47,10 @@ def main() -> None:
     print("INTRODUCED:")
     print(introduced)
 
+    rohan = store.find_known_person(user_id, "Rohan")
+    print("LAST SEEN:")
+    print((rohan or {}).get("last_seen_at") or "never")
+
     known_seen = registry.mark_person_seen(user_id, display_name="Rohan", room="hall")
     print("KNOWN SEEN:")
     print(known_seen)
@@ -61,9 +65,11 @@ def main() -> None:
 
     print("KNOWN PEOPLE:")
     for person in store.get_known_people(user_id):
+        last_seen = person.get("last_seen_at") or "never"
         print(
             f"- {person['display_name']} | {person.get('relation')} | "
-            f"{person.get('trust_level')} | consent={bool(person.get('consent_to_remember'))}"
+            f"{person.get('trust_level')} | consent={bool(person.get('consent_to_remember'))} | "
+            f"last_seen={last_seen}"
         )
 
     print("PERSON EVENTS:")

@@ -46,13 +46,17 @@ def main() -> None:
         consent_to_remember=True,
         room="hall",
     )
-    registry.mark_person_seen(user_id, display_name="Sheetal", room="hall")
+
+    sheetal = store.find_known_person(user_id, "Sheetal")
+    last_seen = sheetal.get("last_seen_at") if sheetal else None
 
     print("AURA_GUEST_INTRODUCTION_FLOW_TEST_OK")
     print("GUEST PROMPT:")
     print(guest_prompt)
     print("INTRODUCED:")
     print(introduced)
+    print("LAST SEEN:")
+    print(last_seen or "never")
     print("KNOWN PEOPLE:")
     for line in registry.format_known_people(user_id):
         print(f"- {line}")
