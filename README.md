@@ -24,6 +24,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Camera Observation v0.3
 - Device Event Bus v0.1
 - People Registry v0.1
+- Guest Introduction Flow v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -81,6 +82,18 @@ python scripts/introduce_person.py "Rohan" "cousin" "Family member"
 python scripts/list_known_people.py
 ```
 
+Guest Introduction Flow v0.1 connects the people registry, device event bus, and safety engine in the companion console. Real face recognition is **not active yet** — this is manual introduction and the foundation for future face enrollment. AURA asks for consent before remembering face or person details. Unknown person events can trigger a security check and prompt you to introduce the guest.
+
+Console commands (inside `run_companion_console.py`):
+
+- `/people` — list known people
+- `/introduce` — manually introduce a guest
+- `/unknown-person` — simulate unknown person at front door
+
+```powershell
+python scripts/test_guest_introduction_flow.py
+```
+
 Install camera dependency in the Python 3.11 venv:
 
 ```powershell
@@ -93,6 +106,7 @@ pip install -r requirements.txt
 python scripts/check_runtime.py
 python scripts/test_device_event_bus.py
 python scripts/test_people_registry.py
+python scripts/test_guest_introduction_flow.py
 python scripts/list_known_people.py
 python scripts/test_camera.py
 python scripts/open_latest_snapshot.py

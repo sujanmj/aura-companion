@@ -104,3 +104,14 @@ class PeopleRegistry:
 
     def build_guest_prompt(self, user_id: int, room: str | None = None) -> str:
         return "Looks like we may have a guest here. Would you like to introduce them to me?"
+
+    def format_known_people(self, user_id: int) -> list[str]:
+        lines: list[str] = []
+        for person in self.store.get_known_people(user_id):
+            consent = "yes" if person.get("consent_to_remember") else "no"
+            last_seen = person.get("last_seen_at") or "never"
+            lines.append(
+                f"{person['display_name']} | {person.get('relation') or '-'} | "
+                f"{person.get('trust_level')} | consent={consent} | last_seen={last_seen}"
+            )
+        return lines

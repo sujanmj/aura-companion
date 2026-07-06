@@ -6,12 +6,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from companion.memory_extractor import MemoryExtractor
+from companion.people_registry import PeopleRegistry
 from companion.reaction_engine import CompanionReactionEngine
 from config.env_loader import load_env_file
+from devices.event_bus import DeviceEventBus
 from memory.sqlite_store import AuraMemoryStore
 from perception.camera import CameraObserver, get_default_camera_observer
 from perception.stt import WindowsSpeechRecognizer
 from perception.tts import WindowsTTSSpeaker, get_speaker_from_env
+from safety.safety_engine import SafetyEngine
 
 
 def _ask_typed_message() -> str:
@@ -117,6 +120,116 @@ def get_observation(
     return manual
 
 
+def _infer_trust_level(relation: str | None) -> str:
+    if not relation:
+        return "guest"
+    rel = relation.lower()
+    family_keywords = (
+        "mother", "father", "brother", "sister", "cousin",
+        "wife", "husband", "son", "daughter",
+    )
+    if any(keyword in rel for keyword in family_keywords):
+        return "family"
+    caretaker_keywords = ("caretaker", "nurse", "helper")
+    if any(keyword in rel for keyword in caretaker_keywords):
+        return "caretaker"
+    if "friend" in rel:
+        return "friend"
+    return "guest"
+
+
+def print_known_people(store: AuraMemoryStore, user_id: int) -> None:
+    people = store.get_known_people(user_id)
+    if not people:
+        print("(no known people)")
+        return
+    for person in people:
+        consent = "yes" if person.get("consent_to_remember") else "no"
+        last_seen = person.get("last_seen_at") or "never"
+        print(
+            f"- {person['display_name']} | {person.get('relation') or '-'} | "
+            f"{person.get('trust_level')} | consent={consent} | last_seen={last_seen}"
+        )
+
+
+def introduce_person_flow(
+    store: AuraMemoryStore,
+    user_id: int,
+    room: str | None = None,
+) -> dict | None:
+    display_name = input("Guest name: ").strip()
+    if not display_name:
+        print("Introduction cancelled.")
+        return None
+
+    relation = input("Relation: ").strip() or None
+    notes = input("Notes: ").strip() or None
+    consent_raw = input("Consent to remember this person? [y/N]: ").strip().lower()
+    consent_to_remember = consent_raw in {"y", "yes"}
+    trust_level = _infer_trust_level(relation)
+
+    registry = PeopleRegistry(store)
+    result = registry.introduce_person(
+        user_id,
+        display_name=display_name,
+        relation=relation,
+        notes=notes,
+        trust_level=trust_level,
+        consent_to_remember=consent_to_remember,
+        room=room,
+    )
+
+    print("AURA_PERSON_INTRODUCED")
+    print(f"name={result['display_name']}")
+    print(f"relation={result.get('relation') or '-'}")
+    print(f"trust_level={result['trust_level']}")
+
+    store.add_conversation(
+        user_id,
+        role="system",
+        message=f"AURA learned a new known person: {result['display_name']}.",
+    )
+    return result
+
+
+def unknown_person_flow(
+    store: AuraMemoryStore,
+    user_id: int,
+    speaker: WindowsTTSSpeaker | None = None,
+) -> None:
+    event_bus = DeviceEventBus(store)
+    safety_engine = SafetyEngine(store)
+
+    published = event_bus.publish_event(
+        user_id,
+        event_type="unknown_person_detected",
+        event_summary="Unknown person detected near front door.",
+        source="manual_console",
+        room="front_door",
+        severity="medium",
+        confidence=0.7,
+        requires_action=True,
+    )
+    evaluation = safety_engine.evaluate_event(user_id, published)
+
+    print("Safety action:")
+    print(f"- type={evaluation.get('action_type')}")
+    print(f"  summary={evaluation.get('action_summary')}")
+    print(f"  requires_action={evaluation.get('requires_action')}")
+
+    prompt = (
+        "Looks like we may have a guest near the front door. "
+        "Would you like to introduce them to me?"
+    )
+    print(f"\nAURA: {prompt}")
+    if speaker is not None and speaker.enabled:
+        speaker.speak(prompt)
+
+    choice = input("Introduce now? [y/N]: ").strip().lower()
+    if choice in {"y", "yes"}:
+        introduce_person_flow(store, user_id, room="front_door")
+
+
 def main(enable_microphone: bool | None = None) -> None:
     load_env_file()
 
@@ -149,11 +262,27 @@ def main(enable_microphone: bool | None = None) -> None:
 
     print("AURA_COMPANION_CONSOLE_READY")
     print("Type 'exit' to stop.")
+    print("Commands: /people, /introduce, /unknown-person")
 
     while True:
         message = get_user_message(recognizer, mic_enabled)
         if message.lower() == "exit":
             break
+
+        command = message.strip().lower()
+        if command == "/people":
+            print_known_people(store, user_id)
+            continue
+        if command == "/introduce":
+            introduce_person_flow(store, user_id)
+            continue
+        if command == "/unknown-person":
+            unknown_person_flow(
+                store,
+                user_id,
+                speaker if voice_enabled else None,
+            )
+            continue
 
         get_observation(store, user_id, camera_enabled, camera_observer)
 
