@@ -52,20 +52,27 @@ class CameraObserver:
                 minSize=(60, 60),
             )
 
-            face_detected = len(faces) > 0
-            if face_detected:
-                event_type = "visual_context"
-                event_summary = "User appears present near the camera."
-                confidence = 0.75
-            else:
-                event_type = "visual_context"
-                event_summary = "Camera is working, but no clear face was detected."
-                confidence = 0.4
+            face_count = len(faces)
+            frame_height, frame_width = gray.shape[:2]
+            brightness_mean = float(gray.mean())
+            blur_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+
+            diagnostics = {
+                "frame_width": int(frame_width),
+                "frame_height": int(frame_height),
+                "brightness_mean": round(brightness_mean, 2),
+                "blur_score": round(blur_score, 2),
+                "face_count": face_count,
+            }
+
+            event_type = "visual_context"
+            event_summary = self._build_event_summary(face_count, brightness_mean, blur_score)
+            confidence = 0.75 if face_count > 0 else 0.4
 
             snapshot_path: str | None = None
             if save_snapshot:
                 snapshot_frame = frame.copy()
-                if face_detected:
+                if face_count > 0:
                     for x, y, width, height in faces:
                         cv2.rectangle(
                             snapshot_frame,
@@ -86,6 +93,7 @@ class CameraObserver:
                 "event_summary": event_summary,
                 "confidence": confidence,
                 "snapshot_path": snapshot_path,
+                "diagnostics": diagnostics,
                 "error": None,
             }
         except Exception as exc:
@@ -157,6 +165,16 @@ class CameraObserver:
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         return camera
+
+    @staticmethod
+    def _build_event_summary(face_count: int, brightness_mean: float, blur_score: float) -> str:
+        if face_count > 0:
+            return "User appears present near the camera."
+        if brightness_mean < 45:
+            return "Camera is working, but the room looks too dark for reliable face detection."
+        if blur_score < 40:
+            return "Camera is working, but the image looks blurry for reliable face detection."
+        return "Camera is working, but no clear face was detected."
 
     @staticmethod
     def _error_result(event_summary: str, error: str) -> dict:

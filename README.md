@@ -21,6 +21,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Context Relevance v0.2
 - Camera Observation v0.1
 - Camera Observation v0.2
+- Camera Observation v0.3
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -47,11 +48,13 @@ AURA uses memory only when it is relevant to the current message or latest obser
 
 Context Relevance v0.2: generic greetings bypass the LLM to prevent stale memory overuse. The prompt builder only includes relevant memory and the current user message. If the cloud brain times out or fails, AURA safely falls back to the local response.
 
-Camera Observation v0.2 uses OpenCV webcam capture with basic Haar cascade face detection, warm-up frames, and a live preview tool. This is **not** emotion recognition. Haar face detection is basic and will be replaced later by stronger person/pose detection. Captured snapshots under `data/media/snapshots/` are local and ignored by git.
+Camera Observation v0.3 adds diagnostics (brightness, blur, face count) and clearer observation summaries. Face detection is basic and only used as an early signal — not identity or emotion recognition. Haar cascade will be replaced later by stronger person/pose detection. Captured snapshots under `data/media/snapshots/` are local and ignored by git.
 
-Camera preview command:
+Camera diagnostics commands:
 
 ```powershell
+python scripts/test_camera.py
+python scripts/open_latest_snapshot.py
 python scripts/preview_camera.py
 ```
 
@@ -65,8 +68,9 @@ pip install -r requirements.txt
 
 ```bash
 python scripts/check_runtime.py
-python scripts/preview_camera.py
 python scripts/test_camera.py
+python scripts/open_latest_snapshot.py
+python scripts/preview_camera.py
 python scripts/capture_camera_observation.py
 python scripts/reset_dev_memory.py
 python scripts/init_memory.py
