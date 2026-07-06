@@ -169,6 +169,8 @@ python scripts/run_companion_console.py
 python scripts/run_voice_companion_console.py
 ```
 
+If `reset_dev_memory.py` prints `AURA_DEV_MEMORY_RESET_BLOCKED`, the SQLite database is locked by another process. Stop the sensor API server with Ctrl+C, or kill the process using port 8787, then retry `python scripts/reset_dev_memory.py`.
+
 Ollama is optional. If the configured brain is unavailable, AURA uses the local reaction fallback.
 
 ## Example console inputs
