@@ -29,6 +29,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Action Dispatcher v0.1
 - Sensor Node API v0.1
 - Sensor API Token Auth v0.2
+- Pi Sensor Node Simulator v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -131,6 +132,18 @@ python scripts/generate_sensor_api_token.py
 python scripts/run_sensor_api.py
 python scripts/test_sensor_api_auth.py
 python scripts/test_sensor_api_client.py
+python scripts/pi_node_simulator.py --list
+python scripts/test_pi_node_simulator.py
+```
+
+Pi Sensor Node Simulator v0.1 simulates future Raspberry Pi / camera / sensor nodes posting events to the hub API. See [docs/pi_node_simulator.md](docs/pi_node_simulator.md). No real sensors required. No real emergency calls happen.
+
+```powershell
+python scripts/run_sensor_api.py
+python scripts/pi_node_simulator.py bedroom fall_detected
+python scripts/pi_node_simulator.py kitchen smoke_detected
+python scripts/pi_node_simulator.py balcony plant_moisture_low
+python scripts/test_pi_node_simulator.py
 ```
 
 Dev inspection commands:
@@ -159,6 +172,8 @@ python scripts/run_sensor_api.py
 python scripts/generate_sensor_api_token.py
 python scripts/test_sensor_api_auth.py
 python scripts/test_sensor_api_client.py
+python scripts/pi_node_simulator.py --list
+python scripts/test_pi_node_simulator.py
 python scripts/list_recent_events.py
 python scripts/list_action_logs.py
 python scripts/list_emergency_contacts.py
