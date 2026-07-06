@@ -26,6 +26,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - People Registry v0.1
 - Guest Introduction Flow v0.1
 - Emergency Contacts + Escalation Rules v0.1
+- Action Dispatcher v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -104,6 +105,13 @@ python scripts/test_escalation_engine.py
 python scripts/test_safety_escalation_flow.py
 ```
 
+Action Dispatcher v0.1 routes planned actions into simulated channels — speak, confirmation prompts, contact notifications, app alerts, sirens, and plant watering. No real emergency calls, SMS, Telegram, siren, or water pump actions happen yet. This prepares future integrations safely.
+
+```powershell
+python scripts/test_action_dispatcher.py
+python scripts/test_full_safety_action_flow.py
+```
+
 Install camera dependency in the Python 3.11 venv:
 
 ```powershell
@@ -117,6 +125,8 @@ python scripts/check_runtime.py
 python scripts/test_device_event_bus.py
 python scripts/test_escalation_engine.py
 python scripts/test_safety_escalation_flow.py
+python scripts/test_action_dispatcher.py
+python scripts/test_full_safety_action_flow.py
 python scripts/list_emergency_contacts.py
 python scripts/test_people_registry.py
 python scripts/test_guest_introduction_flow.py
