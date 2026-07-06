@@ -14,8 +14,18 @@ class ConfirmationTimeoutWatcher:
         self.interval_seconds = interval_seconds
         self.confirmation_engine = ConfirmationEngine(store)
 
+    def _beat(
+        self,
+        user_id: int,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        RuntimeHeartbeat(self.store, user_id).beat(
+            "confirmation_timeout_watcher",
+            metadata=metadata,
+        )
+
     def process_once(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
-        RuntimeHeartbeat(self.store, user_id).beat("confirmation_timeout_watcher")
+        self._beat(user_id, metadata={"mode": "once"})
         results = self.confirmation_engine.expire_due_confirmations(user_id, limit=limit)
         for result in results:
             print(
@@ -33,6 +43,13 @@ class ConfirmationTimeoutWatcher:
         print("AURA_CONFIRMATION_TIMEOUT_WATCHER_START")
         try:
             while True:
+                self._beat(
+                    user_id,
+                    metadata={
+                        "mode": "forever",
+                        "interval_seconds": interval_seconds,
+                    },
+                )
                 self.process_once(user_id, limit=limit)
                 time.sleep(interval_seconds)
         except KeyboardInterrupt:

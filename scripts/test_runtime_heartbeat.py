@@ -13,6 +13,15 @@ def main() -> None:
     store.apply_schema()
 
     user_id = store.get_or_create_user(name="Sujan M J", preferred_name="Sujan")
+    store.conn.execute(
+        """
+        DELETE FROM service_heartbeats
+        WHERE user_id = ? AND service_name = 'confirmation_timeout_watcher'
+        """,
+        (user_id,),
+    )
+    store.conn.commit()
+
     heartbeat = RuntimeHeartbeat(store, user_id)
     heartbeat.beat("sensor_api", metadata={"host": "127.0.0.1", "port": 8787})
     heartbeat.beat("live_safety_monitor")
