@@ -128,3 +128,33 @@ CREATE TABLE IF NOT EXISTS action_logs (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (source_event_id) REFERENCES device_events(id)
 );
+
+CREATE TABLE IF NOT EXISTS known_people (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    display_name TEXT NOT NULL,
+    relation TEXT,
+    notes TEXT,
+    trust_level TEXT DEFAULT 'known',
+    consent_to_remember INTEGER DEFAULT 0,
+    face_profile_status TEXT DEFAULT 'not_enrolled',
+    allowed_rooms TEXT,
+    emergency_contact INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS person_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    person_id INTEGER,
+    event_type TEXT NOT NULL,
+    event_summary TEXT NOT NULL,
+    source TEXT DEFAULT 'manual',
+    room TEXT,
+    confidence REAL DEFAULT 0.5,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (person_id) REFERENCES known_people(id)
+);

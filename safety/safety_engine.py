@@ -47,8 +47,24 @@ class SafetyEngine:
             severity = "medium"
             action_type = "security_check"
             action_summary = (
-                "Unknown person detected. Notify user and record snapshot."
+                "Unknown person detected. Ask user if they want to introduce the guest "
+                "or review the camera snapshot."
             )
+        elif event_type == "unknown_person_with_possible_weapon":
+            severity = "high"
+            action_type = "security_alert"
+            action_summary = (
+                "Unknown person with possible weapon-like object detected. Alert user "
+                "immediately and save evidence. Do not call emergency services without "
+                "configured confirmation."
+            )
+        elif event_type == "known_person_seen":
+            return {
+                "requires_action": False,
+                "action_type": "none",
+                "action_summary": "No immediate safety action needed.",
+                "severity": event.get("severity", "low"),
+            }
         else:
             return {
                 "requires_action": False,

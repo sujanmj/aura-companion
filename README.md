@@ -23,6 +23,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Camera Observation v0.2
 - Camera Observation v0.3
 - Device Event Bus v0.1
+- People Registry v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -70,6 +71,16 @@ python scripts/simulate_sensor_event.py plant_moisture_low "Balcony plant soil m
 python scripts/simulate_sensor_event.py fall_detected "Possible fall detected in bedroom"
 ```
 
+People Registry v0.1 adds a manual introduction flow for known guests and family. Face recognition is **not active yet**. Face memory and embeddings require explicit consent (`consent_to_remember`). Unknown person events can trigger the safety engine. Future camera nodes will map person detections into this registry.
+
+People registry commands:
+
+```powershell
+python scripts/test_people_registry.py
+python scripts/introduce_person.py "Rohan" "cousin" "Family member"
+python scripts/list_known_people.py
+```
+
 Install camera dependency in the Python 3.11 venv:
 
 ```powershell
@@ -81,6 +92,8 @@ pip install -r requirements.txt
 ```bash
 python scripts/check_runtime.py
 python scripts/test_device_event_bus.py
+python scripts/test_people_registry.py
+python scripts/list_known_people.py
 python scripts/test_camera.py
 python scripts/open_latest_snapshot.py
 python scripts/preview_camera.py

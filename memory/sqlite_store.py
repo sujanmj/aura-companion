@@ -314,5 +314,121 @@ class AuraMemoryStore:
         )
         return [dict(row) for row in cur.fetchall()]
 
+    def add_known_person(
+        self,
+        user_id: int,
+        display_name: str,
+        relation: str | None = None,
+        notes: str | None = None,
+        trust_level: str = "known",
+        consent_to_remember: bool = False,
+        face_profile_status: str = "not_enrolled",
+        allowed_rooms: str | None = None,
+        emergency_contact: bool = False,
+    ) -> int:
+        allowed_trust_levels = {
+            "family", "friend", "caretaker", "known", "guest", "unknown", "blocked",
+        }
+        if trust_level not in allowed_trust_levels:
+            raise ValueError(
+                f"trust_level must be one of: {', '.join(sorted(allowed_trust_levels))}"
+            )
+
+        cur = self.conn.execute(
+            """
+            INSERT INTO known_people (
+                user_id, display_name, relation, notes, trust_level,
+                consent_to_remember, face_profile_status, allowed_rooms, emergency_contact
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                display_name,
+                relation,
+                notes,
+                trust_level,
+                int(consent_to_remember),
+                face_profile_status,
+                allowed_rooms,
+                int(emergency_contact),
+            ),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_known_people(self, user_id: int) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, display_name, relation, notes, trust_level, consent_to_remember,
+                   face_profile_status, allowed_rooms, emergency_contact, created_at, last_seen_at
+            FROM known_people
+            WHERE user_id = ?
+            ORDER BY display_name COLLATE NOCASE ASC
+            """,
+            (user_id,),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+    def find_known_person(self, user_id: int, display_name: str) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            """
+            SELECT id, display_name, relation, notes, trust_level, consent_to_remember,
+                   face_profile_status, allowed_rooms, emergency_contact, created_at, last_seen_at
+            FROM known_people
+            WHERE user_id = ? AND LOWER(display_name) = LOWER(?)
+            ORDER BY id LIMIT 1
+            """,
+            (user_id, display_name),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+    def update_person_last_seen(self, user_id: int, person_id: int) -> None:
+        self.conn.execute(
+            """
+            UPDATE known_people
+            SET last_seen_at = CURRENT_TIMESTAMP
+            WHERE user_id = ? AND id = ?
+            """,
+            (user_id, person_id),
+        )
+        self.conn.commit()
+
+    def add_person_event(
+        self,
+        user_id: int,
+        person_id: int | None,
+        event_type: str,
+        event_summary: str,
+        source: str = "manual",
+        room: str | None = None,
+        confidence: float = 0.5,
+    ) -> int:
+        cur = self.conn.execute(
+            """
+            INSERT INTO person_events (
+                user_id, person_id, event_type, event_summary, source, room, confidence
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, person_id, event_type, event_summary, source, room, confidence),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_recent_person_events(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, person_id, event_type, event_summary, source, room, confidence, created_at
+            FROM person_events
+            WHERE user_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
     def close(self) -> None:
         self.conn.close()
