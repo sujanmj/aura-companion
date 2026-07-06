@@ -28,8 +28,17 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Emergency Contacts + Escalation Rules v0.1
 - Action Dispatcher v0.1
 - Sensor Node API v0.1
+- Sensor API Token Auth v0.2
 
 Secrets live in `config/keys.env`. That file is ignored by git.
+
+### Local config example (do not commit)
+
+```env
+AURA_SENSOR_API_TOKEN=change_this_local_token
+```
+
+Generate a real token with `python scripts/generate_sensor_api_token.py` and add it to `config/keys.env` locally.
 
 When `AURA_BRAIN_PROVIDER=claude`, Claude is the primary cloud brain. You must also set `ANTHROPIC_MODEL` in `config/keys.env`. If Claude fails or is unavailable, AURA falls back to the local reaction engine.
 
@@ -113,10 +122,14 @@ python scripts/test_action_dispatcher.py
 python scripts/test_full_safety_action_flow.py
 ```
 
-Sensor Node API v0.1 exposes a local HTTP API so Raspberry Pi, camera, and sensor nodes can send events over Wi-Fi. Uses built-in `http.server` — no FastAPI yet. See [docs/sensor_node_api.md](docs/sensor_node_api.md) for endpoint details and example payloads. **v0.1 has no authentication** — keep it on a trusted local network only. No real emergency calls happen in v0.1.
+Sensor Node API v0.1 exposes a local HTTP API so Raspberry Pi, camera, and sensor nodes can send events over Wi-Fi. Uses built-in `http.server` — no FastAPI yet. See [docs/sensor_node_api.md](docs/sensor_node_api.md) for endpoint details and example payloads.
+
+Sensor API Token Auth v0.2 adds optional shared-token protection for `GET /events/latest` and `POST /events`. `GET /health` stays open. If `AURA_SENSOR_API_TOKEN` is not set, the API remains open with a runtime warning. Keep the API on a trusted local network only.
 
 ```powershell
+python scripts/generate_sensor_api_token.py
 python scripts/run_sensor_api.py
+python scripts/test_sensor_api_auth.py
 python scripts/test_sensor_api_client.py
 ```
 
@@ -143,6 +156,8 @@ python scripts/test_safety_escalation_flow.py
 python scripts/test_action_dispatcher.py
 python scripts/test_full_safety_action_flow.py
 python scripts/run_sensor_api.py
+python scripts/generate_sensor_api_token.py
+python scripts/test_sensor_api_auth.py
 python scripts/test_sensor_api_client.py
 python scripts/list_recent_events.py
 python scripts/list_action_logs.py

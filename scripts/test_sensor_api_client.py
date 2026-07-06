@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -7,12 +8,27 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from config.env_loader import load_env_file
+
 DEFAULT_BASE_URL = "http://127.0.0.1:8787"
+AUTH_HEADER = "X-AURA-API-Token"
 
 
-def _request(method: str, url: str, payload: dict | None = None) -> dict:
-    data = None
+def _build_headers(token: str | None) -> dict[str, str]:
     headers = {"Accept": "application/json"}
+    if token:
+        headers[AUTH_HEADER] = token
+    return headers
+
+
+def _request(
+    method: str,
+    url: str,
+    payload: dict | None = None,
+    token: str | None = None,
+) -> dict:
+    data = None
+    headers = _build_headers(token)
     if payload is not None:
         data = json.dumps(payload).encode("utf-8")
         headers["Content-Type"] = "application/json"
@@ -23,7 +39,12 @@ def _request(method: str, url: str, payload: dict | None = None) -> dict:
 
 
 def main() -> None:
+    load_env_file()
     base_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL
+    token = os.environ.get("AURA_SENSOR_API_TOKEN")
+
+    if not token:
+        print("AURA_SENSOR_API_CLIENT_AUTH_WARNING: no token configured")
 
     try:
         health = _request("GET", f"{base_url}/health")
@@ -37,8 +58,8 @@ def main() -> None:
             "requires_action": True,
             "metadata": {"test": True},
         }
-        post_response = _request("POST", f"{base_url}/events", event_payload)
-        latest = _request("GET", f"{base_url}/events/latest")
+        post_response = _request("POST", f"{base_url}/events", event_payload, token=token)
+        latest = _request("GET", f"{base_url}/events/latest", token=token)
     except urllib.error.URLError:
         print("AURA_SENSOR_API_CLIENT_ERROR: server not running")
         return

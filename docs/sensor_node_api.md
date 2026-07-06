@@ -1,6 +1,8 @@
-# AURA Sensor Node API v0.1
+# AURA Sensor Node API
 
 Local HTTP API for Raspberry Pi, camera, and sensor nodes to send events to the AURA hub over Wi-Fi.
+
+Current version: **v0.2** (shared token auth)
 
 ## Start the AURA hub API
 
@@ -22,7 +24,87 @@ With the server running in another terminal:
 
 ```powershell
 python scripts/test_sensor_api_client.py
+python scripts/test_sensor_api_auth.py
 ```
+
+## Authentication (v0.2)
+
+Protected routes require a shared token when `AURA_SENSOR_API_TOKEN` is set in `config/keys.env`.
+
+Generate a token:
+
+```powershell
+python scripts/generate_sensor_api_token.py
+```
+
+Add the printed line to `config/keys.env` (local only — do not commit).
+
+### Header
+
+```http
+X-AURA-API-Token: <token>
+```
+
+- `GET /health` — always open (no token required)
+- `GET /events/latest` — requires token when configured
+- `POST /events` — requires token when configured
+
+If `AURA_SENSOR_API_TOKEN` is not set, the API allows all requests but prints a warning at runtime.
+
+### PowerShell example
+
+```powershell
+$headers = @{
+    "Content-Type" = "application/json"
+    "X-AURA-API-Token" = "your_token"
+}
+$body = @{
+    event_type = "fall_detected"
+    event_summary = "Possible fall detected in bedroom."
+    source = "pi_bedroom_node"
+    room = "bedroom"
+    severity = "high"
+    confidence = 0.85
+    requires_action = $true
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://<hub-ip>:8787/events" -Method Post -Headers $headers -Body $body
+```
+
+### Python urllib example (Raspberry Pi node)
+
+```python
+import json
+import urllib.request
+
+url = "http://<hub-ip>:8787/events"
+token = "your_token"
+payload = {
+    "event_type": "fall_detected",
+    "event_summary": "Possible fall detected in bedroom.",
+    "source": "pi_bedroom_node",
+    "room": "bedroom",
+    "severity": "high",
+    "confidence": 0.85,
+    "requires_action": True,
+}
+
+data = json.dumps(payload).encode("utf-8")
+request = urllib.request.Request(
+    url,
+    data=data,
+    headers={
+        "Content-Type": "application/json",
+        "X-AURA-API-Token": token,
+    },
+    method="POST",
+)
+
+with urllib.request.urlopen(request, timeout=10) as response:
+    print(response.read().decode("utf-8"))
+```
+
+v0.2 supports simple shared token auth. Keep the API on a **trusted LAN only**. Do not expose it directly to the internet.
 
 ## Endpoints
 
@@ -34,7 +116,7 @@ Returns service status.
 {
   "ok": true,
   "service": "aura-sensor-api",
-  "version": "0.1"
+  "version": "0.2"
 }
 ```
 
@@ -165,6 +247,6 @@ Content-Type: application/json
 
 ## Safety notes
 
-- **v0.1 has no authentication.** Keep the API on a trusted local network only.
-- A future version will add API token/auth.
-- **No real emergency calls** happen in v0.1 — police, ambulance, SMS, Telegram, siren, and water pump actions are simulated and logged only.
+- v0.2 supports simple shared token auth when `AURA_SENSOR_API_TOKEN` is configured.
+- Keep the API on a trusted local network only. Do not expose directly to the internet.
+- **No real emergency calls** happen in v0.1/v0.2 — police, ambulance, SMS, Telegram, siren, and water pump actions are simulated and logged only.

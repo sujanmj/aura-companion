@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 from urllib.parse import urlparse
 
 from actions.action_dispatcher import ActionDispatcher
+from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
 from memory.sqlite_store import AuraMemoryStore
 from safety.escalation_engine import EscalationEngine
@@ -13,7 +15,34 @@ from safety.safety_engine import SafetyEngine
 
 DEFAULT_USER_NAME = "Sujan M J"
 DEFAULT_PREFERRED_NAME = "Sujan"
-API_VERSION = "0.1"
+API_VERSION = "0.2"
+AUTH_HEADER = "X-AURA-API-Token"
+_auth_warning_printed = False
+
+
+def get_sensor_api_token() -> str | None:
+    token = os.environ.get("AURA_SENSOR_API_TOKEN")
+    if token:
+        stripped = token.strip()
+        return stripped or None
+    return None
+
+
+def is_request_authorized(handler: BaseHTTPRequestHandler) -> bool:
+    global _auth_warning_printed
+
+    token = get_sensor_api_token()
+    if not token:
+        if not _auth_warning_printed:
+            print(
+                "AURA_SENSOR_API_AUTH_WARNING: AURA_SENSOR_API_TOKEN not set; "
+                "API is open on local host/network."
+            )
+            _auth_warning_printed = True
+        return True
+
+    provided = handler.headers.get(AUTH_HEADER)
+    return provided == token
 
 
 def _serialize_event_row(event: dict[str, Any]) -> dict[str, Any]:
@@ -107,7 +136,7 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
 
 
 class AuraSensorAPIHandler(BaseHTTPRequestHandler):
-    server_version = "AuraSensorAPI/0.1"
+    server_version = "AuraSensorAPI/0.2"
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"[sensor-api] {self.address_string()} - {format % args}")
@@ -119,6 +148,15 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_unauthorized(self) -> None:
+        self._send_json(401, {"ok": False, "error": "unauthorized"})
+
+    def _require_auth(self) -> bool:
+        if is_request_authorized(self):
+            return True
+        self._send_unauthorized()
+        return False
 
     def _read_json_body(self) -> dict[str, Any] | None:
         try:
@@ -161,6 +199,9 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/events/latest":
+                if not self._require_auth():
+                    return
+
                 store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
                 store.apply_schema()
                 user_id = self._get_user_id(store)
@@ -181,6 +222,9 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
         if path != "/events":
             self._send_json(404, {"ok": False, "error": "not_found"})
+            return
+
+        if not self._require_auth():
             return
 
         payload = self._read_json_body()
@@ -209,6 +253,7 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
+    load_env_file()
     store = AuraMemoryStore()
     store.apply_schema()
 
