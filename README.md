@@ -32,6 +32,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Pi Sensor Node Simulator v0.1
 - Live Safety Monitor v0.1
 - Live Room Dashboard API v0.1
+- Local Web Dashboard v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -137,6 +138,7 @@ python scripts/test_sensor_api_client.py
 python scripts/test_sensor_api_event_status.py
 python scripts/test_dashboard_api.py
 python scripts/show_dashboard_status.py
+python scripts/test_web_dashboard_routes.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
 python scripts/test_event_action_status.py
@@ -172,7 +174,16 @@ Live Room Dashboard API v0.1 exposes JSON dashboard endpoints for future web/mob
 ```powershell
 python scripts/test_dashboard_api.py
 python scripts/show_dashboard_status.py
+python scripts/test_web_dashboard_routes.py
 ```
+
+Local Web Dashboard v0.1 serves a browser UI at [http://127.0.0.1:8787/dashboard](http://127.0.0.1:8787/dashboard). Paste your `AURA_SENSOR_API_TOKEN` in the page (stored in browser `localStorage` only). See [docs/local_web_dashboard.md](docs/local_web_dashboard.md).
+
+```powershell
+python scripts/test_web_dashboard_routes.py
+```
+
+Open: `http://127.0.0.1:8787/dashboard`
 
 Dev inspection commands:
 
@@ -203,6 +214,7 @@ python scripts/test_sensor_api_client.py
 python scripts/test_sensor_api_event_status.py
 python scripts/test_dashboard_api.py
 python scripts/show_dashboard_status.py
+python scripts/test_web_dashboard_routes.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
 python scripts/test_event_action_status.py

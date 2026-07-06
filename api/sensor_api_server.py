@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
-
 from actions.action_dispatcher import ActionDispatcher
 from api.dashboard_service import DashboardService
 from config.env_loader import load_env_file
@@ -19,7 +19,15 @@ DEFAULT_PREFERRED_NAME = "Sujan"
 API_VERSION = "0.2"
 AUTH_HEADER = "X-AURA-API-Token"
 _auth_warning_printed = False
-
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+WEB_STATIC_FILES = {
+    "/dashboard": (PROJECT_ROOT / "web" / "dashboard.html", "text/html; charset=utf-8"),
+    "/static/dashboard.css": (PROJECT_ROOT / "web" / "dashboard.css", "text/css; charset=utf-8"),
+    "/static/dashboard.js": (
+        PROJECT_ROOT / "web" / "dashboard.js",
+        "application/javascript; charset=utf-8",
+    ),
+}
 
 def get_sensor_api_token() -> str | None:
     token = os.environ.get("AURA_SENSOR_API_TOKEN")
@@ -161,6 +169,29 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
     def _send_unauthorized(self) -> None:
         self._send_json(401, {"ok": False, "error": "unauthorized"})
 
+    def _send_web_file(self, path: str) -> bool:
+        file_entry = WEB_STATIC_FILES.get(path)
+        if file_entry is None:
+            return False
+
+        file_path, content_type = file_entry
+        resolved = file_path.resolve()
+        web_root = (PROJECT_ROOT / "web").resolve()
+        if not str(resolved).startswith(str(web_root)):
+            return False
+
+        if not resolved.is_file():
+            self._send_json(404, {"ok": False, "error": "not_found"})
+            return True
+
+        body = resolved.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+        return True
+
     def _require_auth(self) -> bool:
         if is_request_authorized(self):
             return True
@@ -216,6 +247,10 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
                     },
                 )
                 return
+
+            if path in WEB_STATIC_FILES:
+                if self._send_web_file(path):
+                    return
 
             if path == "/events/latest":
                 if not self._require_auth():

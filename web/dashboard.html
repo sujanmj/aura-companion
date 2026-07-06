@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AURA Command Center</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <script src="/static/dashboard.js" defer></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-main">
+      <h1>AURA Command Center</h1>
+      <p class="subtitle">Local home safety &amp; companion dashboard</p>
+    </div>
+    <div class="header-status">
+      <span id="status-badge" class="badge badge-idle">Connecting</span>
+      <span id="last-refreshed" class="last-refreshed">Last refreshed: —</span>
+    </div>
+  </header>
+
+  <section class="panel token-panel">
+    <h2>API Token</h2>
+    <p class="panel-hint">Paste the same <code>AURA_SENSOR_API_TOKEN</code> from <code>config/keys.env</code>. Stored only in this browser.</p>
+    <div class="token-row">
+      <input id="token-input" type="password" placeholder="X-AURA-API-Token" autocomplete="off">
+      <button id="save-token-btn" type="button">Save Token</button>
+      <button id="clear-token-btn" type="button" class="btn-secondary">Clear Token</button>
+    </div>
+    <p id="token-message" class="token-message"></p>
+  </section>
+
+  <section class="summary-grid" id="summary-grid">
+    <article class="card summary-card">
+      <h3>Recent Events</h3>
+      <p class="metric" id="metric-recent-events">—</p>
+    </article>
+    <article class="card summary-card">
+      <h3>Pending Events</h3>
+      <p class="metric" id="metric-pending-events">—</p>
+    </article>
+    <article class="card summary-card">
+      <h3>Actions</h3>
+      <p class="metric" id="metric-actions">—</p>
+    </article>
+    <article class="card summary-card">
+      <h3>Active Rooms</h3>
+      <p class="metric" id="metric-rooms">—</p>
+    </article>
+    <article class="card summary-card summary-card-alert">
+      <h3>Critical / High Alerts</h3>
+      <p class="metric" id="metric-critical">—</p>
+    </article>
+  </section>
+
+  <main class="dashboard-grid">
+    <section class="card">
+      <h2>Critical Alerts</h2>
+      <div id="critical-alerts" class="table-wrap"></div>
+    </section>
+
+    <section class="card">
+      <h2>Active Rooms</h2>
+      <div id="active-rooms" class="table-wrap"></div>
+    </section>
+
+    <section class="card card-wide">
+      <h2>Recent Events</h2>
+      <div id="recent-events" class="table-wrap"></div>
+    </section>
+
+    <section class="card card-wide">
+      <h2>Recent Actions</h2>
+      <div id="recent-actions" class="table-wrap"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Local-only AURA dashboard. No real emergency calls in v0.1.
+  </footer>
+</body>
+</html>
