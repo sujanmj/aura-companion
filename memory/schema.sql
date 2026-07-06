@@ -99,3 +99,32 @@ CREATE TABLE IF NOT EXISTS response_feedback (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS device_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    event_summary TEXT NOT NULL,
+    source TEXT DEFAULT 'unknown',
+    room TEXT,
+    severity TEXT DEFAULT 'low',
+    confidence REAL DEFAULT 0.5,
+    requires_action INTEGER DEFAULT 0,
+    action_status TEXT DEFAULT 'none',
+    metadata_json TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS action_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    action_type TEXT NOT NULL,
+    action_summary TEXT NOT NULL,
+    target TEXT,
+    status TEXT DEFAULT 'planned',
+    source_event_id INTEGER,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (source_event_id) REFERENCES device_events(id)
+);

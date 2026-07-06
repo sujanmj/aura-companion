@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -217,6 +218,94 @@ class AuraMemoryStore:
             """
             SELECT rating, feedback_text, response_text, situation, tone, created_at
             FROM response_feedback
+            WHERE user_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+    def add_device_event(
+        self,
+        user_id: int,
+        event_type: str,
+        event_summary: str,
+        source: str = "unknown",
+        room: str | None = None,
+        severity: str = "low",
+        confidence: float = 0.5,
+        requires_action: bool = False,
+        metadata: dict | None = None,
+    ) -> int:
+        allowed_severities = {"low", "medium", "high", "critical"}
+        if severity not in allowed_severities:
+            raise ValueError(f"severity must be one of: {', '.join(sorted(allowed_severities))}")
+
+        metadata_json = json.dumps(metadata) if metadata is not None else None
+        cur = self.conn.execute(
+            """
+            INSERT INTO device_events (
+                user_id, event_type, event_summary, source, room, severity,
+                confidence, requires_action, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                event_type,
+                event_summary,
+                source,
+                room,
+                severity,
+                confidence,
+                int(requires_action),
+                metadata_json,
+            ),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_recent_device_events(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, event_type, event_summary, source, room, severity,
+                   confidence, requires_action, action_status, metadata_json, created_at
+            FROM device_events
+            WHERE user_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+    def add_action_log(
+        self,
+        user_id: int,
+        action_type: str,
+        action_summary: str,
+        target: str | None = None,
+        status: str = "planned",
+        source_event_id: int | None = None,
+    ) -> int:
+        cur = self.conn.execute(
+            """
+            INSERT INTO action_logs (
+                user_id, action_type, action_summary, target, status, source_event_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, action_type, action_summary, target, status, source_event_id),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_recent_action_logs(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, action_type, action_summary, target, status, source_event_id, created_at
+            FROM action_logs
             WHERE user_id = ?
             ORDER BY id DESC
             LIMIT ?

@@ -132,3 +132,39 @@ class ContextRelevanceFilter:
                 filtered.append(item)
 
         return filtered
+
+    def filter_device_events(
+        self,
+        current_message: str,
+        events: list[dict],
+    ) -> list[dict]:
+        if self.is_generic_greeting(current_message):
+            return [
+                event for event in events
+                if event.get("severity") in {"high", "critical"}
+            ]
+
+        message_norm = self.normalize_text(current_message)
+        message_keywords = self.extract_keywords(message_norm)
+        filtered: list[dict] = []
+
+        for event in events:
+            severity = str(event.get("severity", "low"))
+            requires_action = bool(event.get("requires_action"))
+            event_blob = self.normalize_text(
+                f"{event.get('event_type', '')} {event.get('event_summary', '')} {event.get('room', '')}"
+            )
+            event_keywords = self.extract_keywords(event_blob)
+
+            if severity in {"high", "critical"}:
+                filtered.append(event)
+                continue
+
+            if requires_action:
+                filtered.append(event)
+                continue
+
+            if message_keywords and (message_keywords & event_keywords):
+                filtered.append(event)
+
+        return filtered

@@ -38,6 +38,7 @@ class PromptBuilder:
         latest_observation = observations[0].get("event_summary") if observations else None
         relevant_facts = self.relevance_filter.filter_facts(current_message, latest_observation, facts)
         previous_assistant = self._previous_assistant_message(conversations)
+        relevant_device_events = self._load_relevant_device_events(user_id, current_message)
 
         sections = [
             AURA_IDENTITY,
@@ -50,6 +51,16 @@ class PromptBuilder:
 
         if latest_observation:
             sections.extend(["", "Latest observation:", f"- {latest_observation}"])
+
+        if relevant_device_events:
+            sections.extend(["", "Relevant device events:"])
+            for event in relevant_device_events:
+                room = event.get("room")
+                room_suffix = f" [{room}]" if room else ""
+                sections.append(
+                    f"- {event.get('event_type')}: {event.get('event_summary')} "
+                    f"(severity={event.get('severity')}){room_suffix}"
+                )
 
         if relevant_facts:
             sections.extend(["", "Relevant memory facts:"])
@@ -117,3 +128,14 @@ class PromptBuilder:
         if hasattr(self.store, "get_recent_response_feedback"):
             return self.store.get_recent_response_feedback(user_id, limit=5)
         return []
+
+    def _load_relevant_device_events(
+        self,
+        user_id: int,
+        current_message: str,
+    ) -> list[dict[str, Any]]:
+        if not hasattr(self.store, "get_recent_device_events"):
+            return []
+
+        events = self.store.get_recent_device_events(user_id, limit=10)
+        return self.relevance_filter.filter_device_events(current_message, events)

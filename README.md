@@ -22,6 +22,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Camera Observation v0.1
 - Camera Observation v0.2
 - Camera Observation v0.3
+- Device Event Bus v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -58,6 +59,17 @@ python scripts/open_latest_snapshot.py
 python scripts/preview_camera.py
 ```
 
+Device Event Bus v0.1 is the foundation for Raspberry Pi sensors, future mobile app sync, and home safety monitoring. Sensors send normalized events into AURA. The safety engine logs planned actions only — **no police, ambulance, or emergency service calls happen in v0.1**. Emergency escalation will be added later only with confirmation rules and user consent.
+
+Device event commands:
+
+```powershell
+python scripts/test_device_event_bus.py
+python scripts/simulate_sensor_event.py pill_missed "Morning medicine may have been missed"
+python scripts/simulate_sensor_event.py plant_moisture_low "Balcony plant soil moisture is low"
+python scripts/simulate_sensor_event.py fall_detected "Possible fall detected in bedroom"
+```
+
 Install camera dependency in the Python 3.11 venv:
 
 ```powershell
@@ -68,6 +80,7 @@ pip install -r requirements.txt
 
 ```bash
 python scripts/check_runtime.py
+python scripts/test_device_event_bus.py
 python scripts/test_camera.py
 python scripts/open_latest_snapshot.py
 python scripts/preview_camera.py
