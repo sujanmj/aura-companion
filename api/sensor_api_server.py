@@ -12,6 +12,7 @@ from api.dashboard_service import DashboardService
 from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
 from memory.sqlite_store import AuraMemoryStore
+from safety.confirmation_engine import ConfirmationEngine
 from safety.escalation_engine import EscalationEngine
 from safety.safety_engine import SafetyEngine
 
@@ -104,6 +105,8 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
 
     escalation: dict[str, Any] | None = None
     dispatch_results: list[dict[str, Any]] = []
+    confirmation: dict[str, Any] | None = None
+    confirmation_engine = ConfirmationEngine(store)
 
     if safety_result.get("requires_action"):
         escalation_engine.ensure_default_plans(user_id)
@@ -136,6 +139,11 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
                     source_event_id=published["event_id"],
                 )
             )
+            confirmation = confirmation_engine.create_for_event(
+                user_id,
+                published,
+                escalation,
+            )
 
         second_action = escalation.get("second_action")
         if second_action:
@@ -162,6 +170,7 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
         "event": published,
         "safety": safety_result,
         "escalation": escalation,
+        "confirmation": confirmation,
         "dispatch_results": dispatch_results,
     }
 
@@ -308,6 +317,30 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
                     self._send_json(200, dashboard.build_rooms(user_id, limit=limit))
                     return
 
+            if path == "/confirmations/pending":
+                if not self._require_auth():
+                    return
+
+                store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                limit = self._parse_limit(query, default=20, maximum=100)
+                confirmations = store.get_pending_confirmation_requests(user_id, limit=limit)
+                self._send_json(200, {"ok": True, "confirmations": confirmations})
+                return
+
+            if path == "/confirmations/recent":
+                if not self._require_auth():
+                    return
+
+                store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                limit = self._parse_limit(query, default=20, maximum=100)
+                confirmations = store.get_recent_confirmation_requests(user_id, limit=limit)
+                self._send_json(200, {"ok": True, "confirmations": confirmations})
+                return
+
             self._send_json(404, {"ok": False, "error": "not_found"})
         except Exception as exc:
             print(f"[sensor-api] GET error: {exc}")
@@ -315,6 +348,42 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
+
+        if path == "/confirmations/respond":
+            if not self._require_auth():
+                return
+
+            payload = self._read_json_body()
+            if payload is None:
+                self._send_json(400, {"ok": False, "error": "invalid_json"})
+                return
+
+            confirmation_id = payload.get("confirmation_id")
+            response = payload.get("response")
+            if confirmation_id is None or not response:
+                self._send_json(
+                    400,
+                    {"ok": False, "error": "missing_confirmation_id_or_response"},
+                )
+                return
+
+            try:
+                store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                engine = ConfirmationEngine(store)
+                result = engine.resolve_confirmation(
+                    user_id,
+                    int(confirmation_id),
+                    str(response),
+                )
+                self._send_json(200, {"ok": True, "result": result})
+            except ValueError as exc:
+                self._send_json(400, {"ok": False, "error": str(exc)})
+            except Exception as exc:
+                print(f"[sensor-api] POST /confirmations/respond error: {exc}")
+                self._send_json(500, {"ok": False, "error": "internal_server_error"})
+            return
 
         if path != "/events":
             self._send_json(404, {"ok": False, "error": "not_found"})

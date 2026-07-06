@@ -34,6 +34,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Live Room Dashboard API v0.1
 - Local Web Dashboard v0.1
 - Live Voice Safety Actions v0.1
+- Safety Confirmation Workflow v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -201,6 +202,13 @@ python scripts/test_voice_action_dispatcher.py
 python scripts/test_live_voice_smoke.py
 ```
 
+Safety Confirmation Workflow v0.1 stores pending safety confirmations and lets the dashboard or API resolve them. No real emergency calls in v0.1. See [docs/safety_confirmations.md](docs/safety_confirmations.md).
+
+```powershell
+python scripts/test_confirmation_engine.py
+python scripts/test_confirmation_api.py
+```
+
 Dev inspection commands:
 
 ```powershell
@@ -233,6 +241,8 @@ python scripts/show_dashboard_status.py
 python scripts/test_web_dashboard_routes.py
 python scripts/test_voice_runtime_config.py
 python scripts/test_voice_action_dispatcher.py
+python scripts/test_confirmation_engine.py
+python scripts/test_confirmation_api.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
 python scripts/test_event_action_status.py

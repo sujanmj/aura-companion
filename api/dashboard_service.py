@@ -131,6 +131,8 @@ class DashboardService:
         latest_events = self.store.get_recent_device_events(user_id, limit=20)
         pending_events = self.store.get_pending_device_events(user_id, limit=20)
         recent_actions = self.store.get_recent_action_logs(user_id, limit=20)
+        pending_confirmations = self.store.get_pending_confirmation_requests(user_id, limit=20)
+        recent_confirmations = self.store.get_recent_confirmation_requests(user_id, limit=20)
         rooms_data = self.build_rooms(user_id, limit=50)
         rooms = rooms_data["rooms"]
 
@@ -148,11 +150,14 @@ class DashboardService:
                 "recent_event_count": len(latest_events),
                 "pending_event_count": len(pending_events),
                 "recent_action_count": len(recent_actions),
+                "pending_confirmation_count": len(pending_confirmations),
                 "critical_or_high_event_count": critical_or_high_count,
                 "rooms_active_count": len(rooms),
             },
             "latest_events": latest_events,
             "pending_events": pending_events,
+            "pending_confirmations": pending_confirmations,
+            "recent_confirmations": recent_confirmations,
             "recent_actions": recent_actions,
             "rooms": rooms,
             "critical_alerts": _build_critical_alerts(latest_events, limit=10),

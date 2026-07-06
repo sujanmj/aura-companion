@@ -102,10 +102,105 @@
     document.getElementById("metric-actions").textContent = summary.recent_action_count ?? "0";
     document.getElementById("metric-rooms").textContent = summary.rooms_active_count ?? "0";
     document.getElementById("metric-critical").textContent = summary.critical_or_high_event_count ?? "0";
+    document.getElementById("metric-pending-confirmations").textContent =
+      summary.pending_confirmation_count ?? "0";
+  }
+
+  function respondToConfirmation(confirmationId, response) {
+    var headers = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    };
+    var token = getToken();
+    if (token) {
+      headers["X-AURA-API-Token"] = token;
+    }
+
+    fetch("/confirmations/respond", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({
+        confirmation_id: confirmationId,
+        response: response,
+      }),
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error("respond-failed");
+        }
+        return res.json();
+      })
+      .then(function (body) {
+        if (!body.ok) {
+          throw new Error("respond-bad-response");
+        }
+        refreshDashboard();
+      })
+      .catch(function () {
+        setTokenMessage("Failed to submit confirmation response.");
+      });
+  }
+
+  function renderPendingConfirmations(confirmations) {
+    var container = document.getElementById("pending-confirmations");
+    if (!confirmations || confirmations.length === 0) {
+      container.innerHTML = '<p class="empty-state">No pending confirmations.</p>';
+      return;
+    }
+
+    var html = [];
+    confirmations.forEach(function (item) {
+      var id = item.id;
+      var eventType = item.confirmation_type || "safety";
+      if (item.metadata && item.metadata.event_type) {
+        eventType = item.metadata.event_type;
+      }
+      html.push('<article class="confirmation-card" data-id="' + escapeHtml(id) + '">');
+      html.push('<div class="confirmation-card-header">');
+      html.push("<div><strong>#" + escapeHtml(id) + "</strong> · " + escapeHtml(eventType) + "</div>");
+      html.push('<span class="confirmation-status">' + escapeHtml(item.status || "pending") + "</span>");
+      html.push("</div>");
+      html.push(
+        '<div class="confirmation-meta">Created: ' +
+          escapeHtml(item.created_at || "—") +
+          "</div>"
+      );
+      html.push('<p class="confirmation-prompt">' + escapeHtml(item.prompt || "") + "</p>");
+      html.push('<div class="confirmation-actions">');
+      html.push(
+        '<button type="button" class="btn-confirm-ok" data-action="ok" data-id="' +
+          escapeHtml(id) +
+          '">I\'m okay</button>'
+      );
+      html.push(
+        '<button type="button" class="btn-confirm-notify" data-action="notify" data-id="' +
+          escapeHtml(id) +
+          '">Notify simulated contact</button>'
+      );
+      html.push(
+        '<button type="button" class="btn-confirm-cancel" data-action="cancel" data-id="' +
+          escapeHtml(id) +
+          '">Cancel</button>'
+      );
+      html.push("</div></article>");
+    });
+    container.innerHTML = html.join("");
+
+    container.querySelectorAll("button[data-action]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var confirmationId = parseInt(button.getAttribute("data-id"), 10);
+        var action = button.getAttribute("data-action");
+        if (!confirmationId || !action) {
+          return;
+        }
+        respondToConfirmation(confirmationId, action);
+      });
+    });
   }
 
   function renderDashboard(data) {
     renderSummary(data.summary || {});
+    renderPendingConfirmations(data.pending_confirmations || []);
 
     renderTable(
       document.getElementById("critical-alerts"),

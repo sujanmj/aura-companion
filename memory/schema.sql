@@ -187,3 +187,25 @@ CREATE TABLE IF NOT EXISTS escalation_logs (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (source_event_id) REFERENCES device_events(id)
 );
+
+CREATE TABLE IF NOT EXISTS confirmation_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    source_event_id INTEGER,
+    confirmation_type TEXT NOT NULL,
+    prompt TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    response_text TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    responded_at TEXT,
+    expires_at TEXT,
+    metadata_json TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (source_event_id) REFERENCES device_events(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_confirmation_requests_user_status
+    ON confirmation_requests (user_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_confirmation_requests_event
+    ON confirmation_requests (source_event_id);

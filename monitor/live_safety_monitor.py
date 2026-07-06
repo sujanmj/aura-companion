@@ -6,6 +6,7 @@ from typing import Any
 from actions.action_dispatcher import ActionDispatcher
 from devices.event_bus import DeviceEventBus
 from memory.sqlite_store import AuraMemoryStore
+from safety.confirmation_engine import ConfirmationEngine
 from safety.escalation_engine import EscalationEngine
 from safety.safety_engine import SafetyEngine
 
@@ -23,6 +24,7 @@ class LiveSafetyMonitor:
         self.event_bus = DeviceEventBus(store)
         self.safety_engine = SafetyEngine(store)
         self.escalation_engine = EscalationEngine(store)
+        self.confirmation_engine = ConfirmationEngine(store)
 
     def _event_for_processing(self, event: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -49,6 +51,7 @@ class LiveSafetyMonitor:
                 "status": "ignored",
                 "safety": safety_result,
                 "escalation": None,
+                "confirmation": None,
                 "dispatch_results": [],
             }
 
@@ -60,6 +63,7 @@ class LiveSafetyMonitor:
         )
 
         dispatch_results: list[dict[str, Any]] = []
+        confirmation: dict[str, Any] | None = None
 
         spoken_response = escalation.get("spoken_response")
         if spoken_response:
@@ -84,6 +88,11 @@ class LiveSafetyMonitor:
                     source_event_id=event_id,
                 )
             )
+            confirmation = self.confirmation_engine.create_for_event(
+                user_id,
+                processing_event,
+                escalation,
+            )
 
         second_action = escalation.get("second_action")
         if second_action:
@@ -105,6 +114,7 @@ class LiveSafetyMonitor:
             "status": "dispatched",
             "safety": safety_result,
             "escalation": escalation,
+            "confirmation": confirmation,
             "dispatch_results": dispatch_results,
         }
 

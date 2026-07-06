@@ -615,5 +615,126 @@ class AuraMemoryStore:
         )
         return [dict(row) for row in cur.fetchall()]
 
+    @staticmethod
+    def _parse_confirmation_row(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+        item = dict(row)
+        metadata_json = item.pop("metadata_json", None)
+        if metadata_json:
+            try:
+                item["metadata"] = json.loads(metadata_json)
+            except json.JSONDecodeError:
+                item["metadata"] = metadata_json
+        else:
+            item["metadata"] = None
+        return item
+
+    def add_confirmation_request(
+        self,
+        user_id: int,
+        source_event_id: int | None,
+        confirmation_type: str,
+        prompt: str,
+        expires_at: str | None = None,
+        metadata: dict | None = None,
+    ) -> int:
+        metadata_json = json.dumps(metadata) if metadata is not None else None
+        cur = self.conn.execute(
+            """
+            INSERT INTO confirmation_requests (
+                user_id, source_event_id, confirmation_type, prompt,
+                status, expires_at, metadata_json
+            )
+            VALUES (?, ?, ?, ?, 'pending', ?, ?)
+            """,
+            (user_id, source_event_id, confirmation_type, prompt, expires_at, metadata_json),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def get_pending_confirmation_requests(
+        self,
+        user_id: int,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, user_id, source_event_id, confirmation_type, prompt, status,
+                   response_text, created_at, responded_at, expires_at, metadata_json
+            FROM confirmation_requests
+            WHERE user_id = ? AND status = 'pending'
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [self._parse_confirmation_row(row) for row in cur.fetchall()]
+
+    def get_recent_confirmation_requests(
+        self,
+        user_id: int,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, user_id, source_event_id, confirmation_type, prompt, status,
+                   response_text, created_at, responded_at, expires_at, metadata_json
+            FROM confirmation_requests
+            WHERE user_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        )
+        return [self._parse_confirmation_row(row) for row in cur.fetchall()]
+
+    def update_confirmation_request_status(
+        self,
+        confirmation_id: int,
+        status: str,
+        response_text: str | None = None,
+    ) -> None:
+        allowed_statuses = {
+            "pending",
+            "confirmed_ok",
+            "confirmed_escalate",
+            "cancelled",
+            "expired",
+        }
+        if status not in allowed_statuses:
+            raise ValueError(f"status must be one of: {', '.join(sorted(allowed_statuses))}")
+
+        if status == "pending":
+            self.conn.execute(
+                """
+                UPDATE confirmation_requests
+                SET status = ?, response_text = ?, responded_at = NULL
+                WHERE id = ?
+                """,
+                (status, response_text, confirmation_id),
+            )
+        else:
+            self.conn.execute(
+                """
+                UPDATE confirmation_requests
+                SET status = ?, response_text = ?, responded_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (status, response_text, confirmation_id),
+            )
+        self.conn.commit()
+
+    def get_confirmation_request_by_id(self, confirmation_id: int) -> dict[str, Any] | None:
+        cur = self.conn.execute(
+            """
+            SELECT id, user_id, source_event_id, confirmation_type, prompt, status,
+                   response_text, created_at, responded_at, expires_at, metadata_json
+            FROM confirmation_requests
+            WHERE id = ?
+            """,
+            (confirmation_id,),
+        )
+        row = cur.fetchone()
+        return self._parse_confirmation_row(row) if row else None
+
     def close(self) -> None:
         self.conn.close()
