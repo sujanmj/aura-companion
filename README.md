@@ -120,6 +120,13 @@ python scripts/run_sensor_api.py
 python scripts/test_sensor_api_client.py
 ```
 
+Dev inspection commands:
+
+```powershell
+python scripts/list_recent_events.py
+python scripts/list_action_logs.py
+```
+
 Install camera dependency in the Python 3.11 venv:
 
 ```powershell
@@ -137,6 +144,8 @@ python scripts/test_action_dispatcher.py
 python scripts/test_full_safety_action_flow.py
 python scripts/run_sensor_api.py
 python scripts/test_sensor_api_client.py
+python scripts/list_recent_events.py
+python scripts/list_action_logs.py
 python scripts/list_emergency_contacts.py
 python scripts/test_people_registry.py
 python scripts/test_guest_introduction_flow.py
