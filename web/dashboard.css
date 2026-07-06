@@ -389,6 +389,61 @@ button:hover {
   margin-top: 0.25rem;
 }
 
+.runtime-health-panel {
+  margin: 0 1.5rem 1rem;
+  padding: 1rem 1.1rem;
+}
+
+.runtime-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.runtime-health-card {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.85rem 0.95rem;
+}
+
+.runtime-health-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.runtime-health-meta {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.runtime-status-online {
+  background: rgba(61, 220, 151, 0.15);
+  color: var(--success);
+}
+
+.runtime-status-stale {
+  background: rgba(255, 159, 67, 0.15);
+  color: var(--high);
+}
+
+.runtime-status-missing,
+.runtime-status-offline {
+  background: rgba(255, 92, 92, 0.15);
+  color: var(--critical);
+}
+
+.runtime-status-enabled {
+  background: rgba(77, 163, 255, 0.15);
+  color: var(--accent);
+}
+
+.runtime-status-disabled {
+  background: rgba(154, 168, 184, 0.15);
+  color: var(--text-muted);
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

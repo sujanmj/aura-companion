@@ -966,5 +966,55 @@ class AuraMemoryStore:
         )
         return [self._parse_timeline_row(row) for row in cur.fetchall()]
 
+    @staticmethod
+    def _parse_heartbeat_row(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+        item = dict(row)
+        metadata_json = item.pop("metadata_json", None)
+        if metadata_json:
+            try:
+                item["metadata"] = json.loads(metadata_json)
+            except json.JSONDecodeError:
+                item["metadata"] = metadata_json
+        else:
+            item["metadata"] = None
+        return item
+
+    def upsert_service_heartbeat(
+        self,
+        user_id: int,
+        service_name: str,
+        status: str = "online",
+        pid: int | None = None,
+        metadata: dict | None = None,
+    ) -> None:
+        metadata_json = json.dumps(metadata) if metadata is not None else None
+        self.conn.execute(
+            """
+            INSERT INTO service_heartbeats (
+                user_id, service_name, status, pid, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, service_name) DO UPDATE SET
+                status = excluded.status,
+                pid = excluded.pid,
+                metadata_json = excluded.metadata_json,
+                last_seen_at = CURRENT_TIMESTAMP
+            """,
+            (user_id, service_name, status, pid, metadata_json),
+        )
+        self.conn.commit()
+
+    def get_service_heartbeats(self, user_id: int) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """
+            SELECT id, user_id, service_name, status, pid, last_seen_at, started_at, metadata_json
+            FROM service_heartbeats
+            WHERE user_id = ?
+            ORDER BY service_name COLLATE NOCASE ASC
+            """,
+            (user_id,),
+        )
+        return [self._parse_heartbeat_row(row) for row in cur.fetchall()]
+
     def close(self) -> None:
         self.conn.close()

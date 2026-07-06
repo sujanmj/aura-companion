@@ -36,6 +36,23 @@ python scripts/run_aura_runtime.py --no-api
 
 Combine flags to start only the services you need.
 
+## Runtime Health
+
+Services write heartbeats to SQLite while running. The dashboard **Runtime Health** section shows whether each service is **online**, **stale** (~20s without heartbeat), or **missing**.
+
+```powershell
+python scripts/show_runtime_health.py
+python scripts/test_runtime_heartbeat.py
+```
+
+Heartbeats are updated by:
+
+- `sensor_api` — on server start and each `GET /health`
+- `live_safety_monitor` — each monitor cycle
+- `confirmation_timeout_watcher` — each watcher cycle
+
+`voice_actions` shows **enabled** or **disabled** from `AURA_ENABLE_VOICE_ACTIONS`.
+
 ## Notes
 
 - **Voice actions** only run when `AURA_ENABLE_VOICE_ACTIONS=1` in `config/keys.env`. See [live_voice_actions.md](live_voice_actions.md).

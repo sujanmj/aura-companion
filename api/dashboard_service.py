@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from memory.sqlite_store import AuraMemoryStore
+from runtime.heartbeat import build_runtime_health
 
 SEVERITY_RANK = {
     "critical": 5,
@@ -144,6 +145,9 @@ class DashboardService:
             if (event.get("severity") or "").lower() in {"critical", "high"}
         )
 
+        runtime_health = build_runtime_health(self.store, user_id)
+        health_summary = runtime_health["summary"]
+
         return {
             "ok": True,
             "service": "aura-dashboard",
@@ -157,6 +161,10 @@ class DashboardService:
                 "open_incident_count": len(open_incidents),
                 "critical_or_high_event_count": critical_or_high_count,
                 "rooms_active_count": len(rooms),
+                "service_online_count": health_summary.get("online_count", 0),
+                "service_stale_count": health_summary.get("stale_count", 0),
+                "service_missing_count": health_summary.get("missing_count", 0),
+                "voice_enabled": health_summary.get("voice_enabled", False),
             },
             "latest_events": latest_events,
             "pending_events": pending_events,
@@ -167,4 +175,5 @@ class DashboardService:
             "recent_actions": recent_actions,
             "rooms": rooms,
             "critical_alerts": _build_critical_alerts(latest_events, limit=10),
+            "runtime_health": runtime_health,
         }

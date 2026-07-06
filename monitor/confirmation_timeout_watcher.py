@@ -4,6 +4,7 @@ import time
 from typing import Any
 
 from memory.sqlite_store import AuraMemoryStore
+from runtime.heartbeat import RuntimeHeartbeat
 from safety.confirmation_engine import ConfirmationEngine
 
 
@@ -14,6 +15,7 @@ class ConfirmationTimeoutWatcher:
         self.confirmation_engine = ConfirmationEngine(store)
 
     def process_once(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        RuntimeHeartbeat(self.store, user_id).beat("confirmation_timeout_watcher")
         results = self.confirmation_engine.expire_due_confirmations(user_id, limit=limit)
         for result in results:
             print(

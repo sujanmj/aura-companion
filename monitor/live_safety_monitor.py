@@ -7,6 +7,7 @@ from actions.action_dispatcher import ActionDispatcher
 from devices.event_bus import DeviceEventBus
 from memory.sqlite_store import AuraMemoryStore
 from incidents.incident_service import IncidentService, incident_api_summary
+from runtime.heartbeat import RuntimeHeartbeat
 from safety.confirmation_engine import ConfirmationEngine
 from safety.escalation_engine import EscalationEngine
 from safety.safety_engine import SafetyEngine
@@ -132,6 +133,7 @@ class LiveSafetyMonitor:
         }
 
     def process_once(self, user_id: int, limit: int = 10) -> list[dict[str, Any]]:
+        RuntimeHeartbeat(self.store, user_id).beat("live_safety_monitor")
         pending_events = self.event_bus.get_pending_events(user_id, limit=limit)
         results: list[dict[str, Any]] = []
 

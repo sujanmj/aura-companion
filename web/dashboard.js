@@ -93,6 +93,21 @@
     return "confirmation-status incident-status-open";
   }
 
+  function runtimeStatusClass(value) {
+    var key = (value || "missing").toLowerCase();
+    if (
+      key === "online" ||
+      key === "stale" ||
+      key === "missing" ||
+      key === "offline" ||
+      key === "enabled" ||
+      key === "disabled"
+    ) {
+      return "confirmation-status runtime-status-" + key;
+    }
+    return "confirmation-status runtime-status-missing";
+  }
+
   function escapeHtml(text) {
     return String(text)
       .replace(/&/g, "&amp;")
@@ -347,8 +362,45 @@
       });
   }
 
+  function renderRuntimeHealth(runtimeHealth) {
+    var container = document.getElementById("runtime-health");
+    var services = (runtimeHealth && runtimeHealth.services) || [];
+    if (services.length === 0) {
+      container.innerHTML = '<p class="empty-state">No runtime health data.</p>';
+      return;
+    }
+
+    var html = [];
+    services.forEach(function (service) {
+      var name = service.service_name || "unknown";
+      var status = service.effective_status || service.status || "missing";
+      html.push('<article class="runtime-health-card">');
+      html.push('<h3>' + escapeHtml(name) + "</h3>");
+      html.push(
+        '<div><span class="' +
+          runtimeStatusClass(status) +
+          '">' +
+          escapeHtml(status) +
+          "</span></div>"
+      );
+      html.push('<div class="runtime-health-meta">');
+      if (service.age_seconds !== null && service.age_seconds !== undefined) {
+        html.push("Age: " + escapeHtml(service.age_seconds) + "s<br>");
+      }
+      if (service.pid) {
+        html.push("PID: " + escapeHtml(service.pid) + "<br>");
+      }
+      if (service.last_seen_at) {
+        html.push("Last seen: " + escapeHtml(service.last_seen_at));
+      }
+      html.push("</div></article>");
+    });
+    container.innerHTML = html.join("");
+  }
+
   function renderDashboard(data) {
     renderSummary(data.summary || {});
+    renderRuntimeHealth(data.runtime_health || {});
     renderPendingConfirmations(data.pending_confirmations || []);
     renderIncidentList("open-incidents", data.open_incidents || [], "No open incidents.");
     renderIncidentList("recent-incidents", data.recent_incidents || [], "No recent incidents.");

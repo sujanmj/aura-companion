@@ -250,3 +250,19 @@ CREATE INDEX IF NOT EXISTS idx_incidents_source_event
 
 CREATE INDEX IF NOT EXISTS idx_incident_timeline_incident
     ON incident_timeline_items (incident_id);
+
+CREATE TABLE IF NOT EXISTS service_heartbeats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    service_name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'online',
+    pid INTEGER,
+    last_seen_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    metadata_json TEXT,
+    UNIQUE(user_id, service_name),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_service_heartbeats_user_service
+    ON service_heartbeats (user_id, service_name);

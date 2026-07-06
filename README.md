@@ -38,6 +38,7 @@ See [docs/setup_windows.md](docs/setup_windows.md) for install and venv setup st
 - Confirmation Timeout Watcher v0.1
 - AURA Runtime Supervisor v0.1
 - Incident Timeline v0.1
+- Runtime Health Heartbeat v0.1
 
 Secrets live in `config/keys.env`. That file is ignored by git.
 
@@ -233,6 +234,13 @@ python scripts/test_incident_timeline_service.py
 python scripts/test_incident_api.py
 ```
 
+Runtime Health Heartbeat v0.1 tracks whether local AURA services are online, stale, or missing. See [docs/aura_runtime_supervisor.md](docs/aura_runtime_supervisor.md#runtime-health).
+
+```powershell
+python scripts/test_runtime_heartbeat.py
+python scripts/show_runtime_health.py
+```
+
 Dev inspection commands:
 
 ```powershell
@@ -272,6 +280,8 @@ python scripts/run_aura_runtime.py
 python scripts/test_aura_runtime_supervisor.py
 python scripts/test_incident_timeline_service.py
 python scripts/test_incident_api.py
+python scripts/test_runtime_heartbeat.py
+python scripts/show_runtime_health.py
 python scripts/pi_node_simulator.py --list
 python scripts/test_pi_node_simulator.py
 python scripts/test_event_action_status.py

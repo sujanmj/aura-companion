@@ -13,6 +13,7 @@ from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
 from memory.sqlite_store import AuraMemoryStore
 from incidents.incident_service import IncidentService, incident_api_summary
+from runtime.heartbeat import RuntimeHeartbeat
 from safety.confirmation_engine import ConfirmationEngine
 from safety.escalation_engine import EscalationEngine
 from safety.safety_engine import SafetyEngine
@@ -274,6 +275,13 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
         try:
             if path == "/health":
+                store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                RuntimeHeartbeat(store, user_id).beat(
+                    "sensor_api",
+                    metadata={"endpoint": "/health"},
+                )
                 self._send_json(
                     200,
                     {
@@ -488,6 +496,15 @@ def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
     load_env_file()
     store = AuraMemoryStore()
     store.apply_schema()
+
+    user_id = store.get_or_create_user(
+        name=DEFAULT_USER_NAME,
+        preferred_name=DEFAULT_PREFERRED_NAME,
+    )
+    RuntimeHeartbeat(store, user_id).beat(
+        "sensor_api",
+        metadata={"host": host, "port": port},
+    )
 
     server = HTTPServer((host, port), AuraSensorAPIHandler)
     server.aura_store = store  # type: ignore[attr-defined]
