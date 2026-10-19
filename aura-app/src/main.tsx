@@ -19,6 +19,13 @@ type Status = {
   stt: boolean;
   tts: boolean;
 };
+type Readiness = {
+  brain: { provider: string; state: string; model: string; missing: string[] };
+  memory: string;
+  voice: { stt: string; tts: string };
+  actions: { state: string };
+  hardware: string;
+};
 type Approval = { id: string; name: string; input: unknown; expires: number };
 class OrbBoundary extends Component<
   { children: ReactNode },
@@ -56,7 +63,8 @@ function App() {
     [task, setTask] = useState<{ state: string; response: string } | null>(
       null,
     ),
-    [taskInput, setTaskInput] = useState("");
+    [taskInput, setTaskInput] = useState(""),
+    [readiness, setReadiness] = useState<Readiness | null>(null);
   const stopListen = useRef<(() => void) | null>(null),
     bottom = useRef<HTMLDivElement>(null),
     micStarting = useRef(false),
@@ -100,6 +108,17 @@ function App() {
     }, 700);
     return () => clearInterval(timer);
   }, [status?.actions]);
+  async function checkReadiness() {
+    setReadiness(null);
+    try {
+      setReadiness(await api<Readiness>("readiness"));
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+  useEffect(() => {
+    if (status && tab === "setup") void checkReadiness();
+  }, [!!status, tab]);
   async function login(event: React.FormEvent) {
     event.preventDefault();
     try {
@@ -202,6 +221,7 @@ function App() {
             ["conversation", "Conversation", "01"],
             ["memory", "Memory", "02"],
             ["actions", "Actions", "03"],
+            ["setup", "Setup", "04"],
           ].map(([id, label, n]) => (
             <button
               key={id}
@@ -227,11 +247,13 @@ function App() {
           <div>
             <span className="eyebrow">A LITTLE SPACE TO BE YOURSELF</span>
             <h1>
-              {tab === "memory"
-                ? "What stays with us"
-                : tab === "actions"
-                  ? "A helping hand"
-                  : "Good to have you here."}
+              {tab === "setup"
+                ? "Ready for our next conversation?"
+                : tab === "memory"
+                  ? "What stays with us"
+                  : tab === "actions"
+                    ? "A helping hand"
+                    : "Good to have you here."}
             </h1>
           </div>
           <span className="privacy">
@@ -474,6 +496,78 @@ function App() {
                   </small>
                 </form>
               </>
+            ) : tab === "setup" ? (
+              <div className="details">
+                <span className="eyebrow">SETUP & READINESS</span>
+                <h2>Know what is ready.</h2>
+                <p>
+                  These checks read configuration only. They do not contact
+                  providers, start tools, or turn on your microphone or camera.
+                </p>
+                <button onClick={() => void checkReadiness()}>
+                  Refresh readiness
+                </button>
+                {readiness && (
+                  <>
+                    <article className="fact">
+                      <h3>Memory</h3>
+                      <p>Available in this local session.</p>
+                    </article>
+                    <article className="fact">
+                      <h3>Conversation brain</h3>
+                      <p>
+                        {readiness.brain.provider}
+                        {readiness.brain.model
+                          ? " · " + readiness.brain.model
+                          : ""}
+                      </p>
+                      <p>
+                        {readiness.brain.state === "local_only"
+                          ? "Local rule-based replies. A cloud or local language model is not selected."
+                          : readiness.brain.state === "configured_unverified"
+                            ? "Configured. A successful live conversation still needs to be verified."
+                            : readiness.brain.state === "missing_configuration"
+                              ? "Configuration is incomplete; AURA will use its local fallback."
+                              : "This provider is not implemented. AURA will use its local fallback."}
+                      </p>
+                      {readiness.brain.missing.length > 0 && (
+                        <p>
+                          Set {readiness.brain.missing.join(" and ")} in your
+                          private config/keys.env, then restart AURA.
+                        </p>
+                      )}
+                    </article>
+                    <article className="fact">
+                      <h3>Voice</h3>
+                      <p>
+                        {readiness.voice.stt === "browser"
+                          ? "Speech input uses browser recognition when supported."
+                          : "Cloud transcription is configured but has not been tested live."}
+                      </p>
+                      <p>
+                        {readiness.voice.tts === "browser"
+                          ? "Replies use browser speech."
+                          : "Cloud speech is configured but has not been tested live."}
+                      </p>
+                      <p>
+                        Microphone, speakers, camera and native on-device
+                        recognition still require a real-device check. Browser
+                        recognition may use the browser vendor’s cloud service.
+                      </p>
+                    </article>
+                    <article className="fact">
+                      <h3>External actions</h3>
+                      <p>
+                        {readiness.actions.state === "disabled"
+                          ? "Disabled. No tool task can run."
+                          : readiness.actions.state === "missing_configuration"
+                            ? "Opted in, but MCP servers or allowed tools are missing. Complete the local configuration first."
+                            : "Configured, not tested live. Each tool invocation still needs your approval."}
+                      </p>
+                    </article>
+                  </>
+                )}
+              </div>
             ) : tab === "memory" ? (
               <div className="details">
                 <span className="eyebrow">CONTINUITY, NOT A FRESH START</span>

@@ -79,3 +79,21 @@ test("kiosk requires review by default and honors current auto-send consent", as
   await page.reload();
   await expect(autoSend).not.toBeChecked();
 });
+
+test("setup distinguishes local availability from live verification", async ({
+  page,
+}) => {
+  await connect(page);
+  await page.getByRole("button", { name: "Setup 04" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Know what is ready." }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Local rule-based replies.", { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByText("Disabled. No tool task can run.")).toBeVisible();
+  await page.getByRole("button", { name: "Refresh readiness" }).click();
+  await expect(
+    page.getByText("Available in this local session."),
+  ).toBeVisible();
+});

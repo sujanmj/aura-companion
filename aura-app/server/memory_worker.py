@@ -15,6 +15,7 @@ from memory.sqlite_store import AuraMemoryStore, DEFAULT_DB_PATH
 from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
 from cloud.supabase_sync import sync_conversation
+from readiness import brain_readiness
 
 
 def main():
@@ -42,9 +43,13 @@ def main():
             req = json.loads(line)
             with contextlib.redirect_stdout(sys.stderr):
                 op = req['op']
-                if op == 'status':
-                    result = {'provider': os.environ.get('AURA_BRAIN_PROVIDER', 'local'),
-                              'model': os.environ.get('ANTHROPIC_MODEL', ''),
+                if op == 'readiness':
+                    store.conn.execute('SELECT 1').fetchone()
+                    result = {'brain': brain_readiness(), 'memory': 'available'}
+                elif op == 'status':
+                    brain = brain_readiness()
+                    result = {'provider': brain['provider'],
+                              'model': brain['model'],
                               'facts': store.get_memory_facts(user),
                               'conversations': list(reversed(store.get_recent_conversations(user, limit=30))),
                               'observations': list(reversed(store.get_latest_observations(user, limit=10)))}

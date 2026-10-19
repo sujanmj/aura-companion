@@ -114,3 +114,26 @@ Reused/adapted MIT code: `src/scene/Core.tsx`, `src/scene/Particles.tsx`, `src/l
 Architecture: browser → authenticated loopback Node bridge → private Python worker → existing AURA engine / SQLite / server-side Claude API. Optional actions use a separate, bounded Claude Agent SDK session with explicit MCP configuration and approval hooks.
 
 Memory worker failures fail closed: exit, missing Python, and a 45-second response deadline reject requests. Restart the app after checking configuration; failed writes are never automatically retried because SQLite may already have committed them.
+
+## Readiness and live acceptance
+
+Open **Setup** after pairing. Its checks read configuration and confirm the memory
+worker responds; they never call a provider, start an MCP server, or turn on a
+microphone/camera. “Configured” is not a successful live test. Missing settings
+list only variable names, never key values. Restart after changing configuration.
+The selected model now matches the selected brain, including OpenAI and Ollama.
+
+Before declaring the single-device companion ready, record these live results:
+
+1. Configure the intended brain privately and send a non-greeting message. Check
+   that the response is labeled with the intended provider, not local fallback.
+2. Opt into voice; check recognition, draft review, spoken output and Stop.
+3. Pair the native helper and explicitly start ambient mode. Check permission
+   denial, Cancel startup, Pause during a pending reply, restart and sleep/wake.
+4. Confirm camera/microphone indicators stop after Pause, and no old reply speaks.
+5. If actions are needed, configure a trusted MCP server and a harmless test tool.
+   Verify Deny, approval expiry, Cancel and a separately approved successful call.
+
+Physical capture, model credentials and MCP authentication cannot be proven by
+mock tests. Keep results scoped to the actual device and configuration tested.
+See the [project roadmap](../docs/ROADMAP.md) for remaining phase gates.

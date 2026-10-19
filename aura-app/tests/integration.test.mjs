@@ -66,6 +66,7 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
   try {
     await start(db);
     assert.equal((await fetch(base + "/api/status")).status, 401);
+    assert.equal((await fetch(base + "/api/readiness")).status, 401);
     assert.equal(
       (await post("login", { token }, "", "https://evil.test")).status,
       403,
@@ -83,6 +84,15 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       403,
     );
     let cookie = await login();
+    const readiness = await (
+      await fetch(base + "/api/readiness", { headers: { Cookie: cookie } })
+    ).json();
+    assert.equal(readiness.brain.state, "local_only");
+    assert.equal(readiness.memory, "available");
+    assert.equal(readiness.actions.state, "disabled");
+    assert.equal(readiness.hardware, "not_tested");
+    assert.equal("conversations" in readiness, false);
+    assert.equal("facts" in readiness, false);
     assert.equal(
       (await post("chat", { message: "hello" }, cookie, "https://evil.test"))
         .status,

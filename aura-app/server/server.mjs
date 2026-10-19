@@ -142,6 +142,39 @@ const server = http.createServer(async (req, res) => {
         return json(res, 401, {
           error: "Enter the session code shown in your terminal.",
         });
+      if (req.method === "GET" && url.pathname === "/api/readiness") {
+        let readiness;
+        try {
+          readiness = await memory("readiness");
+        } catch {
+          return json(res, 503, {
+            error:
+              "Memory service unavailable. Restart AURA after checking Python and database access.",
+          });
+        }
+        return json(res, 200, {
+          ...readiness,
+          voice: {
+            stt: process.env.ELEVENLABS_API_KEY
+              ? "configured_unverified"
+              : "browser",
+            tts:
+              process.env.ELEVENLABS_API_KEY &&
+              /^[a-zA-Z0-9]+$/.test(process.env.AURA_VOICE_ID || "")
+                ? "configured_unverified"
+                : "browser",
+          },
+          actions: {
+            state: !actionsEnabled
+              ? "disabled"
+              : Object.keys(config.servers || {}).length &&
+                  (config.allowedTools || []).length
+                ? "configured_unverified"
+                : "missing_configuration",
+          },
+          hardware: "not_tested",
+        });
+      }
       if (req.method === "GET" && url.pathname === "/api/status")
         return json(res, 200, {
           ...(await memory("status")),

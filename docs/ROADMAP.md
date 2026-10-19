@@ -25,9 +25,13 @@ Status: in progress; this is the current phase.
 
 - Completed: closed approval gates after cancellation; enforce approval deadlines;
   explicit kiosk auto-send consent; fail closed when the memory worker dies/stalls.
-- Implemented, awaiting CI: native startup, Pause, camera cleanup and delayed
+- Completed with CI: native startup, Pause, camera cleanup and delayed
   responses obey a single capture-session lifecycle; prevent speaking after Pause.
   Camera setup always closes its configuration transaction, even on failure.
+  Evidence: 89a3894, Linux/macOS run 39290007322; native lifecycle tests include
+  1,000 cancel/restart cycles. This is automated evidence, not a hardware test.
+- Implemented: authenticated Setup/readiness diagnostics distinguish missing
+  configuration, local fallback and configured-but-unverified providers.
 - Remaining: verify startup failures and recovery, truthful runtime status, and
   run hardware acceptance for microphone/camera and sleep/wake behavior.
 
@@ -37,7 +41,7 @@ separately. Missing hardware access must remain an explicit unresolved gate.
 ## Phase 3 — Usable companion on one device
 Status: partial components exist; acceptance not complete.
 
-- Diagnose configuration and service readiness without exposing secrets.
+- Implemented: diagnose configuration and service readiness without exposing secrets.
 - Verify real voice conversations, interruption, memory continuity and opt-in tools.
 - Exercise real Claude/MCP and optional voice-provider paths when configured.
 - Provide a repeatable onboarding and acceptance procedure.
