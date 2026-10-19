@@ -23,6 +23,9 @@
     "react-dom": "^19.2.8",
     "three": "^0.185.1"
   },
+  "overrides": {
+    "forwarded": "0.2.0"
+  },
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.17",

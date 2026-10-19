@@ -149,14 +149,14 @@ final class AmbientMonitor: NSObject, ObservableObject {
             let input = try AVCaptureDeviceInput(device: device)
             guard session.canAddInput(input) else {
                 session.commitConfiguration()
-                throw CaptureError.configuration
+                throw CaptureError.inputConfiguration
             }
             session.addInput(input)
             videoOutput.alwaysDiscardsLateVideoFrames = true
             videoOutput.setSampleBufferDelegate(self, queue: captureQueue)
             guard session.canAddOutput(videoOutput) else {
                 session.commitConfiguration()
-                throw CaptureError.configuration
+                throw CaptureError.outputConfiguration
             }
             session.addOutput(videoOutput)
             session.commitConfiguration()
@@ -245,8 +245,8 @@ extension AmbientMonitor: AVCaptureVideoDataOutputSampleBufferDelegate {
 
 private struct CompanionResponse: Decodable { let response: String }
 private enum CaptureError: LocalizedError {
-    case noCamera, noMicrophone, configuration
-    var errorDescription: String? { switch self { case .noCamera: "No camera was found."; case .noMicrophone: "No microphone was found."; case .configuration: "Couldn’t configure local capture." } }
+    case noCamera, noMicrophone, inputConfiguration, outputConfiguration
+    var errorDescription: String? { switch self { case .noCamera: "No camera was found."; case .noMicrophone: "No microphone was found."; case .inputConfiguration: "macOS could not add the camera input. Check camera access and close apps using the camera."; case .outputConfiguration: "macOS could not add the local video classifier." } }
 }
 
 private final class LocalSpeechPipeline: @unchecked Sendable {
