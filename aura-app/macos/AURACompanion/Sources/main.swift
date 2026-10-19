@@ -38,8 +38,9 @@ struct AURAAmbientApp: App {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
 
-final class AmbientMonitor: NSObject, ObservableObject {
+@MainActor final class AmbientMonitor: NSObject, ObservableObject {
     @Published var isActive = false
+    @Published var isStarting = false
     @Published var isPaired = false
     @Published var microphoneOn = false
     @Published var cameraOn = false
@@ -49,16 +50,15 @@ final class AmbientMonitor: NSObject, ObservableObject {
     @Published var recentResponse = ""
     @Published var scene = ""
 
-    private let captureQueue = DispatchQueue(label: "aura.ambient.capture")
-    private let session = AVCaptureSession()
-    private let videoOutput = AVCaptureVideoDataOutput()
+    private var camera: LocalCamera?
+    private var lifecycle = AmbientLifecycle()
+    private var replyTask: Task<Void, Never>?
+    private var hasAudioTap = false
     private let engine = AVAudioEngine()
     private let synthesizer = AVSpeechSynthesizer()
     private var transcriber: LocalSpeechPipeline?
     private var cookie: String?
-    private var lastVisionTime = Date.distantPast
     private var contextLabels: [String] = []
-    private var isConfigured = false
     private var resumeAfterWake = false
 
     override init() {
@@ -68,7 +68,7 @@ final class AmbientMonitor: NSObject, ObservableObject {
         let center = NSWorkspace.shared.notificationCenter
         center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
-            Task { @MainActor in self.resumeAfterWake = self.isActive; self.stop() }
+            Task { @MainActor in let resume = self.isActive; self.stop(); self.resumeAfterWake = resume }
         }
         center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
@@ -115,54 +115,53 @@ final class AmbientMonitor: NSObject, ObservableObject {
 
     func start() async {
         guard isPaired, cookie != nil else { status = "Pair with the AURA web app first."; return }
-        guard !isActive else { return }
+        guard let generation = lifecycle.begin() else { return }
+        isStarting = true
+        defer {
+            if lifecycle.contains(generation) {
+                isStarting = false
+                if !isActive { lifecycle.pause() }
+            }
+        }
         do {
             let authorized = await withCheckedContinuation { continuation in
                 SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
             }
+            guard lifecycle.contains(generation) else { return }
             guard authorized else { status = "Allow Speech Recognition in System Settings to use local listening."; return }
             let mic = await AVCaptureDevice.requestAccess(for: .audio)
+            guard lifecycle.contains(generation) else { return }
             guard mic else { status = "Microphone access is off. Allow it in System Settings."; return }
-            let camera = await AVCaptureDevice.requestAccess(for: .video)
-            guard camera else { status = "Camera access is off. Allow it in System Settings."; return }
+            let cameraAllowed = await AVCaptureDevice.requestAccess(for: .video)
+            guard lifecycle.contains(generation) else { return }
+            guard cameraAllowed else { status = "Camera access is off. Allow it in System Settings."; return }
             guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US")), recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else {
                 status = "On-device English speech recognition isn’t available on this Mac. AURA won’t send ambient audio to a server."; return
             }
             self.transcriber = LocalSpeechPipeline(recognizer: recognizer) { [weak self] text in
-                Task { @MainActor in self?.handle(text) }
+                Task { @MainActor in
+                    guard let self, self.lifecycle.contains(generation) else { return }
+                    self.handle(text)
+                }
             }
-            try configureCamera()
+            let camera = LocalCamera { [weak self] labels, present in
+                Task { @MainActor in
+                    guard let self, self.lifecycle.contains(generation), self.isActive else { return }
+                    self.contextLabels = labels; self.scene = labels.joined(separator: ", ")
+                    self.isPersonPresent = present
+                }
+            }
+            self.camera = camera
+            try await camera.start()
+            guard lifecycle.contains(generation) else { camera.stop(); return }
             try startAudio()
+            guard lifecycle.activate(generation) else { return }
             isActive = true; microphoneOn = true; cameraOn = true
             status = "Listening locally. Only Hey AURA, direct requests, or explicit support phrases get a reply."
-        } catch { stop(); status = "Couldn’t start the local microphone and camera: \(error.localizedDescription)" }
-    }
-
-    private func configureCamera() throws {
-        if !isConfigured {
-            session.beginConfiguration()
-            session.sessionPreset = .low
-            guard let device = AVCaptureDevice.default(for: .video) else {
-                session.commitConfiguration()
-                throw CaptureError.noCamera
-            }
-            let input = try AVCaptureDeviceInput(device: device)
-            guard session.canAddInput(input) else {
-                session.commitConfiguration()
-                throw CaptureError.inputConfiguration
-            }
-            session.addInput(input)
-            videoOutput.alwaysDiscardsLateVideoFrames = true
-            videoOutput.setSampleBufferDelegate(self, queue: captureQueue)
-            guard session.canAddOutput(videoOutput) else {
-                session.commitConfiguration()
-                throw CaptureError.outputConfiguration
-            }
-            session.addOutput(videoOutput)
-            session.commitConfiguration()
-            isConfigured = true
+        } catch {
+            guard lifecycle.contains(generation) else { return }
+            stop(); status = "Couldn’t start the local microphone and camera: \(error.localizedDescription)"
         }
-        captureQueue.async { [session] in session.startRunning() }
     }
 
     private func startAudio() throws {
@@ -173,15 +172,21 @@ final class AmbientMonitor: NSObject, ObservableObject {
         input.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
             transcriber?.consume(buffer)
         }
+        hasAudioTap = true
         engine.prepare(); try engine.start()
     }
 
     private func handle(_ transcript: String) {
-        guard isActive else { return }
+        guard isActive, replyTask == nil, !synthesizer.isSpeaking else { return }
         let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard shouldRespond(text) else { return }
-        status = "AURA heard a direct request. Preparing a reply locally."
-        Task { await sendToCompanion(text) }
+        status = "AURA heard a direct request. Preparing a reply."
+        let generation = lifecycle.generation
+        replyTask = Task { [weak self] in
+            guard let self else { return }
+            await self.sendToCompanion(text, generation: generation)
+            if self.lifecycle.contains(generation) { self.replyTask = nil }
+        }
     }
 
     private func shouldRespond(_ text: String) -> Bool {
@@ -194,7 +199,8 @@ final class AmbientMonitor: NSObject, ObservableObject {
         return addressed || support || direct
     }
 
-    private func sendToCompanion(_ transcript: String) async {
+    private func sendToCompanion(_ transcript: String, generation: UInt64) async {
+        guard lifecycle.contains(generation), !Task.isCancelled else { return }
         guard let cookie, let url = URL(string: "http://127.0.0.1:8790/api/ambient") else { return }
         let label = contextLabels.prefix(5).joined(separator: ", ")
         let observation = label.isEmpty ? "" : "Local camera context: \(label). Person present: \(isPersonPresent ? "yes" : "no")."
@@ -204,31 +210,95 @@ final class AmbientMonitor: NSObject, ObservableObject {
             request.setValue("http://127.0.0.1:8790", forHTTPHeaderField: "Origin")
             request.setValue(cookie, forHTTPHeaderField: "Cookie")
             request.httpBody = try JSONSerialization.data(withJSONObject: ["message": transcript, "observation": observation])
-            let (data, _) = try await URLSession.shared.data(for: request)
+            request.timeoutInterval = 45
+            let (data, httpResponse) = try await URLSession.shared.data(for: request)
+            guard lifecycle.contains(generation), !Task.isCancelled else { return }
+            guard let http = httpResponse as? HTTPURLResponse, http.statusCode == 200 else {
+                if (httpResponse as? HTTPURLResponse)?.statusCode == 401 {
+                    forgetPairing(); status = "AURA restarted. Pair with the current session code."
+                } else { status = "AURA could not complete this request. Check the conversation before retrying." }
+                return
+            }
             let response = try JSONDecoder().decode(CompanionResponse.self, from: data)
             await MainActor.run {
+                guard lifecycle.contains(generation), isActive, !Task.isCancelled else { return }
                 recentResponse = response.response; status = "AURA replied. Still listening locally."
                 let utterance = AVSpeechUtterance(string: response.response); utterance.voice = AVSpeechSynthesisVoice(language: "en-US"); utterance.rate = 0.48
                 synthesizer.speak(utterance)
             }
-        } catch { status = "Couldn’t reach AURA. The transcript was not saved here." }
+        } catch {
+            guard lifecycle.contains(generation), !Task.isCancelled else { return }
+            status = "AURA’s reply was interrupted. Check the conversation before retrying; it may already be saved."
+        }
     }
 
     func stop() {
-        guard isActive || isConfigured else { return }
-        isActive = false; microphoneOn = false; cameraOn = false
-        engine.inputNode.removeTap(onBus: 0); engine.stop()
+        lifecycle.pause()
+        resumeAfterWake = false
+        isStarting = false; isActive = false; microphoneOn = false; cameraOn = false
+        replyTask?.cancel(); replyTask = nil
+        if hasAudioTap { engine.inputNode.removeTap(onBus: 0); hasAudioTap = false }
+        engine.stop()
         transcriber?.stop(); transcriber = nil
-        captureQueue.async { if self.session.isRunning { self.session.stopRunning() } }
+        camera?.stop(); camera = nil
+        contextLabels = []; scene = ""; isPersonPresent = false
         synthesizer.stopSpeaking(at: .immediate)
-        status = "Paused. Microphone and camera are off."
+        status = "Paused. Microphone and camera are stopping."
     }
 
     func forgetPairing() { stop(); cookie = nil; Keychain.delete(); isPaired = false; status = "Session pairing cleared." }
 }
 
-extension AmbientMonitor: AVCaptureVideoDataOutputSampleBufferDelegate {
+// All camera configuration, start/stop and frames belong to one serial queue.
+// A new instance per ambient session prevents old callbacks stopping a new camera.
+private final class LocalCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
+    private let queue = DispatchQueue(label: "aura.ambient.capture")
+    private let session = AVCaptureSession()
+    private let output = AVCaptureVideoDataOutput()
+    private var lastVisionTime = Date.distantPast
+    private var stopped = false
+    private let onScene: @Sendable ([String], Bool) -> Void
+
+    init(onScene: @escaping @Sendable ([String], Bool) -> Void) { self.onScene = onScene }
+
+    func start() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            queue.async {
+                do {
+                    guard !self.stopped else { throw CancellationError() }
+                    try self.configure()
+                    self.session.startRunning()
+                    guard self.session.isRunning else { throw CaptureError.startFailed }
+                    continuation.resume()
+                } catch { continuation.resume(throwing: error) }
+            }
+        }
+    }
+
+    private func configure() throws {
+        session.beginConfiguration()
+        defer { session.commitConfiguration() }
+        session.sessionPreset = .low
+        guard let device = AVCaptureDevice.default(for: .video) else { throw CaptureError.noCamera }
+        let input = try AVCaptureDeviceInput(device: device)
+        guard session.canAddInput(input) else { throw CaptureError.inputConfiguration }
+        session.addInput(input)
+        output.alwaysDiscardsLateVideoFrames = true
+        output.setSampleBufferDelegate(self, queue: queue)
+        guard session.canAddOutput(output) else { throw CaptureError.outputConfiguration }
+        session.addOutput(output)
+    }
+
+    func stop() {
+        queue.async {
+            self.stopped = true
+            self.output.setSampleBufferDelegate(nil, queue: nil)
+            if self.session.isRunning { self.session.stopRunning() }
+        }
+    }
+
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard !stopped else { return }
         let now = Date()
         guard now.timeIntervalSince(lastVisionTime) >= 1, let image = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         lastVisionTime = now
@@ -236,17 +306,15 @@ extension AmbientMonitor: AVCaptureVideoDataOutputSampleBufferDelegate {
         let humans = VNDetectHumanRectanglesRequest()
         do {
             try VNImageRequestHandler(cvPixelBuffer: image).perform([request, humans])
-            let labels = request.results?.prefix(4).map { $0.identifier } ?? []
-            let present = !(humans.results?.isEmpty ?? true)
-            Task { @MainActor in self.contextLabels = Array(labels); self.scene = Array(labels).joined(separator: ", "); self.isPersonPresent = present }
+            onScene(request.results?.prefix(4).map { $0.identifier } ?? [], !(humans.results?.isEmpty ?? true))
         } catch { }
     }
 }
 
 private struct CompanionResponse: Decodable { let response: String }
 private enum CaptureError: LocalizedError {
-    case noCamera, noMicrophone, inputConfiguration, outputConfiguration
-    var errorDescription: String? { switch self { case .noCamera: "No camera was found."; case .noMicrophone: "No microphone was found."; case .inputConfiguration: "macOS could not add the camera input. Check camera access and close apps using the camera."; case .outputConfiguration: "macOS could not add the local video classifier." } }
+    case noCamera, noMicrophone, inputConfiguration, outputConfiguration, startFailed
+    var errorDescription: String? { switch self { case .startFailed: "The camera session did not start. Check camera access and other camera apps."; case .noCamera: "No camera was found."; case .noMicrophone: "No microphone was found."; case .inputConfiguration: "macOS could not add the camera input. Check camera access and close apps using the camera."; case .outputConfiguration: "macOS could not add the local video classifier." } }
 }
 
 private final class LocalSpeechPipeline: @unchecked Sendable {
@@ -333,7 +401,7 @@ private struct MenuView: View {
                 SecureField("Session code from AURA terminal", text: $monitor.code)
                 Button("Pair with AURA") { Task { await monitor.pair() } }.disabled(monitor.code.isEmpty)
             } else {
-                Button(monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: [])
+                Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: [])
                 if !monitor.recentResponse.isEmpty { Divider(); Text("AURA").font(.caption).foregroundStyle(.secondary); Text(monitor.recentResponse).font(.system(size: 12)).textSelection(.enabled) }
                 if !monitor.scene.isEmpty { Text("Local camera: \(monitor.scene)").font(.caption).foregroundStyle(.secondary) }
                 Button("Clear pairing") { monitor.forgetPairing() }.font(.caption).foregroundStyle(.secondary)

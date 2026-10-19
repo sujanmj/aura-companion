@@ -8,7 +8,8 @@ swiftc -parse-as-library -O -target arm64-apple-macosx13.0 \
   -framework SwiftUI -framework AppKit -framework AVFoundation \
   -framework Speech -framework Vision -framework Security \
   -o "$APP/Contents/MacOS/AURACompanion" \
-  macos/AURACompanion/Sources/main.swift
+  macos/AURACompanion/Sources/main.swift \
+  macos/AURACompanion/Sources/AmbientLifecycle.swift
 cp macos/AURACompanion/Info.plist "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Add :NSLocalNetworkUsageDescription string "AURA connects to its companion service on this Mac."' "$APP/Contents/Info.plist"
 codesign --force --deep --sign - "$APP"

@@ -29,6 +29,8 @@ jobs:
       - run: npm run build
       - if: runner.os == 'macOS'
         run: npm run macos:app
+      - if: runner.os == 'macOS'
+        run: npm run test:native
       - run: npm run lint
       - run: npm test
       - run: npx playwright install --with-deps chromium

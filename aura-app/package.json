@@ -15,7 +15,8 @@
     "test": "node --test tests/*.test.mjs",
     "bundle": "python3 scripts/bundle.py",
     "macos:app": "bash scripts/build-macos-app.sh",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:native": "bash scripts/test-native.sh"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.220",

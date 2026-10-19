@@ -1,0 +1,78 @@
+# AURA delivery roadmap
+
+AURA is currently a development preview, not a finished always-present companion.
+The confirmed repository is https://github.com/sujanmj/aura-companion.
+
+For every milestone: implement, run relevant automated tests, fix failures, commit,
+push, and verify CI before continuing. CI success proves only the checks it ran.
+Live provider, hardware, and multi-device behavior require separate acceptance
+results. Never describe mocked speech/provider tests as live verification.
+
+## Phase 1 — Preserve AURA and integrate its interface
+Status: complete for the development preview.
+
+- Preserve the existing SQLite schema, personality, feedback and Claude provider.
+- Add the AURA interface and opt-in voice using appropriately attributed MIT code.
+- Keep external actions disabled by default and approve individual MCP invocations.
+- Verify authenticated conversation, persistence, backup, feedback and UI flows.
+
+Evidence: integration branch through b2d1aa4; 18 local automated tests and Linux /
+macOS CI run 39288627959 passed. Preview artifacts exist. This is not a stable
+hardware release, and the branch has not yet been merged into main.
+
+## Phase 2 — Reliable single-device runtime
+Status: in progress; this is the current phase.
+
+- Completed: closed approval gates after cancellation; enforce approval deadlines;
+  explicit kiosk auto-send consent; fail closed when the memory worker dies/stalls.
+- Implemented, awaiting CI: native startup, Pause, camera cleanup and delayed
+  responses obey a single capture-session lifecycle; prevent speaking after Pause.
+  Camera setup always closes its configuration transaction, even on failure.
+- Remaining: verify startup failures and recovery, truthful runtime status, and
+  run hardware acceptance for microphone/camera and sleep/wake behavior.
+
+Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
+separately. Missing hardware access must remain an explicit unresolved gate.
+
+## Phase 3 — Usable companion on one device
+Status: partial components exist; acceptance not complete.
+
+- Diagnose configuration and service readiness without exposing secrets.
+- Verify real voice conversations, interruption, memory continuity and opt-in tools.
+- Exercise real Claude/MCP and optional voice-provider paths when configured.
+- Provide a repeatable onboarding and acceptance procedure.
+
+Exit: a configured device completes the documented live acceptance flow. Do not
+invent credentials, silently enable tools, or substitute mock results for it.
+
+## Phase 4 — Companion behavior and user control
+Status: foundations exist in the original reaction/memory engines.
+
+- Review, correct, export and forget remembered information deliberately.
+- Consent-based check-ins with quiet hours and clear pause controls.
+- Handle interruptions, uncertainty and emotional cues without claiming mind-reading.
+
+Exit: behavior and privacy tests pass; preferences and consent persist correctly.
+
+## Phase 5 — Raspberry Pi and multi-room presence
+Status: kiosk UI, event API and simulators exist; real node integration remains.
+
+- Pi node runtime and local speech options with resource limits.
+- Authenticated device enrollment, reconnect/offline behavior and node health.
+- Conversation handoff without duplicate replies or accidental cross-user memory.
+- Real camera/microphone and GPIO sensor acceptance on target hardware.
+
+Exit: a real multi-node deployment passes handoff, reconnection and privacy tests.
+
+## Phase 6 — Safety validation and release packaging
+Status: simulated safety workflows exist; production validation remains.
+
+- Validate sensor errors, false alarms, confirmation timeouts and recovery.
+- External alerts remain explicitly authorized; no unverified emergency guarantees.
+- Package supported platforms, verify clean installation and upgrades, preserve
+  memory, and sign/notarize distributions when signing credentials are available.
+- Publish only builds whose stated scope has passed its release gates.
+
+Exit: release checklist and evidence identify tested platforms, known limitations,
+hardware coverage and rollback instructions. A preview is never labeled production
+ready solely because it compiles or passes CI.
