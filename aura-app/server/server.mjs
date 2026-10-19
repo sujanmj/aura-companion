@@ -4,8 +4,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { spawn } from "node:child_process";
-import { createInterface } from "node:readline";
+import { MemoryClient } from "./memory-client.mjs";
 import { ApprovalGate, permittedOrigin } from "./policy.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -16,54 +15,20 @@ const token =
 if (token.length < 24)
   throw new Error("AURA_SESSION_TOKEN must be at least 24 characters");
 const session = randomBytes(32).toString("base64url");
-const pending = new Map();
-let sequence = 0;
 let busy = false;
 let task = null;
-const worker = spawn(
-  process.env.AURA_PYTHON || "python3",
-  [path.join(ROOT, "server/memory_worker.py")],
-  { stdio: ["pipe", "pipe", "pipe"] },
-);
-worker.stderr.on("data", () => {}); // Provider diagnostics can contain sensitive details; do not relay them.
-function failed() {
-  for (const p of pending.values())
-    p.reject(new Error("Memory service unavailable"));
-  pending.clear();
-}
-worker.on("error", failed);
-worker.on("exit", failed);
-createInterface({ input: worker.stdout }).on("line", (line) => {
-  try {
-    const data = JSON.parse(line);
-    const p = pending.get(data.id);
-    if (p) {
-      pending.delete(data.id);
-      if (data.error) p.reject(new Error(data.error));
-      else p.resolve(data.result);
-    }
-  } catch {
-    /* Ignore non-protocol output. */
-  }
+const memoryClient = new MemoryClient({
+  command: process.env.AURA_PYTHON || "python3",
+  args: [path.join(ROOT, "server/memory_worker.py")],
 });
-function memory(op, data = {}) {
-  return new Promise((resolve, reject) => {
-    const id = ++sequence;
-    pending.set(id, { resolve, reject });
-    worker.stdin.write(JSON.stringify({ id, op, ...data }) + "\n", (err) => {
-      if (err) {
-        pending.delete(id);
-        reject(err);
-      }
-    });
-  });
-}
+const memory = (op, data = {}) => memoryClient.request(op, data);
 const configPath = path.join(ROOT, "mcp.local.json");
 const config = existsSync(configPath)
   ? JSON.parse(readFileSync(configPath, "utf8"))
   : { servers: {}, allowedTools: [] };
-const gate = new ApprovalGate({
-  enabled: process.env.AURA_ENABLE_ACTIONS === "1",
+const actionsEnabled = process.env.AURA_ENABLE_ACTIONS === "1";
+let gate = new ApprovalGate({
+  enabled: actionsEnabled,
   allowed: config.allowedTools || [],
 });
 let controller = null;
@@ -246,6 +211,10 @@ const server = http.createServer(async (req, res) => {
             "Actions are disabled. Configure an explicit MCP tool list and enable actions on the server.",
         });
       busy = true;
+      gate = new ApprovalGate({
+        enabled: actionsEnabled,
+        allowed: config.allowedTools || [],
+      });
       controller = new AbortController();
       task = { state: "running", response: "" };
       const timer = setTimeout(() => {
@@ -319,7 +288,7 @@ server.listen(port, "127.0.0.1", () => {
 function stop() {
   controller?.abort();
   gate.close();
-  worker.kill();
+  memoryClient.close();
   server.close();
   setTimeout(() => process.exit(0), 100).unref();
 }

@@ -41,3 +41,31 @@ test("origins are exact, never wildcard or arbitrary loopback ports", () => {
     assert.equal(permittedOrigin(origin, 8790), false);
   assert.equal(permittedOrigin("http://127.0.0.1:5173", 8790, true), true);
 });
+test("cancellation permanently rejects late tool requests", async () => {
+  const gate = new ApprovalGate({
+    enabled: true,
+    allowed: ["mcp__demo__write"],
+  });
+  const pending = gate.request("mcp__demo__write", { value: 1 });
+  const id = gate.list()[0].id;
+  gate.close();
+  assert.equal(await pending, false);
+  assert.equal(gate.resolve(id, true), false);
+  assert.equal(await gate.request("mcp__demo__write", { value: 2 }), false);
+  assert.deepEqual(gate.list(), []);
+});
+test("expiry denies approval even before the timer callback runs", async () => {
+  const gate = new ApprovalGate({
+    enabled: true,
+    allowed: ["mcp__demo__write"],
+    timeout: 10,
+  });
+  const pending = gate.request("mcp__demo__write", {});
+  const { id, expires } = gate.list()[0];
+  // Simulate a blocked event loop: the deadline passes before timers can fire.
+  while (Date.now() <= expires) {
+    /* intentionally synchronous */
+  }
+  gate.resolve(id, true);
+  assert.equal(await pending, false);
+});

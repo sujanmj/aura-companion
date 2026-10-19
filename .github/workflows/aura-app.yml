@@ -1,7 +1,7 @@
 name: AURA application
 on:
   push:
-    paths: ['aura-app/**', 'brain/**', 'companion/**', 'memory/**', '.github/workflows/aura-app.yml']
+    paths: ['aura-app/**', 'brain/**', 'companion/**', 'memory/**', 'cloud/**', 'config/**', 'scripts/test_openai_provider.py', 'scripts/test_cloud_sync.py', '.github/workflows/aura-app.yml']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -31,6 +31,10 @@ jobs:
         run: npm run macos:app
       - run: npm run lint
       - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: python3 ../scripts/test_openai_provider.py
+      - run: python3 ../scripts/test_cloud_sync.py
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
       - run: npm run bundle
       - uses: actions/upload-artifact@v4

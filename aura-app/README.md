@@ -61,7 +61,7 @@ For the quickest local start, keep `npm start` running in Terminal. Open the nat
 
 ## Raspberry Pi target
 
-The web companion now has a full-screen face mode at `http://127.0.0.1:8790/?kiosk=1`, with visible microphone and spoken-reply controls after login. The current ambient camera/microphone helper is macOS-only, so this is not yet a Pi camera-and-sensors release. See [`../docs/raspberry_pi.md`](../docs/raspberry_pi.md) for the target hardware and the remaining Pi integration work. Do not treat the current browser microphone as private on-device recognition: browser speech recognition may use a network service.
+The web companion now has a full-screen face mode at `http://127.0.0.1:8790/?kiosk=1`, with visible microphone and spoken-reply controls after login. Recognized speech is an editable draft by default, including in kiosk mode. The kiosk’s “Send recognized speech automatically” checkbox explicitly opts into immediate storage and configured-provider processing; it resets on reload. The current ambient camera/microphone helper is macOS-only, so this is not yet a Pi camera-and-sensors release. See [`../docs/raspberry_pi.md`](../docs/raspberry_pi.md) for the target hardware and the remaining Pi integration work. Do not treat the current browser microphone as private on-device recognition: browser speech recognition may use a network service.
 
 The companion brain can also use OpenAI's Responses API by setting `AURA_BRAIN_PROVIDER=openai`, `OPENAI_API_KEY`, and optionally `OPENAI_MODEL` in the server environment. The key stays in the Python server process and is never sent to the browser. This does not yet move memory to a cloud database; the existing companion store remains SQLite.
 
@@ -82,7 +82,7 @@ Create ignored `aura-app/mcp.local.json` using MCP servers you trust:
 
 Then launch with `AURA_ENABLE_ACTIONS=1 npm start`. This explicitly allows the configured server programs to start when a task runs. MCP server startup itself executes local code; install and inspect those programs yourself. The app does not install MCP servers or auto-discover them.
 
-Use the **Actions** tab to submit a task. Every allowed tool call displays its exact name and arguments and requires a fresh approve/deny click. Unknown tools and all built-in filesystem/shell tools remain denied. Approval expires after 60 seconds, cannot be replayed, and never applies to a different invocation. Tasks expire after two minutes and can be cancelled; cancellation cannot undo a tool action that already completed. Read operations also require approval: tool names are not reliable evidence of safety. External MCP servers remain responsible for their own side effects; this is not an OS sandbox. Action tasks use an AURA system prompt but **do not receive personal SQLite memories** or write task output into companion history in this preview.
+Use the **Actions** tab to submit a task. Every allowed tool call displays its exact name and arguments and requires a fresh approve/deny click. Unknown tools and all built-in filesystem/shell tools remain denied. Approval expires after 60 seconds, cannot be replayed, and never applies to a different invocation. Tasks expire after two minutes and can be cancelled; cancellation permanently closes that task’s approval gate, including requests arriving late. Each new task gets a new gate; cancellation cannot undo a tool action that already completed. Read operations also require approval: tool names are not reliable evidence of safety. External MCP servers remain responsible for their own side effects; this is not an OS sandbox. Action tasks use an AURA system prompt but **do not receive personal SQLite memories** or write task output into companion history in this preview.
 
 ## Security boundary
 
@@ -94,6 +94,8 @@ The Node server binds only `127.0.0.1`. Exact Host validation blocks DNS rebindi
 npm run build       # TypeScript plus production bundle
 npm run lint
 npm test            # real loopback server + temp SQLite, auth, origin/host, persistence, approvals
+npx playwright install chromium
+npm run test:e2e    # browser conversation, feedback, memory and kiosk consent
 python3 -m unittest discover -s tests -p 'test_*.py'
 npm run bundle      # tracked source + production UI, no keys or memory
 ```
@@ -109,3 +111,5 @@ Upstream: [adewaskar/jarvis](https://github.com/adewaskar/jarvis), inspected at 
 Reused/adapted MIT code: `src/scene/Core.tsx`, `src/scene/Particles.tsx`, `src/lib/audio.ts`, `src/lib/vad.ts`, and the Agent SDK bridge pattern. See [LICENSE-JARVIS](LICENSE-JARVIS) for the original copyright and permission notice. New AURA glue and UI are MIT-licensed under [LICENSE](LICENSE). The existing repository's original code remains under its original terms. No upstream `public/audio` or other demo media was copied.
 
 Architecture: browser → authenticated loopback Node bridge → private Python worker → existing AURA engine / SQLite / server-side Claude API. Optional actions use a separate, bounded Claude Agent SDK session with explicit MCP configuration and approval hooks.
+
+Memory worker failures fail closed: exit, missing Python, and a 45-second response deadline reject requests. Restart the app after checking configuration; failed writes are never automatically retried because SQLite may already have committed them.

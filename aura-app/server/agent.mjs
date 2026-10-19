@@ -3,10 +3,15 @@
 import { mkdir } from "node:fs/promises";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 export async function runAgent(prompt, config, gate, cwd, signal) {
+  signal.throwIfAborted();
   await mkdir(cwd, { recursive: true });
+  signal.throwIfAborted();
   let response = "";
   const abortController = new AbortController();
-  const abort = () => abortController.abort();
+  const abort = () => {
+    gate.close();
+    abortController.abort();
+  };
   signal.addEventListener("abort", abort, { once: true });
   try {
     for await (const message of query({
@@ -29,6 +34,7 @@ export async function runAgent(prompt, config, gate, cwd, signal) {
             {
               hooks: [
                 async (input) => {
+                  if (signal.aborted) gate.close();
                   const approved = await gate.request(
                     input.tool_name,
                     input.tool_input,
@@ -36,7 +42,8 @@ export async function runAgent(prompt, config, gate, cwd, signal) {
                   return {
                     hookSpecificOutput: {
                       hookEventName: "PreToolUse",
-                      permissionDecision: approved ? "allow" : "deny",
+                      permissionDecision:
+                        approved && !signal.aborted ? "allow" : "deny",
                       permissionDecisionReason: approved
                         ? "User approved this exact invocation."
                         : "AURA blocks unapproved actions.",

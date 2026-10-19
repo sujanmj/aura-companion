@@ -34,3 +34,6 @@ aura-app/release/
 *.tsbuildinfo
 
 aura-app/macos/AURACompanion/.build/
+
+aura-app/test-results/
+aura-app/playwright-report/

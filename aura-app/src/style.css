@@ -525,7 +525,7 @@ footer {
 .kiosk main > header,
 .kiosk .workspace > .panel,
 .kiosk main > footer,
-.kiosk .presence > p,
+.kiosk .presence > p:not(.kiosk-reply),
 .kiosk .theme-switch,
 .kiosk .connection {
   display: none;
@@ -541,14 +541,15 @@ footer {
   min-height: 100%;
 }
 .kiosk .presence {
-  height: 100dvh;
+  min-height: 100dvh;
+  height: auto;
   padding: 4vh 20px;
   justify-content: center;
   gap: 1.5vh;
 }
 .kiosk .orb {
-  width: min(72vmin, 760px);
-  height: min(72vmin, 760px);
+  width: min(42vmin, 440px);
+  height: min(42vmin, 440px);
   max-width: none;
 }
 .kiosk .orb-label {
@@ -685,4 +686,19 @@ footer {
   .panel-heading {
     padding: 20px 16px;
   }
+}
+
+.kiosk-controls form {
+  display: grid;
+  gap: 8px;
+  width: min(90vw, 560px);
+}
+.kiosk-controls textarea {
+  min-height: 70px;
+  padding: 12px;
+}
+.kiosk .presence > .kiosk-reply {
+  display: block;
+  max-width: 600px;
+  color: var(--text);
 }

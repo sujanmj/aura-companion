@@ -37,7 +37,8 @@ class OrbBoundary extends Component<
   }
 }
 function App() {
-  const kioskRequested = new URLSearchParams(window.location.search).get("kiosk") === "1";
+  const kioskRequested =
+    new URLSearchParams(window.location.search).get("kiosk") === "1";
   const [status, setStatus] = useState<Status | null>(null),
     [code, setCode] = useState(""),
     [error, setError] = useState(""),
@@ -48,6 +49,7 @@ function App() {
     [speaking, setSpeaking] = useState(false),
     [level, setLevel] = useState(0),
     [voice, setVoice] = useState(false),
+    [autoSend, setAutoSend] = useState(false),
     [theme, setTheme] = useState(localStorage.getItem("aura-theme") || "calm"),
     [tab, setTab] = useState("conversation"),
     [approvals, setApprovals] = useState<Approval[]>([]),
@@ -57,7 +59,17 @@ function App() {
     [taskInput, setTaskInput] = useState("");
   const stopListen = useRef<(() => void) | null>(null),
     bottom = useRef<HTMLDivElement>(null),
-    micStarting = useRef(false);
+    micStarting = useRef(false),
+    sending = useRef(false),
+    onTranscript = useRef<(value: string) => void>(() => {});
+  onTranscript.current = (value) => {
+    if (kioskRequested && autoSend) {
+      void sendMessage(value);
+    } else {
+      setText(value);
+      setError("Transcript ready — edit it, then send.");
+    }
+  };
   async function refresh() {
     const data = await api<Status>("status");
     setStatus(data);
@@ -100,7 +112,8 @@ function App() {
     }
   }
   async function sendMessage(message: string) {
-    if (!message.trim() || busy) return;
+    if (!message.trim() || sending.current) return;
+    sending.current = true;
     message = message.trim();
     setText("");
     setBusy(true);
@@ -132,6 +145,7 @@ function App() {
     } catch (e) {
       setError(String(e));
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   }
@@ -151,15 +165,7 @@ function App() {
     try {
       stopListen.current = await listen(
         status?.stt || false,
-        (value) => {
-          if (kioskRequested) {
-            setError("AURA heard you and is responding.");
-            void sendMessage(value);
-          } else {
-            setText(value);
-            setError("Transcript ready — edit it, then send.");
-          }
-        },
+        (value) => onTranscript.current(value),
         setLevel,
         setError,
       );
@@ -180,7 +186,9 @@ function App() {
     }
   }
   return (
-    <div className={"app " + theme + (kioskRequested && status ? " kiosk" : "")}>
+    <div
+      className={"app " + theme + (kioskRequested && status ? " kiosk" : "")}
+    >
       <aside className="sidebar">
         <a className="brand" href="/">
           <span className="brand-mark">✳</span>
@@ -211,7 +219,7 @@ function App() {
             Your conversations stay in your SQLite library. Cloud replies use
             your configured provider.
           </small>
-          <div className="version">AURA COMPANION / 0.2.0</div>
+          <div className="version">AURA COMPANION / 0.3.0</div>
         </div>
       </aside>
       <main>
@@ -234,7 +242,11 @@ function App() {
           <section className="presence">
             <div className="orb">
               <OrbBoundary>
-                <Scene active={busy || mic || speaking} level={level} theme={theme} />
+                <Scene
+                  active={busy || mic || speaking}
+                  level={level}
+                  theme={theme}
+                />
               </OrbBoundary>
               <div className="orb-label">A U R A</div>
             </div>
@@ -242,10 +254,10 @@ function App() {
               {speaking
                 ? "AURA IS SPEAKING"
                 : busy
-                ? "THINKING WITH YOU"
-                : mic
-                  ? "LISTENING FOR “HEY AURA”"
-                  : "HERE, WHEN YOU NEED ME"}
+                  ? "THINKING WITH YOU"
+                  : mic
+                    ? "LISTENING FOR “HEY AURA”"
+                    : "HERE, WHEN YOU NEED ME"}
             </span>
             <h2>
               A familiar presence.
@@ -268,6 +280,29 @@ function App() {
                 <label>
                   <input
                     type="checkbox"
+                    checked={autoSend}
+                    onChange={(e) => setAutoSend(e.target.checked)}
+                  />
+                  Send recognized speech automatically (saves it to memory and
+                  uses your configured brain)
+                </label>
+                {!autoSend && (
+                  <form onSubmit={send}>
+                    <label htmlFor="kiosk-message">Review your message</label>
+                    <textarea
+                      id="kiosk-message"
+                      value={text}
+                      maxLength={8000}
+                      onChange={(e) => setText(e.target.value)}
+                    />
+                    <button disabled={busy || !text.trim()}>
+                      Send message
+                    </button>
+                  </form>
+                )}
+                <label>
+                  <input
+                    type="checkbox"
                     checked={voice}
                     onChange={(e) => {
                       setVoice(e.target.checked);
@@ -278,7 +313,14 @@ function App() {
                 </label>
               </div>
             )}
-            {kioskRequested && error && <div className="kiosk-status">{error}</div>}
+            {kioskRequested && status && (
+              <p className="kiosk-reply" role="status">
+                {messages.filter((m) => m.role === "assistant").at(-1)?.message}
+              </p>
+            )}
+            {kioskRequested && error && (
+              <div className="kiosk-status">{error}</div>
+            )}
             <div className="theme-switch">
               <button
                 aria-pressed={theme === "calm"}
