@@ -53,6 +53,23 @@ def main():
                               'facts': store.get_memory_facts(user),
                               'conversations': list(reversed(store.get_recent_conversations(user, limit=30))),
                               'observations': list(reversed(store.get_latest_observations(user, limit=10)))}
+                elif op == 'update_fact':
+                    fact_id = req.get('fact_id')
+                    value = req.get('value')
+                    if not isinstance(fact_id, int) or isinstance(fact_id, bool) or fact_id <= 0:
+                        raise ValueError('Invalid memory fact')
+                    if not isinstance(value, str):
+                        raise ValueError('Invalid memory fact')
+                    if not store.update_memory_fact(user, fact_id, value):
+                        raise ValueError('Memory fact not found')
+                    result = {'ok': True}
+                elif op == 'delete_fact':
+                    fact_id = req.get('fact_id')
+                    if not isinstance(fact_id, int) or isinstance(fact_id, bool) or fact_id <= 0:
+                        raise ValueError('Invalid memory fact')
+                    if not store.delete_memory_fact(user, fact_id):
+                        raise ValueError('Memory fact not found')
+                    result = {'ok': True}
                 elif op == 'chat':
                     message = req['message']
                     if not isinstance(message, str) or not 0 < len(message.strip()) <= 8000:

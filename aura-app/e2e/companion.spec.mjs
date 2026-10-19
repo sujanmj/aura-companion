@@ -97,3 +97,65 @@ test("setup distinguishes local availability from live verification", async ({
     page.getByText("Available in this local session."),
   ).toBeVisible();
 });
+
+test("saved facts can be corrected and forgetting requires confirmation", async ({
+  page,
+}) => {
+  await connect(page);
+  await page
+    .getByLabel("Your message")
+    .fill("I am nervous about my presentation");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  const fact = page.locator(".fact").filter({ hasText: "recent anxiety" });
+  await expect(fact).toBeVisible();
+  await fact.getByRole("button", { name: "Correct" }).click();
+  await fact
+    .getByLabel("Correct what AURA remembers")
+    .fill("I prefer a calm check-in, not assumptions.");
+  await fact.getByRole("button", { name: "Save correction" }).click();
+  await expect(
+    page
+      .locator(".fact")
+      .filter({ hasText: "I prefer a calm check-in, not assumptions." }),
+  ).toBeVisible();
+  let dialogMessage = "";
+  page.once("dialog", (dialog) => {
+    dialogMessage = dialog.message();
+    void dialog.dismiss();
+  });
+  await page
+    .locator(".fact")
+    .filter({ hasText: "recent anxiety" })
+    .getByRole("button", { name: "Forget" })
+    .click();
+  expect(dialogMessage).toContain(
+    "Your original messages remain in chat history",
+  );
+  await expect(
+    page
+      .locator(".fact")
+      .filter({ hasText: "I prefer a calm check-in, not assumptions." }),
+  ).toBeVisible();
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page
+    .locator(".fact")
+    .filter({ hasText: "recent anxiety" })
+    .getByRole("button", { name: "Forget" })
+    .click();
+  await expect(
+    page.locator(".fact").filter({ hasText: "recent anxiety" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("status")).toContainText("Memory forgotten");
+  await page.getByRole("button", { name: "Conversation 01" }).click();
+  await page
+    .getByLabel("Your message")
+    .fill("I am nervous about my presentation again");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  await expect(
+    page.locator(".fact").filter({ hasText: "recent anxiety" }),
+  ).toHaveCount(0);
+});

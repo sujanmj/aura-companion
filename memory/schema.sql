@@ -32,6 +32,15 @@ CREATE TABLE IF NOT EXISTS memory_facts (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- Forgetting an inferred summary also prevents automatic extraction from saving it again.
+CREATE TABLE IF NOT EXISTS forgotten_memory_facts (
+    user_id INTEGER NOT NULL,
+    fact_key TEXT NOT NULL,
+    forgotten_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(user_id, fact_key),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS observations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

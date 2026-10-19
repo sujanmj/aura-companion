@@ -702,3 +702,22 @@ footer {
   max-width: 600px;
   color: var(--text);
 }
+
+.memory-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.memory-controls button {
+  color: var(--accent);
+  font-size: 12px;
+}
+.fact form {
+  display: grid;
+  gap: 9px;
+  margin-top: 10px;
+}
+.fact form textarea {
+  min-height: 84px;
+  padding: 10px;
+}

@@ -131,6 +131,56 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     ).json();
     assert.equal(status.conversations.length, 2);
     assert.ok(status.facts.some((f) => f.fact_key === "recent_anxiety"));
+    const anxietyFact = status.facts.find(
+      (f) => f.fact_key === "recent_anxiety",
+    );
+    assert.ok(Number.isInteger(anxietyFact.id));
+    assert.equal(
+      (
+        await post(
+          "fact/update",
+          {
+            fact_id: anxietyFact.id,
+            value: "I prefer calm encouragement before interviews.",
+          },
+          cookie,
+        )
+      ).status,
+      200,
+    );
+    const corrected = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.equal(
+      corrected.facts.find((f) => f.id === anxietyFact.id).fact_value,
+      "I prefer calm encouragement before interviews.",
+    );
+    assert.equal(
+      corrected.facts.find((f) => f.id === anxietyFact.id).source,
+      "user_correction",
+    );
+    assert.equal(
+      (
+        await post(
+          "fact/update",
+          { fact_id: anxietyFact.id, value: "  " },
+          cookie,
+        )
+      ).status,
+      400,
+    );
+    assert.equal(
+      (await post("fact/delete", { fact_id: anxietyFact.id }, cookie)).status,
+      200,
+    );
+    assert.equal(
+      (await post("fact/delete", { fact_id: anxietyFact.id }, cookie)).status,
+      404,
+    );
+    assert.equal(
+      (await post("fact/delete", { fact_id: 0 }, cookie)).status,
+      400,
+    );
     assert.equal(status.actions, false);
     const ambient = await post(
       "ambient",

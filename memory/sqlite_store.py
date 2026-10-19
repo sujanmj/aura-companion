@@ -79,6 +79,17 @@ class AuraMemoryStore:
         confidence: float = 0.7,
         source: str = "conversation",
     ) -> None:
+        suppressed = self.conn.execute(
+            "SELECT 1 FROM forgotten_memory_facts WHERE user_id=? AND fact_key=?",
+            (user_id, fact_key),
+        ).fetchone()
+        if suppressed and source == "conversation":
+            return
+        if source != "conversation":
+            self.conn.execute(
+                "DELETE FROM forgotten_memory_facts WHERE user_id=? AND fact_key=?",
+                (user_id, fact_key),
+            )
         self.conn.execute(
             """
             INSERT INTO memory_facts (user_id, fact_key, fact_value, confidence, source)
@@ -166,7 +177,7 @@ class AuraMemoryStore:
     def get_memory_facts(self, user_id: int) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """
-            SELECT fact_key, fact_value, confidence, source, last_seen_at
+            SELECT id, fact_key, fact_value, confidence, source, last_seen_at
             FROM memory_facts
             WHERE user_id = ?
             ORDER BY last_seen_at DESC
@@ -174,6 +185,37 @@ class AuraMemoryStore:
             (user_id,),
         )
         return [dict(row) for row in cur.fetchall()]
+
+    def update_memory_fact(self, user_id: int, fact_id: int, fact_value: str) -> bool:
+        value = fact_value.strip()
+        if not value or len(value) > 2000:
+            raise ValueError("fact value must contain 1–2000 characters")
+        cur = self.conn.execute(
+            """UPDATE memory_facts
+               SET fact_value=?, source='user_correction', last_seen_at=CURRENT_TIMESTAMP
+               WHERE id=? AND user_id=?""",
+            (value, fact_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def delete_memory_fact(self, user_id: int, fact_id: int) -> bool:
+        row = self.conn.execute(
+            "SELECT fact_key FROM memory_facts WHERE id=? AND user_id=?",
+            (fact_id, user_id),
+        ).fetchone()
+        if not row:
+            return False
+        with self.conn:
+            self.conn.execute(
+                "INSERT INTO forgotten_memory_facts (user_id, fact_key) VALUES (?, ?) "
+                "ON CONFLICT(user_id, fact_key) DO UPDATE SET forgotten_at=CURRENT_TIMESTAMP",
+                (user_id, row["fact_key"]),
+            )
+            self.conn.execute(
+                "DELETE FROM memory_facts WHERE id=? AND user_id=?", (fact_id, user_id)
+            )
+        return True
 
     def get_latest_observations(self, user_id: int, limit: int = 10) -> list[dict[str, Any]]:
         cur = self.conn.execute(

@@ -13,7 +13,7 @@ type Message = {
 type Status = {
   provider: string;
   model: string;
-  facts: { fact_key: string; fact_value: string }[];
+  facts: { id: number; fact_key: string; fact_value: string }[];
   conversations: Message[];
   actions: boolean;
   stt: boolean;
@@ -64,7 +64,9 @@ function App() {
       null,
     ),
     [taskInput, setTaskInput] = useState(""),
-    [readiness, setReadiness] = useState<Readiness | null>(null);
+    [readiness, setReadiness] = useState<Readiness | null>(null),
+    [editingFact, setEditingFact] = useState<number | null>(null),
+    [factDraft, setFactDraft] = useState("");
   const stopListen = useRef<(() => void) | null>(null),
     bottom = useRef<HTMLDivElement>(null),
     micStarting = useRef(false),
@@ -580,9 +582,84 @@ function App() {
                   <p>No facts yet. Start a conversation.</p>
                 ) : (
                   status.facts.map((f) => (
-                    <article className="fact" key={f.fact_key}>
+                    <article className="fact" key={f.id}>
                       <small>{f.fact_key.replaceAll("_", " ")}</small>
-                      <p>{f.fact_value}</p>
+                      {editingFact === f.id ? (
+                        <form
+                          onSubmit={async (event) => {
+                            event.preventDefault();
+                            try {
+                              await api("fact/update", {
+                                fact_id: f.id,
+                                value: factDraft,
+                              });
+                              await refresh();
+                              setEditingFact(null);
+                              setError("Memory corrected.");
+                            } catch (e) {
+                              setError(String(e));
+                            }
+                          }}
+                        >
+                          <label htmlFor={"fact-" + f.id}>
+                            Correct what AURA remembers
+                          </label>
+                          <textarea
+                            id={"fact-" + f.id}
+                            value={factDraft}
+                            maxLength={2000}
+                            onChange={(event) =>
+                              setFactDraft(event.target.value)
+                            }
+                            required
+                          />
+                          <button
+                            className="primary"
+                            disabled={!factDraft.trim()}
+                          >
+                            Save correction
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingFact(null)}
+                          >
+                            Cancel
+                          </button>
+                        </form>
+                      ) : (
+                        <>
+                          <p>{f.fact_value}</p>
+                          <div className="memory-controls">
+                            <button
+                              onClick={() => {
+                                setEditingFact(f.id);
+                                setFactDraft(f.fact_value);
+                              }}
+                            >
+                              Correct
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (
+                                  !window.confirm(
+                                    "Forget this memory? AURA removes this saved summary and will not automatically save it again. Your original messages remain in chat history and may still inform recent context.",
+                                  )
+                                )
+                                  return;
+                                try {
+                                  await api("fact/delete", { fact_id: f.id });
+                                  await refresh();
+                                  setError("Memory forgotten.");
+                                } catch (e) {
+                                  setError(String(e));
+                                }
+                              }}
+                            >
+                              Forget
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </article>
                   ))
                 )}

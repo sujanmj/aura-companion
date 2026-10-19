@@ -197,6 +197,33 @@ const server = http.createServer(async (req, res) => {
         gate.close();
         return json(res, 200, { ok: true });
       }
+      if (
+        url.pathname === "/api/fact/update" ||
+        url.pathname === "/api/fact/delete"
+      ) {
+        if (!Number.isSafeInteger(data.fact_id) || data.fact_id <= 0)
+          return json(res, 400, { error: "Choose a valid memory fact." });
+        if (
+          url.pathname.endsWith("/update") &&
+          (typeof data.value !== "string" ||
+            !data.value.trim() ||
+            data.value.length > 2000)
+        )
+          return json(res, 400, {
+            error: "A correction must contain 1–2000 characters.",
+          });
+        try {
+          const result = await memory(
+            url.pathname.endsWith("/update") ? "update_fact" : "delete_fact",
+            data,
+          );
+          return json(res, 200, result);
+        } catch {
+          return json(res, 404, {
+            error: "That memory fact could not be found.",
+          });
+        }
+      }
       if (url.pathname === "/api/feedback")
         return json(
           res,
