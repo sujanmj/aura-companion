@@ -1,0 +1,320 @@
+import http from "node:http";
+import { randomBytes, timingSafeEqual } from "node:crypto";
+import { readFileSync, existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { spawn } from "node:child_process";
+import { createInterface } from "node:readline";
+import { ApprovalGate, permittedOrigin } from "./policy.mjs";
+
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const port = Number(process.env.AURA_PORT || 8790);
+const host = `127.0.0.1:${port}`;
+const token =
+  process.env.AURA_SESSION_TOKEN || randomBytes(24).toString("base64url");
+if (token.length < 24)
+  throw new Error("AURA_SESSION_TOKEN must be at least 24 characters");
+const session = randomBytes(32).toString("base64url");
+const pending = new Map();
+let sequence = 0;
+let busy = false;
+let task = null;
+const worker = spawn(
+  process.env.AURA_PYTHON || "python3",
+  [path.join(ROOT, "server/memory_worker.py")],
+  { stdio: ["pipe", "pipe", "pipe"] },
+);
+worker.stderr.on("data", () => {}); // Provider diagnostics can contain sensitive details; do not relay them.
+function failed() {
+  for (const p of pending.values())
+    p.reject(new Error("Memory service unavailable"));
+  pending.clear();
+}
+worker.on("error", failed);
+worker.on("exit", failed);
+createInterface({ input: worker.stdout }).on("line", (line) => {
+  try {
+    const data = JSON.parse(line);
+    const p = pending.get(data.id);
+    if (p) {
+      pending.delete(data.id);
+      if (data.error) p.reject(new Error(data.error));
+      else p.resolve(data.result);
+    }
+  } catch {
+    /* Ignore non-protocol output. */
+  }
+});
+function memory(op, data = {}) {
+  return new Promise((resolve, reject) => {
+    const id = ++sequence;
+    pending.set(id, { resolve, reject });
+    worker.stdin.write(JSON.stringify({ id, op, ...data }) + "\n", (err) => {
+      if (err) {
+        pending.delete(id);
+        reject(err);
+      }
+    });
+  });
+}
+const configPath = path.join(ROOT, "mcp.local.json");
+const config = existsSync(configPath)
+  ? JSON.parse(readFileSync(configPath, "utf8"))
+  : { servers: {}, allowedTools: [] };
+const gate = new ApprovalGate({
+  enabled: process.env.AURA_ENABLE_ACTIONS === "1",
+  allowed: config.allowedTools || [],
+});
+let controller = null;
+function safeEqual(a, b) {
+  const x = Buffer.from(a || ""),
+    y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+async function body(req, max = 32768) {
+  const chunks = [];
+  let n = 0;
+  for await (const chunk of req) {
+    n += chunk.length;
+    if (n > max)
+      throw Object.assign(new Error("Request too large"), { status: 413 });
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+function json(res, status, data) {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data));
+}
+async function voice(req, res, route) {
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (!key)
+    return json(res, 503, {
+      error: "ElevenLabs is not configured; use browser voice.",
+    });
+  let url, options;
+  if (route === "stt") {
+    const bytes = await body(req, 8 * 1024 * 1024);
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([bytes], { type: req.headers["content-type"] || "audio/webm" }),
+      "speech.webm",
+    );
+    form.append("model_id", "scribe_v1");
+    url = "https://api.elevenlabs.io/v1/speech-to-text";
+    options = { body: form };
+  } else {
+    const data = JSON.parse((await body(req)).toString());
+    if (typeof data.text !== "string" || data.text.length > 8000)
+      return json(res, 400, { error: "Invalid speech text" });
+    const voiceId = process.env.AURA_VOICE_ID;
+    if (!voiceId || !/^[a-zA-Z0-9]+$/.test(voiceId))
+      return json(res, 503, { error: "Set AURA_VOICE_ID for cloud speech." });
+    url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+    options = {
+      body: JSON.stringify({
+        text: data.text,
+        model_id: "eleven_multilingual_v2",
+      }),
+      headers: { "content-type": "application/json" },
+    };
+  }
+  const response = await fetch(url, {
+    ...options,
+    method: "POST",
+    headers: { ...options.headers, "xi-api-key": key },
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!response.ok)
+    return json(res, 502, { error: "Voice provider unavailable" });
+  const bytes = Buffer.from(await response.arrayBuffer());
+  res.writeHead(200, {
+    "Content-Type": route === "stt" ? "application/json" : "audio/mpeg",
+  });
+  res.end(bytes);
+}
+const server = http.createServer(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+  );
+  try {
+    if (req.headers.host !== host)
+      return json(res, 403, { error: "Invalid host" });
+    const url = new URL(req.url, `http://${host}`);
+    if (url.pathname.startsWith("/api/")) {
+      if (
+        req.method !== "GET" &&
+        !permittedOrigin(req.headers.origin, port, process.env.AURA_DEV === "1")
+      )
+        return json(res, 403, { error: "Invalid origin" });
+      if (
+        req.headers.origin &&
+        !permittedOrigin(req.headers.origin, port, process.env.AURA_DEV === "1")
+      )
+        return json(res, 403, { error: "Invalid origin" });
+      if (req.method === "POST" && url.pathname === "/api/login") {
+        const data = JSON.parse((await body(req)).toString());
+        if (!safeEqual(data.token, token))
+          return json(res, 401, { error: "Incorrect session code" });
+        res.setHeader(
+          "Set-Cookie",
+          `aura_session=${session}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200`,
+        );
+        return json(res, 200, { ok: true });
+      }
+      const cookie = (req.headers.cookie || "")
+        .split(";")
+        .map((s) => s.trim())
+        .find((s) => s.startsWith("aura_session="))
+        ?.slice(13);
+      if (!safeEqual(cookie, session))
+        return json(res, 401, {
+          error: "Enter the session code shown in your terminal.",
+        });
+      if (req.method === "GET" && url.pathname === "/api/status")
+        return json(res, 200, {
+          ...(await memory("status")),
+          actions: gate.enabled,
+          stt: !!process.env.ELEVENLABS_API_KEY,
+          tts: !!(process.env.ELEVENLABS_API_KEY && process.env.AURA_VOICE_ID),
+        });
+      if (req.method === "GET" && url.pathname === "/api/task")
+        return json(res, 200, { task, approvals: gate.list() });
+      if (req.method !== "POST") return json(res, 404, { error: "Not found" });
+      if (["/api/stt", "/api/tts"].includes(url.pathname))
+        return await voice(req, res, url.pathname.slice(5));
+      const data = JSON.parse((await body(req)).toString());
+      if (url.pathname === "/api/approve")
+        return json(res, gate.resolve(data.id, data.approved) ? 200 : 404, {
+          ok: true,
+        });
+      if (url.pathname === "/api/cancel") {
+        controller?.abort();
+        gate.close();
+        return json(res, 200, { ok: true });
+      }
+      if (url.pathname === "/api/feedback")
+        return json(
+          res,
+          200,
+          await memory("feedback", {
+            response_id: data.response_id,
+            rating: data.rating,
+            note: data.note,
+          }),
+        );
+      if (!["/api/chat", "/api/task"].includes(url.pathname))
+        return json(res, 404, { error: "Not found" });
+      if (
+        typeof data.message !== "string" ||
+        !data.message.trim() ||
+        data.message.length > 8000
+      )
+        return json(res, 400, {
+          error: "Message must contain 1–8000 characters",
+        });
+      if (busy)
+        return json(res, 409, { error: "AURA is finishing another request." });
+      if (url.pathname === "/api/chat") {
+        busy = true;
+        try {
+          return json(
+            res,
+            200,
+            await memory("chat", { message: data.message }),
+          );
+        } finally {
+          busy = false;
+        }
+      }
+      if (!gate.enabled)
+        return json(res, 403, {
+          error:
+            "Actions are disabled. Configure an explicit MCP tool list and enable actions on the server.",
+        });
+      busy = true;
+      controller = new AbortController();
+      task = { state: "running", response: "" };
+      const timer = setTimeout(() => {
+        controller.abort();
+        gate.close();
+      }, 120000);
+      import("./agent.mjs")
+        .then(({ runAgent }) =>
+          runAgent(
+            data.message,
+            config,
+            gate,
+            path.join(ROOT, ".agent-work"),
+            controller.signal,
+          ),
+        )
+        .then((response) => {
+          task = { state: "done", response };
+        })
+        .catch(() => {
+          task = {
+            state: "failed",
+            response:
+              "Task failed or was cancelled. Check Claude Code login and MCP configuration.",
+          };
+        })
+        .finally(() => {
+          clearTimeout(timer);
+          busy = false;
+          gate.close();
+        });
+      return json(res, 202, { ok: true });
+    }
+    if (req.method !== "GET")
+      return json(res, 405, { error: "Method not allowed" });
+    const relative =
+      url.pathname === "/"
+        ? "index.html"
+        : decodeURIComponent(url.pathname).slice(1);
+    const base = path.join(ROOT, "dist");
+    const file = path.resolve(base, relative);
+    if (!file.startsWith(base + path.sep))
+      return json(res, 404, { error: "Not found" });
+    const bytes = await readFile(file).catch(() => null);
+    if (!bytes)
+      return json(res, 404, {
+        error: "Build the app first with npm run build.",
+      });
+    const mime =
+      {
+        ".html": "text/html",
+        ".js": "text/javascript",
+        ".css": "text/css",
+        ".svg": "image/svg+xml",
+      }[path.extname(file)] || "application/octet-stream";
+    res.writeHead(200, { "Content-Type": mime });
+    res.end(bytes);
+  } catch (error) {
+    json(res, error.status || 400, {
+      error: "Request failed. Check input and local service configuration.",
+    });
+  }
+});
+server.requestTimeout = 45000;
+server.headersTimeout = 10000;
+server.listen(port, "127.0.0.1", () => {
+  console.log(
+    `AURA Companion · http://${host}\nSession code: ${token}\nActions: ${gate.enabled ? "explicit tools, each requires approval" : "disabled"}`,
+  );
+});
+function stop() {
+  controller?.abort();
+  gate.close();
+  worker.kill();
+  server.close();
+  setTimeout(() => process.exit(0), 100).unref();
+}
+process.on("SIGINT", stop);
+process.on("SIGTERM", stop);

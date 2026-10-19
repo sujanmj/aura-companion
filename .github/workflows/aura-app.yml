@@ -1,0 +1,37 @@
+name: AURA application
+on:
+  push:
+    paths: ['aura-app/**', 'brain/**', 'companion/**', 'memory/**', '.github/workflows/aura-app.yml']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: aura-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: aura-app/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm run lint
+      - run: npm test
+      - run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - run: npm run bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AURA-Companion-0.2.0-preview-${{ matrix.os }}
+          path: aura-app/release/*
