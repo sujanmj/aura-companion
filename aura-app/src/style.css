@@ -517,6 +517,84 @@ footer {
   font-size: 48px;
   color: var(--accent);
 }
+.kiosk {
+  min-height: 100dvh;
+  overflow: hidden;
+}
+.kiosk .sidebar,
+.kiosk main > header,
+.kiosk .workspace > .panel,
+.kiosk main > footer,
+.kiosk .presence > p,
+.kiosk .theme-switch,
+.kiosk .connection {
+  display: none;
+}
+.kiosk main {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  padding: 0;
+}
+.kiosk .workspace {
+  display: block;
+  min-height: 100%;
+}
+.kiosk .presence {
+  height: 100dvh;
+  padding: 4vh 20px;
+  justify-content: center;
+  gap: 1.5vh;
+}
+.kiosk .orb {
+  width: min(72vmin, 760px);
+  height: min(72vmin, 760px);
+  max-width: none;
+}
+.kiosk .orb-label {
+  bottom: 8%;
+  font-size: clamp(12px, 2vmin, 20px);
+}
+.kiosk .presence > .eyebrow {
+  color: var(--accent);
+  font-size: clamp(11px, 1.8vmin, 18px);
+}
+.kiosk .presence h2 {
+  font-size: clamp(18px, 3vmin, 32px);
+  margin: 0;
+}
+.kiosk .presence h2 br {
+  display: none;
+}
+.kiosk-controls {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 1vh;
+}
+.kiosk-mic {
+  min-width: 190px;
+  border-color: var(--accent);
+  color: var(--accent);
+  border-radius: 24px;
+  padding: 12px 24px;
+}
+.kiosk-mic.active {
+  color: #10151d;
+  background: var(--accent);
+}
+.kiosk-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #aeb4c2;
+  font-size: 13px;
+}
+.kiosk-status {
+  max-width: min(90vw, 560px);
+  color: #aeb4c2;
+  font-size: 13px;
+}
 @media (max-width: 1050px) {
   .sidebar {
     width: 180px;

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ from runtime.heartbeat import RuntimeHeartbeat
 from safety.confirmation_engine import ConfirmationEngine
 from safety.escalation_engine import EscalationEngine
 from safety.safety_engine import SafetyEngine
+from cloud.supabase_sync import sync_sensor_event
 
 DEFAULT_USER_NAME = "Sujan M J"
 DEFAULT_PREFERRED_NAME = "Sujan"
@@ -120,6 +122,12 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
         metadata=payload.get("metadata"),
     )
     published["room"] = payload.get("room")
+    threading.Thread(
+        target=sync_sensor_event,
+        args=(published,),
+        name="aura-cloud-sensor-sync",
+        daemon=True,
+    ).start()
 
     incident_service = IncidentService(store)
     incident = incident_service.create_or_get_for_event(user_id, published)

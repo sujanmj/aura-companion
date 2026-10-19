@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import sqlite3
 import sys
+import threading
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -13,6 +14,7 @@ from config.env_loader import load_env_file
 from memory.sqlite_store import AuraMemoryStore, DEFAULT_DB_PATH
 from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
+from cloud.supabase_sync import sync_conversation
 
 
 def main():
@@ -56,6 +58,17 @@ def main():
                     actions = extractor.process_user_message(user, message.strip())
                     result = engine.generate_reaction(user)
                     result['id'] = store.add_conversation(user, role='assistant', message=result['response'], emotion_tag=result['tone'])
+                    rows = store.conn.execute(
+                        "SELECT id, role, message, created_at FROM conversation_logs "
+                        "WHERE user_id=? ORDER BY id DESC LIMIT 2", (user,)
+                    ).fetchall()
+                    for row in reversed(rows):
+                        threading.Thread(
+                            target=sync_conversation,
+                            args=(row['id'], row['role'], row['message'], row['created_at']),
+                            name='aura-cloud-chat-sync',
+                            daemon=True,
+                        ).start()
                     result['memory_actions'] = actions
                     result['provider'] = os.environ.get('AURA_BRAIN_PROVIDER', 'local') if 'LLM provider generated response' in result['reasons'] else 'local'
                 elif op == 'feedback':

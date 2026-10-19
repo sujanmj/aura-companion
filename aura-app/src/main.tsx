@@ -37,6 +37,7 @@ class OrbBoundary extends Component<
   }
 }
 function App() {
+  const kioskRequested = new URLSearchParams(window.location.search).get("kiosk") === "1";
   const [status, setStatus] = useState<Status | null>(null),
     [code, setCode] = useState(""),
     [error, setError] = useState(""),
@@ -44,6 +45,7 @@ function App() {
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false),
     [mic, setMic] = useState(false),
+    [speaking, setSpeaking] = useState(false),
     [level, setLevel] = useState(0),
     [voice, setVoice] = useState(false),
     [theme, setTheme] = useState(localStorage.getItem("aura-theme") || "calm"),
@@ -97,10 +99,9 @@ function App() {
       setError(String(e));
     }
   }
-  async function send(event: React.FormEvent) {
-    event.preventDefault();
-    if (!text.trim() || busy) return;
-    const message = text.trim();
+  async function sendMessage(message: string) {
+    if (!message.trim() || busy) return;
+    message = message.trim();
     setText("");
     setBusy(true);
     setError("");
@@ -122,12 +123,21 @@ function App() {
       ]);
       const data = await api<Status>("status");
       setStatus(data);
-      if (voice) void speak(result.response, status?.tts || false);
+      if (voice) {
+        setSpeaking(true);
+        void speak(result.response, status?.tts || false).finally(() =>
+          setSpeaking(false),
+        );
+      }
     } catch (e) {
       setError(String(e));
     } finally {
       setBusy(false);
     }
+  }
+  function send(event: React.FormEvent) {
+    event.preventDefault();
+    void sendMessage(text);
   }
   async function toggleMic() {
     if (micStarting.current) return;
@@ -142,8 +152,13 @@ function App() {
       stopListen.current = await listen(
         status?.stt || false,
         (value) => {
-          setText(value);
-          setError("Transcript ready — edit it, then send.");
+          if (kioskRequested) {
+            setError("AURA heard you and is responding.");
+            void sendMessage(value);
+          } else {
+            setText(value);
+            setError("Transcript ready — edit it, then send.");
+          }
         },
         setLevel,
         setError,
@@ -165,7 +180,7 @@ function App() {
     }
   }
   return (
-    <div className={"app " + theme}>
+    <div className={"app " + theme + (kioskRequested && status ? " kiosk" : "")}>
       <aside className="sidebar">
         <a className="brand" href="/">
           <span className="brand-mark">✳</span>
@@ -219,12 +234,14 @@ function App() {
           <section className="presence">
             <div className="orb">
               <OrbBoundary>
-                <Scene active={busy || mic} level={level} theme={theme} />
+                <Scene active={busy || mic || speaking} level={level} theme={theme} />
               </OrbBoundary>
               <div className="orb-label">A U R A</div>
             </div>
             <span className="eyebrow">
-              {busy
+              {speaking
+                ? "AURA IS SPEAKING"
+                : busy
                 ? "THINKING WITH YOU"
                 : mic
                   ? "LISTENING FOR “HEY AURA”"
@@ -238,6 +255,30 @@ function App() {
               Talk through your day, make a little room for your thoughts, or
               find your next step.
             </p>
+            {kioskRequested && status && (
+              <div className="kiosk-controls">
+                <button
+                  type="button"
+                  className={mic ? "kiosk-mic active" : "kiosk-mic"}
+                  aria-pressed={mic}
+                  onClick={() => void toggleMic()}
+                >
+                  {mic ? "Pause listening" : "Start listening"}
+                </button>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={voice}
+                    onChange={(e) => {
+                      setVoice(e.target.checked);
+                      if (!e.target.checked) silence();
+                    }}
+                  />
+                  Speak replies
+                </label>
+              </div>
+            )}
+            {kioskRequested && error && <div className="kiosk-status">{error}</div>}
             <div className="theme-switch">
               <button
                 aria-pressed={theme === "calm"}
@@ -379,7 +420,10 @@ function App() {
                   <button
                     className="stop-voice"
                     type="button"
-                    onClick={silence}
+                    onClick={() => {
+                      silence();
+                      setSpeaking(false);
+                    }}
                   >
                     Stop speaking
                   </button>

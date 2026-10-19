@@ -59,6 +59,12 @@ Pause stops the microphone, camera, recognition task, and speech. Closing the br
 
 For the quickest local start, keep `npm start` running in Terminal. Open the native app from `aura-app/release/AURA Companion.app`, paste the current session code, then start ambient mode. Use your existing personal database with `AURA_DB_PATH` before starting the server if it is stored elsewhere.
 
+## Raspberry Pi target
+
+The web companion now has a full-screen face mode at `http://127.0.0.1:8790/?kiosk=1`, with visible microphone and spoken-reply controls after login. The current ambient camera/microphone helper is macOS-only, so this is not yet a Pi camera-and-sensors release. See [`../docs/raspberry_pi.md`](../docs/raspberry_pi.md) for the target hardware and the remaining Pi integration work. Do not treat the current browser microphone as private on-device recognition: browser speech recognition may use a network service.
+
+The companion brain can also use OpenAI's Responses API by setting `AURA_BRAIN_PROVIDER=openai`, `OPENAI_API_KEY`, and optionally `OPENAI_MODEL` in the server environment. The key stays in the Python server process and is never sent to the browser. This does not yet move memory to a cloud database; the existing companion store remains SQLite.
+
 ## Optional automation — disabled by default
 
 The SDK bridge follows the Jarvis architecture but intentionally does **not** load `~/.claude.json`, project settings, filesystem tools, shell tools, or the old broad tool-name heuristics. Native SDK tools are disabled (`tools: []`). Use Claude Code installed and authenticated locally for this optional mode; this authentication is separate from the companion's API key.

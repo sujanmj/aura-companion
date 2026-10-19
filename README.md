@@ -1,5 +1,7 @@
 # AURA Companion
 
+The existing AURA companion and sensor-event engine are being prepared for Raspberry Pi 5 deployment. See [`docs/raspberry_pi.md`](docs/raspberry_pi.md) for the hardware target, optional Supabase conversation/sensor sync, and what still requires the actual Pi and sensor modules. The current repository includes simulated sensor event handling; it does not yet contain GPIO drivers for physical gas, distance, fire, or water modules.
+
 ## New Mac-compatible companion interface
 
 The additive [AURA application](aura-app/README.md) provides a React/Three.js interface, the original SQLite memory and Claude integration, and an optional native Mac ambient mode that listens locally for “Hey AURA”, direct questions, and explicit support phrases. External MCP actions remain opt-in with per-call approvals. Start with `cd aura-app`, `npm ci --ignore-scripts`, `npm run build`, and `npm start`. Open `http://127.0.0.1:8790`. The original Windows and sensor runtime below is preserved.

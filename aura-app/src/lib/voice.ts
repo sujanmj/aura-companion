@@ -47,7 +47,10 @@ export async function listen(
     if (Date.now() < armedUntil) {
       onText(text);
       armedUntil = 0;
+      return;
     }
+    if (/\b(?:i need help|i need support|i feel overwhelmed|i feel panicked|i feel unsafe|i can.t cope)\b/i.test(text))
+      onText(text);
   };
   try {
     if (cloud) {
@@ -130,11 +133,13 @@ export async function listen(
 }
 let currentAudio: HTMLAudioElement | undefined;
 let speechEpoch = 0;
+let finishSpeech = () => {};
 export function silence() {
   speechEpoch++;
   speechSynthesis.cancel();
   currentAudio?.pause();
   currentAudio = undefined;
+  finishSpeech();
 }
 export async function speak(text: string, cloud: boolean) {
   silence();
@@ -154,9 +159,21 @@ export async function speak(text: string, cloud: boolean) {
       }
       const audio = new Audio(url);
       currentAudio = audio;
-      audio.onended = () => URL.revokeObjectURL(url);
-      audio.onerror = () => URL.revokeObjectURL(url);
-      await audio.play();
+      await new Promise<void>((resolve) => {
+        let finished = false;
+        const done = () => {
+          if (finished) return;
+          finished = true;
+          URL.revokeObjectURL(url);
+          if (currentAudio === audio) currentAudio = undefined;
+          finishSpeech = () => {};
+          resolve();
+        };
+        finishSpeech = done;
+        audio.onended = done;
+        audio.onerror = done;
+        void audio.play().catch(done);
+      });
       return;
     } catch {
       /* browser speech fallback */
@@ -165,5 +182,17 @@ export async function speak(text: string, cloud: boolean) {
   if (epoch !== speechEpoch) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = 0.97;
-  speechSynthesis.speak(utterance);
+  await new Promise<void>((resolve) => {
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      finishSpeech = () => {};
+      resolve();
+    };
+    finishSpeech = done;
+    utterance.onend = done;
+    utterance.onerror = done;
+    speechSynthesis.speak(utterance);
+  });
 }
