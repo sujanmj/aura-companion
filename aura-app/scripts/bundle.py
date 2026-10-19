@@ -9,7 +9,7 @@ if not (APP/'dist/index.html').exists():
     raise SystemExit('Run npm run build first')
 out=APP/'release'
 out.mkdir(exist_ok=True)
-archive=out/'AURA-Companion-0.2.0-preview.zip'
+archive=out/'AURA-Companion-0.3.0-preview.zip'
 files=subprocess.check_output(['git','ls-files','-z'],cwd=ROOT).decode().split('\0')
 # Only tracked source, excluding CI metadata. Builds add the compiled frontend.
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
@@ -19,6 +19,10 @@ with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
         p=ROOT/name
         if p.is_file():
             z.write(p,'AURA-Companion/'+name)
+    native_app = APP / 'release' / 'AURA Companion.app'
+    if native_app.exists():
+        for p in native_app.rglob('*'):
+            if p.is_file(): z.write(p, 'AURA-Companion/aura-app/release/' + str(p.relative_to(APP / 'release')))
     for p in (APP/'dist').rglob('*'):
         if p.is_file():z.write(p,'AURA-Companion/'+str(p.relative_to(ROOT)))
 digest=hashlib.sha256(archive.read_bytes()).hexdigest()

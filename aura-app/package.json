@@ -1,6 +1,6 @@
 {
   "name": "aura-companion-app",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src server tests",
     "test": "node --test tests/*.test.mjs",
-    "bundle": "python3 scripts/bundle.py"
+    "bundle": "python3 scripts/bundle.py",
+    "macos:app": "bash scripts/build-macos-app.sh"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.220",

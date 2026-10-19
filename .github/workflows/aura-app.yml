@@ -27,11 +27,13 @@ jobs:
           python-version: '3.11'
       - run: npm ci --ignore-scripts
       - run: npm run build
+      - if: runner.os == 'macOS'
+        run: npm run macos:app
       - run: npm run lint
       - run: npm test
       - run: python3 -m unittest discover -s tests -p 'test_*.py'
       - run: npm run bundle
       - uses: actions/upload-artifact@v4
         with:
-          name: AURA-Companion-0.2.0-preview-${{ matrix.os }}
+          name: AURA-Companion-0.3.0-preview-${{ matrix.os }}
           path: aura-app/release/*

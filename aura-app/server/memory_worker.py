@@ -44,11 +44,15 @@ def main():
                     result = {'provider': os.environ.get('AURA_BRAIN_PROVIDER', 'local'),
                               'model': os.environ.get('ANTHROPIC_MODEL', ''),
                               'facts': store.get_memory_facts(user),
-                              'conversations': list(reversed(store.get_recent_conversations(user, limit=30)))}
+                              'conversations': list(reversed(store.get_recent_conversations(user, limit=30))),
+                              'observations': list(reversed(store.get_latest_observations(user, limit=10)))}
                 elif op == 'chat':
                     message = req['message']
                     if not isinstance(message, str) or not 0 < len(message.strip()) <= 8000:
                         raise ValueError('Invalid message')
+                    observation = req.get('observation', '')
+                    if isinstance(observation, str) and observation.strip():
+                        store.add_observation(user, event_type='ambient_context', event_summary=observation[:500], confidence=0.75, source='mac_local')
                     actions = extractor.process_user_message(user, message.strip())
                     result = engine.generate_reaction(user)
                     result['id'] = store.add_conversation(user, role='assistant', message=result['response'], emotion_tag=result['tone'])

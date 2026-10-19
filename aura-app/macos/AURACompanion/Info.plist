@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>com.auracomp.desk</string>
+<key>CFBundleName</key><string>AURA Companion</string>
+<key>CFBundleDisplayName</key><string>AURA Companion</string>
+<key>CFBundleExecutable</key><string>AURACompanion</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleVersion</key><string>0.3.0</string>
+<key>CFBundleShortVersionString</key><string>0.3.0</string>
+
+<key>NSMicrophoneUsageDescription</key><string>AURA listens locally for its name, direct requests, and explicit support requests. Audio recordings are not saved.</string>
+<key>NSCameraUsageDescription</key><string>AURA checks the scene locally for context while ambient mode is on. Video frames are not saved.</string>
+<key>NSSpeechRecognitionUsageDescription</key><string>AURA transcribes speech on this Mac to detect direct requests. Ambient speech is not saved.</string>
+<key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
+</dict></plist>

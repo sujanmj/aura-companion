@@ -2,7 +2,7 @@
 
 ## New Mac-compatible companion interface
 
-The additive [AURA application](aura-app/README.md) provides a React/Three.js interface, “Hey AURA” voice drafts, existing SQLite memory and Claude integration, plus opt-in MCP actions with per-call approvals. Start with `cd aura-app`, `npm ci --ignore-scripts`, `npm run build`, and `npm start`. Open `http://127.0.0.1:8790`. The original Windows and sensor runtime below is preserved.
+The additive [AURA application](aura-app/README.md) provides a React/Three.js interface, the original SQLite memory and Claude integration, and an optional native Mac ambient mode that listens locally for “Hey AURA”, direct questions, and explicit support phrases. External MCP actions remain opt-in with per-call approvals. Start with `cd aura-app`, `npm ci --ignore-scripts`, `npm run build`, and `npm start`. Open `http://127.0.0.1:8790`. The original Windows and sensor runtime below is preserved.
 
 
 ## Recommended dev runtime

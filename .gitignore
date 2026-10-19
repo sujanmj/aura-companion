@@ -32,3 +32,5 @@ aura-app/.agent-work/
 aura-app/mcp.local.json
 aura-app/release/
 *.tsbuildinfo
+
+aura-app/macos/AURACompanion/.build/

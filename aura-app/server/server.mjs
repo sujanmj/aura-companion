@@ -209,7 +209,7 @@ const server = http.createServer(async (req, res) => {
             note: data.note,
           }),
         );
-      if (!["/api/chat", "/api/task"].includes(url.pathname))
+      if (!["/api/chat", "/api/ambient", "/api/task"].includes(url.pathname))
         return json(res, 404, { error: "Not found" });
       if (
         typeof data.message !== "string" ||
@@ -221,13 +221,20 @@ const server = http.createServer(async (req, res) => {
         });
       if (busy)
         return json(res, 409, { error: "AURA is finishing another request." });
-      if (url.pathname === "/api/chat") {
+      if (["/api/chat", "/api/ambient"].includes(url.pathname)) {
         busy = true;
         try {
           return json(
             res,
             200,
-            await memory("chat", { message: data.message }),
+            await memory("chat", {
+              message: data.message,
+              observation:
+                url.pathname === "/api/ambient" &&
+                typeof data.observation === "string"
+                  ? data.observation.slice(0, 500)
+                  : "",
+            }),
           );
         } finally {
           busy = false;

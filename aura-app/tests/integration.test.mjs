@@ -122,6 +122,24 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     assert.equal(status.conversations.length, 2);
     assert.ok(status.facts.some((f) => f.fact_key === "recent_anxiety"));
     assert.equal(status.actions, false);
+    const ambient = await post(
+      "ambient",
+      {
+        message: "Hey AURA, can you help me?",
+        observation: "Local camera context: laptop, person present",
+      },
+      cookie,
+    );
+    assert.equal(ambient.status, 200);
+    assert.equal(typeof (await ambient.json()).response, "string");
+    const withContext = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.ok(
+      withContext.observations.some(
+        (o) => o.event_type === "ambient_context" && o.source === "mac_local",
+      ),
+    );
     const page = await fetch(base);
     assert.equal(page.status, 200);
     assert.match(await page.text(), /AURA Companion/);
@@ -136,7 +154,7 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     const restored = await (
       await fetch(base + "/api/status", { headers: { Cookie: cookie } })
     ).json();
-    assert.equal(restored.conversations.length, 2);
+    assert.equal(restored.conversations.length, 4);
     assert.ok(
       (await readdir(path.join(dir, "backups"))).some((f) => f.endsWith(".db")),
     );

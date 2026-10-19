@@ -1,10 +1,10 @@
-# AURA Companion application — 0.2.0 preview
+# AURA Companion application — 0.3.0 ambient preview
 
 A new React/Three.js face for the **existing AURA companion**, with its Python personality, relevance filtering, SQLite memory, feedback learning, and Claude provider intact. This is an additive application directory; existing console, sensor, safety, and monitoring commands remain available.
 
 ## Run on an Apple Silicon Mac
 
-Requires Node.js **22.12+** (24 recommended), Python **3.11+**, and Chrome/Edge for browser speech recognition. No camera, Windows TTS, or OpenCV dependency is needed for this application.
+Requires Node.js **22.12+** (24 recommended), Python **3.11+**, and Chrome/Edge for browser speech recognition. No Windows TTS or OpenCV dependency is needed. The native ambient mode uses Apple Speech and Vision frameworks on macOS 13 or newer; Safari/Chrome is only needed for the web interface.
 
 From the repository:
 
@@ -15,7 +15,7 @@ npm run build
 npm start
 ```
 
-Open **http://127.0.0.1:8790**, then enter the session code printed in the terminal. The port intentionally differs from the existing sensor API at 8787. Stop the server with Control-C. On macOS, `Launch-AURA.command` performs dependency installation/build if needed and launches the server. The downloadable preview is a source/runtime bundle with a prebuilt web interface, **not a signed, notarized, self-contained .app or DMG**. Node and Python remain prerequisites. No system installation, global package changes, or administrator permission is required.
+Open **http://127.0.0.1:8790**, then enter the session code printed in the terminal. The port intentionally differs from the existing sensor API at 8787. Stop the server with Control-C. On macOS, `Launch-AURA.command` performs dependency installation/build if needed and launches the server. The downloadable preview is a source/runtime bundle with a prebuilt web interface, **not notarized**. The ZIP includes a locally signed, native menu bar app when built on macOS. Node and Python remain prerequisites. No system installation, global package changes, or administrator permission is required.
 
 ## Preserve your existing companion
 
@@ -49,6 +49,16 @@ Use the Sonnet model ID already working in your account. No provider key is sent
 - Choose **Calm glow** or **Holographic**. Theme choice alone is saved in browser storage. No Iron Man artwork, movie dialogue, original demo audio, or wake-word media is bundled.
 - Browser recognition can be throttled in background tabs; the app retries ended sessions. If it stops responding, toggle the microphone or type. Physical microphone, speakers, and cloud voice still need device acceptance testing.
 
+## Optional 24/7 ambient mode on Mac
+
+The native menu bar helper can stay running while your Mac is awake, even when you close the web browser. Build it on Apple Silicon with `npm run macos:app`; it appears in the ZIP as `release/AURA Companion.app`. Start the AURA web server first with `npm start`, then open the menu bar app and pair once per server session using the session code printed in Terminal. The helper stores only its session cookie in the macOS Keychain.
+
+Click **Start local ambient mode** when you are ready. macOS asks for microphone, camera, and Speech Recognition permission. The menu bar shows a live AURA status, macOS shows microphone/camera privacy indicators, and the app always has a visible Pause button. Recognition refuses to start unless Apple reports on-device English recognition support; it sets `requiresOnDeviceRecognition`, and never uploads raw audio. The Vision framework classifies one camera frame per second locally; no image or audio recording is written. AURA sends only a recognized phrase that says “AURA”, asks a direct question, or explicitly says “I need help/support”, “I feel overwhelmed/panicked”, “I feel unsafe”, or similar listed support phrases. It does not infer distress from voice tone or facial expressions. Passive speech and camera labels remain in short-lived memory; only a triggered transcript and its brief camera context are saved through the existing companion store. AURA replies with the locally configured companion brain and speaks through macOS voices. If Sonnet is not configured on this Mac, the existing local reaction fallback responds.
+
+Pause stops the microphone, camera, recognition task, and speech. Closing the browser leaves the helper listening; quitting the helper stops it. Sleep pauses capture; AURA resumes after wake while the app stays open. Keep the terminal launcher running for the local companion service. To monitor after reboot, add the server launcher and AURA Companion to your Mac Login Items; this preview does not install a privileged background daemon. A signed and notarized distribution is a later step.
+
+For the quickest local start, keep `npm start` running in Terminal. Open the native app from `aura-app/release/AURA Companion.app`, paste the current session code, then start ambient mode. Use your existing personal database with `AURA_DB_PATH` before starting the server if it is stored elsewhere.
+
 ## Optional automation — disabled by default
 
 The SDK bridge follows the Jarvis architecture but intentionally does **not** load `~/.claude.json`, project settings, filesystem tools, shell tools, or the old broad tool-name heuristics. Native SDK tools are disabled (`tools: []`). Use Claude Code installed and authenticated locally for this optional mode; this authentication is separate from the companion's API key.
@@ -58,7 +68,7 @@ Create ignored `aura-app/mcp.local.json` using MCP servers you trust:
 ```json
 {
   "servers": {
-    "my_service": {"command": "/absolute/path/to/audited-server", "args": []}
+    "my_service": { "command": "/absolute/path/to/audited-server", "args": [] }
   },
   "allowedTools": ["mcp__my_service__exact_tool_name"]
 }
@@ -84,7 +94,7 @@ npm run bundle      # tracked source + production UI, no keys or memory
 
 For live UI development, run `AURA_DEV=1 npm start` and `npm run dev` in separate terminals, then open `http://127.0.0.1:5173`. Development admits exactly that extra origin; production does not. Run the build first for the server integration test. GitHub Actions repeats build, lint, tests, and artifact creation on macOS and Linux.
 
-Tests use disposable databases and mocked Claude responses; they do not charge your API account. Live Claude, ElevenLabs, and user-specific MCP tools require your actual credentials and configuration and are not proven by these tests. The earlier Windows/sensor scripts are untouched and not launched by the new app. Camera UI, emergency dispatch, iPhone control, task history and a native menu-bar app are outside this preview.
+Tests use disposable databases and mocked Claude responses; they do not charge your API account. Live Claude, ElevenLabs, and user-specific MCP tools require your actual credentials and configuration and are not proven by these tests. The earlier Windows/sensor scripts are untouched and not launched by the new app. Emergency dispatch, iPhone control and task history remain outside this preview.
 
 ## Source and attribution
 
