@@ -50,6 +50,7 @@ class MemoryExtractor:
                 routine_key="fitness_interest",
                 routine_value="User cares about gym and fitness.",
                 confidence=0.8,
+                source="conversation",
             )
             actions.append("remembered routine: fitness_interest")
 

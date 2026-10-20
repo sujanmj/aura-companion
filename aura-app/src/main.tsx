@@ -88,7 +88,9 @@ function App() {
     [checkinPreferences, setCheckinPreferences] =
       useState<CheckinPreferences | null>(null),
     [editingFact, setEditingFact] = useState<number | null>(null),
-    [factDraft, setFactDraft] = useState("");
+    [factDraft, setFactDraft] = useState(""),
+    [editingRoutine, setEditingRoutine] = useState<number | null>(null),
+    [routineDraft, setRoutineDraft] = useState("");
   const stopListen = useRef<(() => void) | null>(null),
     bottom = useRef<HTMLDivElement>(null),
     micStarting = useRef(false),
@@ -115,8 +117,7 @@ function App() {
     };
   }, []);
   useEffect(() => {
-    if (!status?.preferences.checkins_enabled || tab !== "conversation")
-      return;
+    if (!status?.preferences.checkins_enabled || tab !== "conversation") return;
     let pending = false;
     const checkIn = async () => {
       if (pending || document.visibilityState !== "visible") return;
@@ -645,7 +646,9 @@ function App() {
                           );
                           setCheckinPreferences(saved);
                           setStatus((current) =>
-                            current ? { ...current, preferences: saved } : current,
+                            current
+                              ? { ...current, preferences: saved }
+                              : current,
                           );
                           setError("Check-in preferences saved.");
                         } catch (e) {
@@ -702,12 +705,16 @@ function App() {
                           onChange={(event) =>
                             setCheckinPreferences({
                               ...checkinPreferences,
-                              checkin_interval_hours: Number(event.target.value),
+                              checkin_interval_hours: Number(
+                                event.target.value,
+                              ),
                             })
                           }
                         />
                       </label>
-                      <button className="primary">Save check-in preferences</button>
+                      <button className="primary">
+                        Save check-in preferences
+                      </button>
                     </form>
                   </article>
                 )}
@@ -815,8 +822,82 @@ function App() {
                   ) : (
                     status.routines.map((routine) => (
                       <article className="fact" key={routine.id}>
-                        <small>{routine.routine_key.replaceAll("_", " ")}</small>
-                        <p>{routine.routine_value}</p>
+                        <small>
+                          {routine.routine_key.replaceAll("_", " ")}
+                        </small>
+                        {editingRoutine === routine.id ? (
+                          <form
+                            onSubmit={async (event) => {
+                              event.preventDefault();
+                              try {
+                                await api("routine/update", {
+                                  routine_id: routine.id,
+                                  value: routineDraft,
+                                });
+                                await refresh();
+                                setEditingRoutine(null);
+                                setError("Routine corrected.");
+                              } catch (e) {
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            <label htmlFor={`routine-${routine.id}`}>
+                              Correct this routine
+                            </label>
+                            <textarea
+                              id={`routine-${routine.id}`}
+                              value={routineDraft}
+                              maxLength={2000}
+                              required
+                              onChange={(event) =>
+                                setRoutineDraft(event.target.value)
+                              }
+                            />
+                            <button className="primary">Save correction</button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingRoutine(null)}
+                            >
+                              Cancel
+                            </button>
+                          </form>
+                        ) : (
+                          <>
+                            <p>{routine.routine_value}</p>
+                            <div className="fact-actions">
+                              <button
+                                onClick={() => {
+                                  setEditingRoutine(routine.id);
+                                  setRoutineDraft(routine.routine_value);
+                                }}
+                              >
+                                Correct
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (
+                                    !window.confirm(
+                                      "Forget this routine? AURA will not automatically save it again unless you explicitly tell AURA to remember it.",
+                                    )
+                                  )
+                                    return;
+                                  try {
+                                    await api("routine/delete", {
+                                      routine_id: routine.id,
+                                    });
+                                    await refresh();
+                                    setError("Routine forgotten.");
+                                  } catch (e) {
+                                    setError(String(e));
+                                  }
+                                }}
+                              >
+                                Forget
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </article>
                     ))
                   )}
@@ -832,7 +913,8 @@ function App() {
                         key={`${observation.created_at}-${index}`}
                       >
                         <small>
-                          {observation.event_type.replaceAll("_", " ")} · {observation.source}
+                          {observation.event_type.replaceAll("_", " ")} ·{" "}
+                          {observation.source}
                         </small>
                         <p>{observation.event_summary}</p>
                         <time>{observation.created_at}</time>

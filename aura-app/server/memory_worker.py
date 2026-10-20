@@ -90,6 +90,23 @@ def main():
                     if not store.delete_memory_fact(user, fact_id):
                         raise ValueError('Memory fact not found')
                     result = {'ok': True}
+                elif op == 'update_routine':
+                    routine_id = req.get('routine_id')
+                    value = req.get('value')
+                    if not isinstance(routine_id, int) or isinstance(routine_id, bool) or routine_id <= 0:
+                        raise ValueError('Invalid memory routine')
+                    if not isinstance(value, str):
+                        raise ValueError('Invalid memory routine')
+                    if not store.update_memory_routine(user, routine_id, value):
+                        raise ValueError('Memory routine not found')
+                    result = {'ok': True}
+                elif op == 'delete_routine':
+                    routine_id = req.get('routine_id')
+                    if not isinstance(routine_id, int) or isinstance(routine_id, bool) or routine_id <= 0:
+                        raise ValueError('Invalid memory routine')
+                    if not store.delete_memory_routine(user, routine_id):
+                        raise ValueError('Memory routine not found')
+                    result = {'ok': True}
                 elif op == 'chat':
                     message = req['message']
                     if not isinstance(message, str) or not 0 < len(message.strip()) <= 8000:

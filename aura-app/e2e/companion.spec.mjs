@@ -104,9 +104,7 @@ test("setup distinguishes local availability from live verification", async ({
   await expect(
     page.getByRole("heading", { name: "Companion check-ins" }),
   ).toBeVisible();
-  await expect(
-    page.getByLabel("Allow AURA to check in"),
-  ).not.toBeChecked();
+  await expect(page.getByLabel("Allow AURA to check in")).not.toBeChecked();
   await expect(page.getByLabel("Quiet hours start")).toHaveValue("22:00");
   await expect(page.getByLabel("Quiet hours end")).toHaveValue("08:00");
   await page.getByLabel("Allow AURA to check in").check();
@@ -181,16 +179,56 @@ test("saved facts can be corrected and forgetting requires confirmation", async 
   ).toHaveCount(0);
 });
 
+test("saved routines can be corrected and forgotten without automatic recreation", async ({
+  page,
+}) => {
+  await connect(page);
+  await page.getByLabel("Your message").fill("I like gym workouts");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  const routine = page.locator(".fact").filter({ hasText: "fitness interest" });
+  await expect(routine).toBeVisible();
+  await routine.getByRole("button", { name: "Correct" }).click();
+  await routine.getByLabel("Correct this routine").fill("I prefer swimming.");
+  await routine.getByRole("button", { name: "Save correction" }).click();
+  await expect(
+    page.locator(".fact").filter({ hasText: "I prefer swimming." }),
+  ).toBeVisible();
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("will not automatically save it again");
+    void dialog.accept();
+  });
+  await page
+    .locator(".fact")
+    .filter({ hasText: "I prefer swimming." })
+    .getByRole("button", { name: "Forget" })
+    .click();
+  await expect(page.getByRole("status")).toContainText("Routine forgotten");
+  await page.getByRole("button", { name: "Conversation 01" }).click();
+  await page.getByLabel("Your message").fill("I like gym workouts");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Routines" }).locator(".."),
+  ).toContainText("No routines have been saved.");
+});
+
 test("memory export downloads the current authenticated account data", async ({
   page,
 }) => {
   await connect(page);
-  await page.getByLabel("Your message").fill("Please remember I like green tea");
+  await page
+    .getByLabel("Your message")
+    .fill("Please remember I like green tea");
   await page.getByRole("button", { name: "Send ↗" }).click();
   await expect(page.locator(".message.assistant").last()).toBeVisible();
   await page.getByRole("button", { name: "Memory 02" }).click();
   const downloadReady = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Download all my AURA data (JSON)" }).click();
+  await page
+    .getByRole("link", { name: "Download all my AURA data (JSON)" })
+    .click();
   const download = await downloadReady;
   expect(download.suggestedFilename()).toBe("aura-memory-export.json");
   const exported = JSON.parse(await readFile(await download.path(), "utf8"));

@@ -69,6 +69,7 @@ class AuraMemoryStore:
             "observations",
             "mood_logs",
             "routine_memory",
+            "forgotten_memory_routines",
             "safety_events",
             "emergency_contacts",
             "response_feedback",
@@ -312,7 +313,19 @@ class AuraMemoryStore:
         routine_key: str,
         routine_value: str,
         confidence: float = 0.5,
+        source: str = "conversation",
     ) -> None:
+        suppressed = self.conn.execute(
+            "SELECT 1 FROM forgotten_memory_routines WHERE user_id=? AND routine_key=?",
+            (user_id, routine_key),
+        ).fetchone()
+        if suppressed and source == "conversation":
+            return
+        if source != "conversation":
+            self.conn.execute(
+                "DELETE FROM forgotten_memory_routines WHERE user_id=? AND routine_key=?",
+                (user_id, routine_key),
+            )
         self.conn.execute(
             """
             INSERT INTO routine_memory (user_id, routine_key, routine_value, confidence)
@@ -339,6 +352,38 @@ class AuraMemoryStore:
             (user_id, limit),
         )
         return [dict(row) for row in cur.fetchall()]
+
+    def update_memory_routine(self, user_id: int, routine_id: int, routine_value: str) -> bool:
+        value = routine_value.strip()
+        if not value or len(value) > 2000:
+            raise ValueError("routine value must contain 1–2000 characters")
+        cur = self.conn.execute(
+            """UPDATE routine_memory SET routine_value=?, confidence=1.0,
+               last_seen_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?""",
+            (value, routine_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def delete_memory_routine(self, user_id: int, routine_id: int) -> bool:
+        row = self.conn.execute(
+            "SELECT routine_key FROM routine_memory WHERE id=? AND user_id=?",
+            (routine_id, user_id),
+        ).fetchone()
+        if not row:
+            return False
+        with self.conn:
+            self.conn.execute(
+                """INSERT INTO forgotten_memory_routines (user_id, routine_key)
+                   VALUES (?, ?) ON CONFLICT(user_id, routine_key)
+                   DO UPDATE SET forgotten_at=CURRENT_TIMESTAMP""",
+                (user_id, row["routine_key"]),
+            )
+            self.conn.execute(
+                "DELETE FROM routine_memory WHERE id=? AND user_id=?",
+                (routine_id, user_id),
+            )
+        return True
 
     def get_memory_facts(self, user_id: int) -> list[dict[str, Any]]:
         cur = self.conn.execute(

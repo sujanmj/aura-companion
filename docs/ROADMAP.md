@@ -9,6 +9,7 @@ Live provider, hardware, and multi-device behavior require separate acceptance
 results. Never describe mocked speech/provider tests as live verification.
 
 ## Phase 1 — Preserve AURA and integrate its interface
+
 Status: complete for the development preview.
 
 - Preserve the existing SQLite schema, personality, feedback and Claude provider.
@@ -21,6 +22,7 @@ macOS CI run 39288627959 passed. Preview artifacts exist. This is not a stable
 hardware release, and the branch has not yet been merged into main.
 
 ## Phase 2 — Reliable single-device runtime
+
 Status: in progress; this is the current phase.
 
 - Completed: closed approval gates after cancellation; enforce approval deadlines;
@@ -56,6 +58,7 @@ Exit: automated failure-path tests and CI pass, with real-device acceptance reco
 separately. Missing hardware access must remain an explicit unresolved gate.
 
 ## Phase 3 — Usable companion on one device
+
 Status: partial components exist; acceptance not complete.
 
 - Implemented: diagnose configuration and service readiness without exposing secrets.
@@ -67,6 +70,7 @@ Exit: a configured device completes the documented live acceptance flow. Do not
 invent credentials, silently enable tools, or substitute mock results for it.
 
 ## Phase 4 — Companion behavior and user control
+
 Status: foundations exist in the original reaction/memory engines.
 
 - Review, correct, export and forget remembered information deliberately.
@@ -76,6 +80,9 @@ Status: foundations exist in the original reaction/memory engines.
   tested; the download stays on the local AURA service.
 - Implemented: Memory view now reviews saved routines and the latest 20
   observations alongside correctable/forgettable facts.
+- Implemented: routines can be corrected or explicitly forgotten; a forgotten
+  routine is suppressed from automatic conversation extraction until the user
+  explicitly asks AURA to remember it again.
 - Implemented: consent-based local check-ins default off, wait for a saved idle
   interval, honor quiet hours, and only appear while the web companion is open.
 - Remaining: broader native controls and lifecycle acceptance.
@@ -84,6 +91,7 @@ Status: foundations exist in the original reaction/memory engines.
 Exit: behavior and privacy tests pass; preferences and consent persist correctly.
 
 ## Phase 5 — Raspberry Pi and multi-room presence
+
 Status: kiosk UI, event API and simulators exist; real node integration remains.
 
 - Pi node runtime and local speech options with resource limits.
@@ -94,6 +102,7 @@ Status: kiosk UI, event API and simulators exist; real node integration remains.
 Exit: a real multi-node deployment passes handoff, reconnection and privacy tests.
 
 ## Phase 6 — Safety validation and release packaging
+
 Status: simulated safety workflows exist; production validation remains.
 
 - Validate sensor errors, false alarms, confirmation timeouts and recovery.

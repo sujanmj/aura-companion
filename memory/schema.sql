@@ -84,6 +84,14 @@ CREATE TABLE IF NOT EXISTS routine_memory (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS forgotten_memory_routines (
+    user_id INTEGER NOT NULL,
+    routine_key TEXT NOT NULL,
+    forgotten_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(user_id, routine_key),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS safety_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

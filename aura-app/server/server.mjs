@@ -180,12 +180,14 @@ const server = http.createServer(async (req, res) => {
           const exported = await memory("export");
           res.writeHead(200, {
             "Content-Type": "application/json; charset=utf-8",
-            "Content-Disposition": 'attachment; filename="aura-memory-export.json"',
+            "Content-Disposition":
+              'attachment; filename="aura-memory-export.json"',
           });
           return res.end(`${JSON.stringify(exported, null, 2)}\n`);
         } catch {
           return json(res, 503, {
-            error: "Memory export is unavailable. Check the local memory service.",
+            error:
+              "Memory export is unavailable. Check the local memory service.",
           });
         }
       }
@@ -230,7 +232,9 @@ const server = http.createServer(async (req, res) => {
         try {
           return json(res, 200, await memory("checkin"));
         } catch {
-          return json(res, 503, { error: "AURA could not check in right now." });
+          return json(res, 503, {
+            error: "AURA could not check in right now.",
+          });
         }
       }
       if (url.pathname === "/api/approve")
@@ -244,10 +248,15 @@ const server = http.createServer(async (req, res) => {
       }
       if (
         url.pathname === "/api/fact/update" ||
-        url.pathname === "/api/fact/delete"
+        url.pathname === "/api/fact/delete" ||
+        url.pathname === "/api/routine/update" ||
+        url.pathname === "/api/routine/delete"
       ) {
-        if (!Number.isSafeInteger(data.fact_id) || data.fact_id <= 0)
-          return json(res, 400, { error: "Choose a valid memory fact." });
+        const isRoutine = url.pathname.startsWith("/api/routine/");
+        const idKey = isRoutine ? "routine_id" : "fact_id";
+        const label = isRoutine ? "memory routine" : "memory fact";
+        if (!Number.isSafeInteger(data[idKey]) || data[idKey] <= 0)
+          return json(res, 400, { error: `Choose a valid ${label}.` });
         if (
           url.pathname.endsWith("/update") &&
           (typeof data.value !== "string" ||
@@ -259,13 +268,13 @@ const server = http.createServer(async (req, res) => {
           });
         try {
           const result = await memory(
-            url.pathname.endsWith("/update") ? "update_fact" : "delete_fact",
+            `${url.pathname.endsWith("/update") ? "update" : "delete"}_${isRoutine ? "routine" : "fact"}`,
             data,
           );
           return json(res, 200, result);
         } catch {
           return json(res, 404, {
-            error: "That memory fact could not be found.",
+            error: `That ${label} could not be found.`,
           });
         }
       }

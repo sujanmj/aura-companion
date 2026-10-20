@@ -121,7 +121,12 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       (
         await post(
           "preferences",
-          { checkins_enabled: true, quiet_start: "22:00", quiet_end: "08:00", checkin_interval_hours: 24 },
+          {
+            checkins_enabled: true,
+            quiet_start: "22:00",
+            quiet_end: "08:00",
+            checkin_interval_hours: 24,
+          },
           cookie,
         )
       ).status,
@@ -154,7 +159,10 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       headers: { Cookie: cookie },
     });
     assert.equal(exportResponse.status, 200);
-    assert.match(exportResponse.headers.get("content-type"), /application\/json/);
+    assert.match(
+      exportResponse.headers.get("content-type"),
+      /application\/json/,
+    );
     assert.match(
       exportResponse.headers.get("content-disposition"),
       /aura-memory-export\.json/,
@@ -223,6 +231,78 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       (await post("fact/delete", { fact_id: 0 }, cookie)).status,
       400,
     );
+    assert.equal(
+      (
+        await post(
+          "routine/update",
+          { routine_id: 0, value: "Routine" },
+          cookie,
+        )
+      ).status,
+      400,
+    );
+    assert.equal(
+      (await post("routine/update", { routine_id: 1, value: "  " }, cookie))
+        .status,
+      400,
+    );
+    assert.equal(
+      (
+        await post(
+          "routine/update",
+          { routine_id: 1, value: "x".repeat(2001) },
+          cookie,
+        )
+      ).status,
+      400,
+    );
+    assert.equal(
+      (await post("chat", { message: "I like gym workouts" }, cookie)).status,
+      200,
+    );
+    const routineStatus = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    const fitnessRoutine = routineStatus.routines.find(
+      (routine) => routine.routine_key === "fitness_interest",
+    );
+    assert.ok(fitnessRoutine);
+    assert.equal(
+      (
+        await post(
+          "routine/update",
+          { routine_id: fitnessRoutine.id, value: "I prefer swimming." },
+          cookie,
+        )
+      ).status,
+      200,
+    );
+    assert.equal(
+      (await post("routine/delete", { routine_id: fitnessRoutine.id }, cookie))
+        .status,
+      200,
+    );
+    assert.equal(
+      (await post("routine/delete", { routine_id: fitnessRoutine.id }, cookie))
+        .status,
+      404,
+    );
+    assert.equal(
+      (await post("chat", { message: "I like gym workouts" }, cookie)).status,
+      200,
+    );
+    const afterRoutineForget = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.equal(afterRoutineForget.routines.length, 0);
+    const afterRoutineForgetExport = await (
+      await fetch(base + "/api/memory/export", { headers: { Cookie: cookie } })
+    ).json();
+    assert.ok(
+      afterRoutineForgetExport.records.forgotten_memory_routines.some(
+        (entry) => entry.routine_key === "fitness_interest",
+      ),
+    );
     assert.equal(status.actions, false);
     const ambient = await post(
       "ambient",
@@ -257,7 +337,8 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     const restored = await (
       await fetch(base + "/api/status", { headers: { Cookie: cookie } })
     ).json();
-    assert.equal(restored.conversations.length, 4);
+    assert.equal(restored.conversations.length, 8);
+    assert.equal(restored.routines.length, 0);
     assert.ok(
       (await readdir(path.join(dir, "backups"))).some((f) => f.endsWith(".db")),
     );

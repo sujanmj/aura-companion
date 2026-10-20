@@ -64,6 +64,29 @@ class CompanionTest(unittest.TestCase):
             self.assertNotIn('other user message',str(exported))
             self.assertNotIn('coffee',str(exported))
             store.close()
+
+    def test_routines_can_be_corrected_forgotten_and_explicitly_remembered_again(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            other = store.get_or_create_user('Other')
+            store.remember_routine(owner, 'fitness_interest', 'Likes gym.', source='user')
+            routine = store.get_routine_memory(owner)[0]
+            self.assertTrue(store.update_memory_routine(owner, routine['id'], 'Prefers swimming.'))
+            self.assertEqual(store.get_routine_memory(owner)[0]['routine_value'], 'Prefers swimming.')
+            self.assertFalse(store.update_memory_routine(other, routine['id'], 'Other user data'))
+            self.assertFalse(store.delete_memory_routine(other, routine['id']))
+            self.assertTrue(store.delete_memory_routine(owner, routine['id']))
+            self.assertEqual(store.get_routine_memory(owner), [])
+
+            store.remember_routine(owner, 'fitness_interest', 'Detected gym interest.', source='conversation')
+            self.assertEqual(store.get_routine_memory(owner), [])
+            store.remember_routine(owner, 'fitness_interest', 'User confirmed gym interest.', source='user_correction')
+            self.assertEqual(store.get_routine_memory(owner)[0]['routine_value'], 'User confirmed gym interest.')
+            with self.assertRaises(ValueError):
+                store.update_memory_routine(owner, routine['id'], '  ')
+            store.close()
     def test_original_personality_memory_and_cloud_provider(self):
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {'AURA_BRAIN_PROVIDER':'claude','ANTHROPIC_API_KEY':'test-key','ANTHROPIC_MODEL':'claude-sonnet-4-6'}):
             store=AuraMemoryStore(Path(folder)/'test.db');store.apply_schema()
