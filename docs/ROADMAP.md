@@ -35,14 +35,18 @@ Status: in progress; this is the current phase.
 - Fixed: copy audio tap buffers before asynchronous recognition and isolate
   delayed errors with per-utterance generations, so a stale callback cannot
   reset a newer phrase. Native tests cover stale callbacks.
+- Fixed: Pause distinguishes camera shutdown from camera-off state, waits for
+  the serialized session stop callback, and blocks restart until teardown ends.
+  Stop completion is generation-guarded so it cannot overwrite a newer session.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing
   the live mic/camera indicators. The app invoked its speech output path; this
   check did not measure acoustic playback. Temporary pairing and test database
   were cleared. Sleep/wake and startup-failure recovery still need acceptance.
-- Remaining: verify startup failures and recovery, truthful runtime status, and
-  sleep/wake behavior on hardware.
+- Remaining: verify camera shutdown/restart, permission-denial recovery and
+  sleep/wake behavior on hardware. The newly rebuilt stop acknowledgement has
+  automated coverage but awaits a repeat Mac check because the Mac is locked.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.

@@ -15,6 +15,10 @@ struct AmbientLifecycle {
         generation == token && phase != .paused
     }
 
+    func canCompleteStop(_ token: UInt64) -> Bool {
+        generation == token && phase == .paused
+    }
+
     mutating func activate(_ token: UInt64) -> Bool {
         guard contains(token), phase == .starting else { return false }
         phase = .active

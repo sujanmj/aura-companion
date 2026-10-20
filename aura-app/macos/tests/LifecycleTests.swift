@@ -18,6 +18,12 @@ struct LifecycleTests {
         state.pause()
         state.pause()
         precondition(!state.contains(second), "Repeated Pause must remain safe")
+        let stopGeneration = state.generation
+        precondition(state.canCompleteStop(stopGeneration), "A stopped camera may report completion while paused")
+        let restarted = state.begin()!
+        precondition(!state.canCompleteStop(stopGeneration), "A late camera-stop callback must not overwrite restarted state")
+        precondition(state.activate(restarted))
+        state.pause()
         // Exercise long sequences of cancel/restart as can occur across sleep/wake.
         for _ in 0..<1000 {
             let token = state.begin()!
@@ -37,6 +43,6 @@ struct LifecycleTests {
         recognition.invalidate()
         precondition(!recognition.isCurrent(currentUtterance), "Stopping recognition must invalidate queued callbacks")
 
-        print("PASS: capture lifecycle, 1000 sleep/wake-style cycles, and stale recognition callback isolation")
+        print("PASS: capture lifecycle, 1000 sleep/wake-style cycles, and stale camera/speech callback isolation")
     }
 }

@@ -44,6 +44,7 @@ struct AURAAmbientApp: App {
     @Published var isPaired = false
     @Published var microphoneOn = false
     @Published var cameraOn = false
+    @Published var cameraStopping = false
     @Published var isPersonPresent = false
     @Published var status = "Pair AURA using the session code from its terminal."
     @Published var code = ""
@@ -115,6 +116,7 @@ struct AURAAmbientApp: App {
 
     func start() async {
         guard isPaired, cookie != nil else { status = "Pair with the AURA web app first."; return }
+        guard !cameraStopping else { status = "The camera is still stopping. Try again in a moment."; return }
         guard let generation = lifecycle.begin() else { return }
         isStarting = true
         defer {
@@ -156,7 +158,7 @@ struct AURAAmbientApp: App {
             guard lifecycle.contains(generation) else { camera.stop(); return }
             try startAudio()
             guard lifecycle.activate(generation) else { return }
-            isActive = true; microphoneOn = true; cameraOn = true
+            isActive = true; microphoneOn = true; cameraOn = true; cameraStopping = false
             status = "Listening locally. Only Hey AURA, direct requests, or explicit support phrases get a reply."
         } catch {
             guard lifecycle.contains(generation) else { return }
@@ -233,17 +235,32 @@ struct AURAAmbientApp: App {
     }
 
     func stop() {
-        lifecycle.pause()
+        if !cameraStopping { lifecycle.pause() }
+        let stoppedGeneration = lifecycle.generation
         resumeAfterWake = false
         isStarting = false; isActive = false; microphoneOn = false; cameraOn = false
         replyTask?.cancel(); replyTask = nil
         if hasAudioTap { engine.inputNode.removeTap(onBus: 0); hasAudioTap = false }
         engine.stop()
         transcriber?.stop(); transcriber = nil
-        camera?.stop(); camera = nil
+        let cameraToStop = camera
+        camera = nil
+        cameraStopping = cameraToStop != nil || cameraStopping
         contextLabels = []; scene = ""; isPersonPresent = false
         synthesizer.stopSpeaking(at: .immediate)
-        status = "Paused. Microphone and camera are stopping."
+        status = cameraStopping
+            ? "Paused. Microphone is off; camera is stopping."
+            : "Paused. Microphone and camera are off."
+        cameraToStop?.stop { [weak self] in
+            Task { @MainActor in
+                guard let self, self.lifecycle.canCompleteStop(stoppedGeneration) else { return }
+                self.cameraOn = false
+                self.cameraStopping = false
+                if self.status == "Paused. Microphone is off; camera is stopping." {
+                    self.status = "Paused. Microphone and camera are off."
+                }
+            }
+        }
     }
 
     func forgetPairing() { stop(); cookie = nil; Keychain.delete(); isPaired = false; status = "Session pairing cleared." }
@@ -289,11 +306,13 @@ private final class LocalCamera: NSObject, AVCaptureVideoDataOutputSampleBufferD
         session.addOutput(output)
     }
 
-    func stop() {
+    func stop(completion: @escaping @Sendable () -> Void = {}) {
         queue.async {
+            guard !self.stopped else { completion(); return }
             self.stopped = true
             self.output.setSampleBufferDelegate(nil, queue: nil)
             if self.session.isRunning { self.session.stopRunning() }
+            completion()
         }
     }
 
@@ -415,12 +434,12 @@ private struct MenuView: View {
             HStack { Text("✳ AURA").font(.system(size: 22, weight: .medium)); Spacer(); Text(monitor.isActive ? "LIVE" : "PAUSED").font(.caption2).tracking(2).foregroundStyle(monitor.isActive ? .green : .secondary) }
             Text("Ambient companion").font(.headline)
             Text("AURA checks speech and the room on this Mac. Raw audio and frames are never saved or sent. Speech recognition runs on-device; only direct requests and explicit support phrases reach your AURA companion.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 8) { Label(monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn ? .orange : .secondary); Label(monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn ? .orange : .secondary) }.font(.caption)
+            HStack(spacing: 8) { Label(monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
             if !monitor.isPaired {
                 SecureField("Session code from AURA terminal", text: $monitor.code)
                 Button("Pair with AURA") { Task { await monitor.pair() } }.disabled(monitor.code.isEmpty)
             } else {
-                Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: [])
+                Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: []).disabled(monitor.cameraStopping)
                 if !monitor.recentResponse.isEmpty { Divider(); Text("AURA").font(.caption).foregroundStyle(.secondary); Text(monitor.recentResponse).font(.system(size: 12)).textSelection(.enabled) }
                 if !monitor.scene.isEmpty { Text("Local camera: \(monitor.scene)").font(.caption).foregroundStyle(.secondary) }
                 Button("Clear pairing") { monitor.forgetPairing() }.font(.caption).foregroundStyle(.secondary)
