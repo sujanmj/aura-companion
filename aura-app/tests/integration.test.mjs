@@ -322,6 +322,43 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
         (o) => o.event_type === "ambient_context" && o.source === "mac_local",
       ),
     );
+    const ambientObservation = withContext.observations.find(
+      (o) => o.event_type === "ambient_context",
+    );
+    assert.ok(Number.isSafeInteger(ambientObservation.id));
+    assert.equal(
+      (await post("observation/delete", { observation_id: 0 }, cookie)).status,
+      400,
+    );
+    assert.equal(
+      (
+        await post(
+          "observation/delete",
+          { observation_id: ambientObservation.id },
+          cookie,
+        )
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await post(
+          "observation/delete",
+          { observation_id: ambientObservation.id },
+          cookie,
+        )
+      ).status,
+      404,
+    );
+    const afterObservationDelete = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.equal(
+      afterObservationDelete.observations.some(
+        (o) => o.id === ambientObservation.id,
+      ),
+      false,
+    );
     assert.ok(Array.isArray(withContext.routines));
     const page = await fetch(base);
     assert.equal(page.status, 200);

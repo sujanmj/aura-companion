@@ -87,6 +87,20 @@ class CompanionTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 store.update_memory_routine(owner, routine['id'], '  ')
             store.close()
+
+    def test_observations_can_only_be_deleted_by_their_owner(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            other = store.get_or_create_user('Other')
+            observation_id = store.add_observation(
+                owner, 'ambient_context', 'Local camera context', source='mac_local'
+            )
+            self.assertFalse(store.delete_observation(other, observation_id))
+            self.assertTrue(store.delete_observation(owner, observation_id))
+            self.assertEqual(store.get_latest_observations(owner), [])
+            store.close()
     def test_original_personality_memory_and_cloud_provider(self):
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {'AURA_BRAIN_PROVIDER':'claude','ANTHROPIC_API_KEY':'test-key','ANTHROPIC_MODEL':'claude-sonnet-4-6'}):
             store=AuraMemoryStore(Path(folder)/'test.db');store.apply_schema()

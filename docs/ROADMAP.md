@@ -83,6 +83,9 @@ Status: foundations exist in the original reaction/memory engines.
 - Implemented: routines can be corrected or explicitly forgotten; a forgotten
   routine is suppressed from automatic conversation extraction until the user
   explicitly asks AURA to remember it again.
+- Implemented: ambient observations can be deleted individually from the
+  authenticated Memory view; deletion is scoped to the current user's SQLite
+  records and removes that observation from future exports.
 - Implemented: consent-based local check-ins default off, wait for a saved idle
   interval, honor quiet hours, and only appear while the web companion is open.
 - Remaining: broader native controls and lifecycle acceptance.

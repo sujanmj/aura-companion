@@ -215,6 +215,41 @@ test("saved routines can be corrected and forgotten without automatic recreation
   ).toContainText("No routines have been saved.");
 });
 
+test("camera context observations can be deleted from saved memory", async ({
+  page,
+}) => {
+  await connect(page);
+  const ambient = await page.evaluate(async () => {
+    const response = await fetch("/api/ambient", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Hey AURA, are you there?",
+        observation: "Local camera context: laptop, person present",
+      }),
+    });
+    return { status: response.status, body: await response.json() };
+  });
+  expect(ambient.status).toBe(200);
+  await page.reload();
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  const observation = page
+    .locator(".fact")
+    .filter({ hasText: "Local camera context: laptop, person present" });
+  await expect(observation).toBeVisible();
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("Delete this saved observation");
+    void dialog.accept();
+  });
+  await observation.getByRole("button", { name: "Delete observation" }).click();
+  await expect(page.getByRole("status")).toContainText("Observation deleted");
+  await expect(
+    page
+      .locator(".fact")
+      .filter({ hasText: "Local camera context: laptop, person present" }),
+  ).toHaveCount(0);
+});
+
 test("memory export downloads the current authenticated account data", async ({
   page,
 }) => {

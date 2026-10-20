@@ -21,6 +21,7 @@ type Status = {
     last_seen_at: string;
   }[];
   observations: {
+    id: number;
     event_type: string;
     event_summary: string;
     source: string;
@@ -907,17 +908,37 @@ function App() {
                   {status.observations.length === 0 ? (
                     <p>No observations have been saved.</p>
                   ) : (
-                    status.observations.map((observation, index) => (
-                      <article
-                        className="fact"
-                        key={`${observation.created_at}-${index}`}
-                      >
+                    status.observations.map((observation) => (
+                      <article className="fact" key={observation.id}>
                         <small>
                           {observation.event_type.replaceAll("_", " ")} ·{" "}
                           {observation.source}
                         </small>
                         <p>{observation.event_summary}</p>
                         <time>{observation.created_at}</time>
+                        <div className="fact-actions">
+                          <button
+                            onClick={async () => {
+                              if (
+                                !window.confirm(
+                                  "Delete this saved observation from AURA memory?",
+                                )
+                              )
+                                return;
+                              try {
+                                await api("observation/delete", {
+                                  observation_id: observation.id,
+                                });
+                                await refresh();
+                                setError("Observation deleted.");
+                              } catch (e) {
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            Delete observation
+                          </button>
+                        </div>
                       </article>
                     ))
                   )}

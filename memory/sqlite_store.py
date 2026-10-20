@@ -431,7 +431,7 @@ class AuraMemoryStore:
     def get_latest_observations(self, user_id: int, limit: int = 10) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """
-            SELECT event_type, event_summary, confidence, source, created_at
+            SELECT id, event_type, event_summary, confidence, source, created_at
             FROM observations
             WHERE user_id = ?
             ORDER BY id DESC
@@ -440,6 +440,14 @@ class AuraMemoryStore:
             (user_id, limit),
         )
         return [dict(row) for row in cur.fetchall()]
+
+    def delete_observation(self, user_id: int, observation_id: int) -> bool:
+        cur = self.conn.execute(
+            "DELETE FROM observations WHERE id=? AND user_id=?",
+            (observation_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
 
     def get_routine_memory(self, user_id: int) -> list[dict[str, Any]]:
         cur = self.conn.execute(

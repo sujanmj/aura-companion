@@ -107,6 +107,13 @@ def main():
                     if not store.delete_memory_routine(user, routine_id):
                         raise ValueError('Memory routine not found')
                     result = {'ok': True}
+                elif op == 'delete_observation':
+                    observation_id = req.get('observation_id')
+                    if not isinstance(observation_id, int) or isinstance(observation_id, bool) or observation_id <= 0:
+                        raise ValueError('Invalid observation')
+                    if not store.delete_observation(user, observation_id):
+                        raise ValueError('Observation not found')
+                    result = {'ok': True}
                 elif op == 'chat':
                     message = req['message']
                     if not isinstance(message, str) or not 0 < len(message.strip()) <= 8000:
