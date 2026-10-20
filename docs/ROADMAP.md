@@ -369,6 +369,12 @@ Status: security hardening is progressing; kiosk UI, event API and simulators ex
   synced row. Offline tests cover queue/retry, backoff, source-row deletion and
   remote cleanup. This does not sync profile facts/routines or verify a live
   Supabase account.
+- Added a hardened systemd service template for the Pi sensor API hub. It uses a
+  dedicated non-root account, private state directory, restrictive filesystem
+  settings and a startup guard requiring a unique 32-character sensor token.
+  Automated checks cover configuration rejection and unit hardening. This starts
+  only the authenticated sensor API; it is not a Pi companion runtime or GPIO
+  driver and has not been installed on target hardware.
 - Conversation handoff without duplicate replies or accidental cross-user memory.
 - Real camera/microphone and GPIO sensor acceptance on target hardware.
 
