@@ -62,6 +62,8 @@ Status: in progress; this is the current phase.
 - Clarified: the macOS Speech Recognition permission prompt distinguishes raw
   audio (not saved) from triggered transcripts that may enter local SQLite
   memory.
+- Fixed: if macOS cannot open the requested Privacy Settings pane, AURA leaves
+  manual System Settings directions for the denied permission.
 - Fixed: camera interruption and runtime-error notifications now pause the
   complete ambient session and report recovery guidance instead of leaving a
   stale active indicator while microphone capture continues.

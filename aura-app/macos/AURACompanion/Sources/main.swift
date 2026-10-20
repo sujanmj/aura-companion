@@ -329,8 +329,12 @@ struct AURAAmbientApp: App {
     }
 
     func openPermissionSettings() {
+        let permissionStatus = status
         guard let url = permissionSettingsURL else { return }
-        NSWorkspace.shared.open(url)
+        if !NSWorkspace.shared.open(url),
+           let fallback = PermissionSettings.fallbackMessage(for: permissionStatus) {
+            status = fallback
+        }
     }
 }
 

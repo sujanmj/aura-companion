@@ -141,4 +141,9 @@ enum PermissionSettings {
         }
         return nil
     }
+
+    static func fallbackMessage(for status: String) -> String? {
+        guard target(for: status) != nil else { return nil }
+        return "\(status) Open System Settings > Privacy & Security and allow AURA Companion to use the denied service."
+    }
 }

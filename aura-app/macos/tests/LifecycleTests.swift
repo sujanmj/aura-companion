@@ -109,6 +109,14 @@ struct LifecycleTests {
             PermissionSettings.target(for: "Listening locally") == nil,
             "Normal status must not offer a misleading permission shortcut"
         )
+        precondition(
+            PermissionSettings.fallbackMessage(for: "Camera access is off. Allow it in System Settings.")?.contains("Privacy & Security") == true,
+            "A failed settings shortcut must leave clear manual recovery directions"
+        )
+        precondition(
+            PermissionSettings.fallbackMessage(for: "Listening locally") == nil,
+            "Normal status must not show permission recovery directions"
+        )
 
         print("PASS: capture lifecycle, camera callback generations, 1000 restart cycles, speech output echo suppression, Keychain save failures, sleep/wake ordering, and privacy settings recovery")
     }
