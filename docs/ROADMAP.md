@@ -109,10 +109,15 @@ Status: in progress; this is the current phase.
   Pause turned off both sensors; pairing, service, database and generated audio
   were cleared. This verifies the local request-to-reply and synthesizer path,
   not acoustic loudness/quality or live Claude behavior.
-- Remaining: repeat and record camera startup/shutdown/restart, permission
-  recovery on a clean install, sleep/wake, startup timeout recovery and acoustic
-  feedback measurement on Mac. Live Claude behavior also needs acceptance when
-  credentials are configured.
+- Restart-cycle check (2026-10-20): ran five successive live Mac capture
+  cycles. Every cycle reached LIVE with microphone and camera on, then returned
+  to PAUSED with both off. The temporary pairing, service, and database were
+  cleared. This complements the 1,000-cycle hardware-free lifecycle test; it is
+  not a long-run or sleep/wake test.
+- Remaining: sleep/wake, startup-timeout recovery under a real stalled callback,
+  clean-install permission recovery, long-run stability, and acoustic
+  loudness/feedback measurement on Mac. Live Claude behavior also needs
+  acceptance when credentials are configured.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.
