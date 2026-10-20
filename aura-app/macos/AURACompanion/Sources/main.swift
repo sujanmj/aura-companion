@@ -59,6 +59,8 @@ struct AURAAmbientApp: App {
     @Published var isActive = false
     @Published var isStarting = false
     @Published var isPairing = false
+    @Published var isCheckingPairing = false
+    @Published var canRetrySavedPairing = false
     @Published var isPaired = false
     @Published var microphoneOn = false
     @Published var cameraOn = false
@@ -88,6 +90,7 @@ struct AURAAmbientApp: App {
         super.init()
         if let savedCookie = cookie {
             let generation = pairingGeneration.issue()
+            isCheckingPairing = true
             Task { await validatePairing(cookie: savedCookie, generation: generation) }
         }
         let center = NSWorkspace.shared.notificationCenter
@@ -109,29 +112,49 @@ struct AURAAmbientApp: App {
     }
 
     private func validatePairing(cookie: String, generation: UInt64) async {
+        defer {
+            if pairingGeneration.isCurrent(generation) { isCheckingPairing = false }
+        }
         guard let url = URL(string: "http://127.0.0.1:8790/api/status") else { return }
         var request = URLRequest(url: url)
         request.setValue(cookie, forHTTPHeaderField: "Cookie")
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
             guard pairingGeneration.isCurrent(generation) else { return }
-            if (response as? HTTPURLResponse)?.statusCode == 200 {
+            let statusCode = (response as? HTTPURLResponse)?.statusCode
+            switch PairingValidationDecision.classify(statusCode: statusCode) {
+            case .verified:
                 isPaired = true; status = "Paired securely with this AURA session."
-            } else {
+                canRetrySavedPairing = false
+            case .expired:
                 Keychain.delete(); self.cookie = nil; isPaired = false
                 status = "Pair with the current AURA session code from its terminal."
+                canRetrySavedPairing = false
+            case .temporarilyUnavailable:
+                isPaired = false
+                canRetrySavedPairing = true
+                status = "AURA could not verify the saved pairing. Your secure pairing is kept; start the web app and retry."
             }
         } catch {
             guard pairingGeneration.isCurrent(generation) else { return }
             isPaired = false
-            status = "Start the AURA web app, then pair using its current session code."
+            canRetrySavedPairing = true
+            status = "AURA did not respond while checking the saved pairing. Your secure pairing is kept; start the web app and retry."
         }
+    }
+
+    func retrySavedPairing() async {
+        guard let cookie, canRetrySavedPairing, !isCheckingPairing, !isPairing else { return }
+        let generation = pairingGeneration.issue()
+        isCheckingPairing = true
+        await validatePairing(cookie: cookie, generation: generation)
     }
 
     func pair() async {
         guard !isPairing else { return }
         let generation = pairingGeneration.issue()
         isPairing = true
+        isCheckingPairing = false
         defer {
             if pairingGeneration.isCurrent(generation) { isPairing = false }
         }
@@ -153,7 +176,7 @@ struct AURAAmbientApp: App {
                 status = "Couldn’t save the secure AURA pairing in Keychain. Check macOS Keychain access and try again."
                 return
             }
-            cookie = value; isPaired = true; code = ""
+            cookie = value; isPaired = true; code = ""; canRetrySavedPairing = false
             status = "Paired securely with this AURA session."
         } catch {
             guard pairingGeneration.isCurrent(generation) else { return }
@@ -360,7 +383,7 @@ struct AURAAmbientApp: App {
 
     func forgetPairing() {
         _ = pairingGeneration.issue()
-        isPairing = false
+        isPairing = false; isCheckingPairing = false; canRetrySavedPairing = false
         stop(); cookie = nil; Keychain.delete(); isPaired = false; status = "Session pairing cleared."
     }
 
@@ -608,6 +631,12 @@ private struct MenuView: View {
             Text("AURA checks speech and the room on this Mac. Raw audio and frames are never saved or sent. Speech recognition runs on-device; only direct requests and explicit support phrases reach your AURA companion.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) { Label(monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
             if !monitor.isPaired {
+                if monitor.canRetrySavedPairing {
+                    Button(monitor.isCheckingPairing ? "Checking saved pairing…" : "Retry saved pairing") {
+                        Task { await monitor.retrySavedPairing() }
+                    }
+                    .disabled(monitor.isCheckingPairing || monitor.isPairing)
+                }
                 SecureField("Session code from AURA terminal", text: $monitor.code)
                 Button(monitor.isPairing ? "Pairing securely…" : "Pair with AURA") { Task { await monitor.pair() } }
                     .disabled(monitor.code.isEmpty || monitor.isPairing)

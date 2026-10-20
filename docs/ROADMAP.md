@@ -61,6 +61,8 @@ Status: in progress; this is the current phase.
   touching the real Keychain.
 - Fixed: startup validation of a stored pairing cannot clear a newer explicit
   pairing, and duplicate pairing attempts are serialized.
+- Fixed: only an explicit 401 clears a stored pairing; temporary network or
+  service errors keep the Keychain cookie and offer a retry action.
 - Clarified: the macOS Speech Recognition permission prompt distinguishes raw
   audio (not saved) from triggered transcripts that may enter local SQLite
   memory.

@@ -70,6 +70,20 @@ struct PairingGeneration {
     }
 }
 
+enum PairingValidationDecision: Equatable {
+    case verified
+    case expired
+    case temporarilyUnavailable
+
+    static func classify(statusCode: Int?) -> Self {
+        switch statusCode {
+        case 200: .verified
+        case 401: .expired
+        default: .temporarilyUnavailable
+        }
+    }
+}
+
 // Keep AURA's own speech from becoming a new ambient microphone request. A
 // generation prevents a delayed completion from re-opening recognition after
 // a newer utterance or a manual Pause.

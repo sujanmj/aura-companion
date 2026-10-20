@@ -53,6 +53,10 @@ struct LifecycleTests {
         let explicitPair = pairing.issue()
         precondition(!pairing.isCurrent(storedCookieValidation), "A stale validation cannot overwrite a newer pairing")
         precondition(pairing.isCurrent(explicitPair), "The newest pairing operation remains current")
+        precondition(PairingValidationDecision.classify(statusCode: 200) == .verified)
+        precondition(PairingValidationDecision.classify(statusCode: 401) == .expired)
+        precondition(PairingValidationDecision.classify(statusCode: 503) == .temporarilyUnavailable)
+        precondition(PairingValidationDecision.classify(statusCode: nil) == .temporarilyUnavailable)
 
         var output = SpeechOutputSuppression()
         let firstOutput = output.begin()
