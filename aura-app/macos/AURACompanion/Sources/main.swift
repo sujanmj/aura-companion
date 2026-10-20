@@ -550,12 +550,12 @@ private enum Keychain {
             kSecValueData as String: Data(value.utf8),
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
-        let updateStatus = SecItemUpdate(identity as CFDictionary, attributes as CFDictionary)
-        if updateStatus == errSecSuccess { return true }
-        guard updateStatus == errSecItemNotFound else { return false }
         var item = identity
         attributes.forEach { item[$0.key] = $0.value }
-        return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
+        return KeychainPersistence.save(
+            update: { SecItemUpdate(identity as CFDictionary, attributes as CFDictionary) },
+            add: { SecItemAdd(item as CFDictionary, nil) }
+        )
     }
     static func delete() { SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: "AURA Companion", kSecAttrAccount: account] as CFDictionary) }
 }

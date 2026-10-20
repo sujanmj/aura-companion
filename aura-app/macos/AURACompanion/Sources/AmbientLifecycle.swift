@@ -1,3 +1,5 @@
+import Security
+
 // Pure session state, shared by the native helper and its hardware-free tests.
 struct AmbientLifecycle {
     enum Phase { case paused, starting, active }
@@ -76,6 +78,18 @@ struct SpeechOutputSuppression {
     mutating func cancel() {
         generation &+= 1
         isSuppressed = false
+    }
+}
+
+// Replace an existing credential in place; add only when no item exists. The
+// injected operations let the native tests verify failure handling without
+// modifying the user's real Keychain.
+enum KeychainPersistence {
+    static func save(update: () -> OSStatus, add: () -> OSStatus) -> Bool {
+        let updateStatus = update()
+        if updateStatus == errSecSuccess { return true }
+        guard updateStatus == errSecItemNotFound else { return false }
+        return add() == errSecSuccess
     }
 }
 

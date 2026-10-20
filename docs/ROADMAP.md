@@ -57,6 +57,8 @@ Status: in progress; this is the current phase.
 - Fixed: pairing reports success only after the session cookie is saved to
   macOS Keychain. Credential rotation updates an existing item before creating
   one, so a save failure does not delete a previously stored credential.
+  Native tests cover update, add, access-denied, and add-failure results without
+  touching the real Keychain.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing

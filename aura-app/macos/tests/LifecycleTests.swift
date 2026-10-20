@@ -1,3 +1,5 @@
+import Security
+
 @main
 struct LifecycleTests {
     static func main() {
@@ -54,6 +56,26 @@ struct LifecycleTests {
         output.cancel()
         precondition(!output.finish(interruptedOutput), "Pause must cancel delayed recognition resume")
 
+        var addWasCalled = false
+        precondition(
+            KeychainPersistence.save(update: { errSecSuccess }, add: { addWasCalled = true; return errSecSuccess }),
+            "Updating a stored credential should succeed"
+        )
+        precondition(!addWasCalled, "A successful update should not create a second item")
+        precondition(
+            KeychainPersistence.save(update: { errSecItemNotFound }, add: { errSecSuccess }),
+            "A missing credential should be added"
+        )
+        precondition(
+            !KeychainPersistence.save(update: { errSecInteractionNotAllowed }, add: { addWasCalled = true; return errSecSuccess }),
+            "Keychain access failure must not be reported as a successful save"
+        )
+        precondition(!addWasCalled, "An update error must not delete or replace an existing item")
+        precondition(
+            !KeychainPersistence.save(update: { errSecItemNotFound }, add: { errSecDuplicateItem }),
+            "A failed add must be reported to the pairing flow"
+        )
+
         var wake = WakeResumeState()
         wake.willSleep(wasActive: true)
         precondition(!wake.cameraStopped(), "Do not restart while the Mac is still asleep")
@@ -85,6 +107,6 @@ struct LifecycleTests {
             "Normal status must not offer a misleading permission shortcut"
         )
 
-        print("PASS: capture lifecycle, 1000 restart cycles, speech output echo suppression, sleep/wake ordering, and privacy settings recovery")
+        print("PASS: capture lifecycle, 1000 restart cycles, speech output echo suppression, Keychain save failures, sleep/wake ordering, and privacy settings recovery")
     }
 }
