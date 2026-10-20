@@ -90,10 +90,19 @@ Status: in progress; this is the current phase.
   completed: the helper visibly reached LIVE with microphone and camera on and
   a local Vision classification. Pause returned it to PAUSED with both sensors
   off. No ambient phrase/reply or acoustic speaker output was tested. The test
-  pairing, temporary service, and database were cleared. Sleep/wake, permission
-  denial recovery, and acoustic feedback remain unverified.
+  pairing, temporary service, and database were cleared. Sleep/wake,
+  Speech Recognition/microphone denial recovery, and acoustic feedback remain
+  unverified.
+- Permission recovery check (2026-10-20): disabled AURA's camera permission in
+  System Settings, relaunched the helper, and confirmed Start reported
+  "Camera access is off" with an Open Privacy Settings action. Restored camera
+  permission, relaunched, confirmed LIVE with both sensors on, then paused and
+  verified both off. The temporary pairing, service, and database were cleared.
+  This covers camera denial only; Speech Recognition and microphone denial
+  recovery still need live checks.
 - Remaining: repeat and record camera startup/shutdown/restart, permission
-  recovery, sleep/wake, startup failure recovery and acoustic feedback on Mac.
+  recovery for Speech Recognition and microphone access, sleep/wake, startup
+  failure recovery and acoustic feedback on Mac.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.
