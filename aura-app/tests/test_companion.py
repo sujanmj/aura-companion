@@ -505,6 +505,45 @@ class CompanionTest(unittest.TestCase):
             self.assertEqual(inference['emotional_need'], 'presence')
             store.close()
 
+    def test_uncertain_emotional_language_does_not_become_a_saved_mood_or_reuse_old_mood(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            user = store.get_or_create_user('Owner')
+            extractor = MemoryExtractor(store)
+            extractor.process_user_message(user, 'I felt anxious about my interview last week.')
+            actions = extractor.process_user_message(
+                user,
+                "I'm not sure whether I'm anxious about tomorrow, and maybe a little sad.",
+            )
+
+            inference = CompanionReactionEngine(store).infer_situation(
+                CompanionReactionEngine(store).build_context(user)
+            )
+
+            self.assertNotIn('remembered fact: recent_anxiety', actions)
+            self.assertNotIn('remembered fact: recent_low_mood', actions)
+            self.assertFalse(inference['has_anxiety_signal'])
+            self.assertFalse(inference['has_low_mood_signal'])
+            self.assertEqual(inference['emotional_need'], 'presence')
+            store.close()
+
+    def test_clear_current_emotion_overrides_an_earlier_uncertain_mention(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            user = store.get_or_create_user('Owner')
+            MemoryExtractor(store).process_user_message(
+                user,
+                "I'm not sure if I'm anxious, but I am worried about my interview.",
+            )
+            inference = CompanionReactionEngine(store).infer_situation(
+                CompanionReactionEngine(store).build_context(user)
+            )
+            self.assertTrue(inference['has_anxiety_signal'])
+            self.assertEqual(inference['emotional_need'], 'encouragement')
+            store.close()
+
     def test_a_later_positive_emotion_cue_overrides_an_earlier_negated_cue(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')

@@ -328,6 +328,10 @@ Status: foundations exist in the original reaction/memory engines.
   no longer counts as evidence that someone is sad or lonely.
 - Fixed: simple explicit negation such as “I am not anxious” no longer creates
   or reuses anxiety and low-mood labels from the current turn.
+- Fixed: explicitly uncertain emotional wording such as “I'm not sure whether
+  I'm anxious” no longer creates a mood fact or reactivates an older mood cue
+  through generic stress wording in that saved fact. A separate clear positive
+  cue still takes precedence. Companion tests cover both cases.
 - Implemented: consent-based local check-ins default off, wait for a saved idle
   interval, honor quiet hours, and only appear while the web companion is open.
 - Remaining: broader native controls and lifecycle acceptance.

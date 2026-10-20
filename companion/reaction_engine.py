@@ -6,7 +6,7 @@ from brain.llm_provider import LLMProvider
 from brain.prompt_builder import PromptBuilder
 from companion.context_relevance import ContextRelevanceFilter
 from companion.style_policy import StylePolicy
-from companion.text_signals import contains_signal, negates_signal
+from companion.text_signals import contains_signal, negates_signal, uncertain_signal
 from memory.sqlite_store import AuraMemoryStore
 
 
@@ -34,12 +34,14 @@ class CompanionReactionEngine:
         latest_user_message = self._latest_user_message(conversations)
         anxiety_terms = ("nervous", "anxious", "anxiety", "stress", "stressed", "worried", "worry", "tension")
         low_mood_terms = ("sad", "lonely", "alone", "low", "heavy", "down")
-        denies_anxiety = negates_signal(
-            latest_user_message, anxiety_terms
-        ) and not contains_signal(latest_user_message, anxiety_terms)
-        denies_low_mood = negates_signal(
-            latest_user_message, low_mood_terms
-        ) and not contains_signal(latest_user_message, low_mood_terms)
+        denies_anxiety = (
+            negates_signal(latest_user_message, anxiety_terms)
+            and not contains_signal(latest_user_message, anxiety_terms)
+        ) or uncertain_signal(latest_user_message, anxiety_terms)
+        denies_low_mood = (
+            negates_signal(latest_user_message, low_mood_terms)
+            and not contains_signal(latest_user_message, low_mood_terms)
+        ) or uncertain_signal(latest_user_message, low_mood_terms)
         latest_observation = observations[0].get("event_summary") if observations else None
         preferred_name = self._preferred_name(facts)
 
@@ -112,7 +114,7 @@ class CompanionReactionEngine:
                 has_low_mood_signal = True
                 add_reason(f"Memory notes low mood: {fact_key}", score)
 
-            if any(term in blob for term in ("stress", "stressed")):
+            if not denies_anxiety and contains_signal(blob, ("stress", "stressed")):
                 has_stress_signal = True
 
         # Emotional cues describe the current turn. Older user messages remain
@@ -123,18 +125,25 @@ class CompanionReactionEngine:
             None,
         )
         if current_turn:
-            blob = f"{current_turn.get('message', '')} {current_turn.get('emotion_tag') or ''}".lower()
-            if not denies_anxiety and contains_signal(blob, anxiety_terms):
+            message = str(current_turn.get('message', '')).lower()
+            emotion_tag = str(current_turn.get('emotion_tag') or '').lower()
+            if not denies_anxiety and (
+                contains_signal(message, anxiety_terms)
+                or contains_signal(emotion_tag, anxiety_terms)
+            ):
                 has_anxiety_signal = True
                 add_reason("Recent conversation suggests some nervousness.", 0.8)
-            if contains_signal(blob, presentation_terms):
+            if contains_signal(message, presentation_terms):
                 has_presentation_signal = True
                 has_work_event_signal = True
                 add_reason("Recent conversation mentions a work-related event.", 0.85)
-            if not denies_low_mood and contains_signal(blob, low_mood_terms):
+            if not denies_low_mood and (
+                contains_signal(message, low_mood_terms)
+                or contains_signal(emotion_tag, low_mood_terms)
+            ):
                 has_low_mood_signal = True
                 add_reason("Recent conversation suggests feeling low or alone.", 0.8)
-            if not denies_anxiety and contains_signal(blob, ("stress", "stressed")):
+            if not denies_anxiety and contains_signal(message, ("stress", "stressed")):
                 has_stress_signal = True
 
         for obs in observations:
