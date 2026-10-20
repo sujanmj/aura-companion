@@ -134,7 +134,11 @@ struct AURAAmbientApp: App {
                   let value = http.value(forHTTPHeaderField: "Set-Cookie")?.components(separatedBy: ";").first else {
                 status = "Couldn’t pair. Check the current AURA session code and that the web app is running."; return
             }
-            cookie = value; Keychain.save(value); isPaired = true; code = ""
+            guard Keychain.save(value) else {
+                status = "Couldn’t save the secure AURA pairing in Keychain. Check macOS Keychain access and try again."
+                return
+            }
+            cookie = value; isPaired = true; code = ""
             status = "Paired securely with this AURA session."
         } catch { status = "AURA is not reachable on this Mac yet." }
     }
@@ -536,9 +540,22 @@ private enum Keychain {
         guard status == errSecSuccess, let data = result as? Data else { return nil }
         return String(data: data, encoding: .utf8)
     }
-    static func save(_ value: String) {
-        delete(); let data = Data(value.utf8)
-        SecItemAdd([kSecClass: kSecClassGenericPassword, kSecAttrService: "AURA Companion", kSecAttrAccount: account, kSecValueData: data, kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlock] as CFDictionary, nil)
+    static func save(_ value: String) -> Bool {
+        let identity: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "AURA Companion",
+            kSecAttrAccount as String: account
+        ]
+        let attributes: [String: Any] = [
+            kSecValueData as String: Data(value.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+        ]
+        let updateStatus = SecItemUpdate(identity as CFDictionary, attributes as CFDictionary)
+        if updateStatus == errSecSuccess { return true }
+        guard updateStatus == errSecItemNotFound else { return false }
+        var item = identity
+        attributes.forEach { item[$0.key] = $0.value }
+        return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
     }
     static func delete() { SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: "AURA Companion", kSecAttrAccount: account] as CFDictionary) }
 }
