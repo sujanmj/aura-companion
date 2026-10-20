@@ -32,8 +32,14 @@ Status: in progress; this is the current phase.
   1,000 cancel/restart cycles. This is automated evidence, not a hardware test.
 - Implemented: authenticated Setup/readiness diagnostics distinguish missing
   configuration, local fallback and configured-but-unverified providers.
+- Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
+  temporary SQLite database; confirmed local camera classification, on-device
+  recognition through the Mac microphone, an ambient reply, and Pause clearing
+  the live mic/camera indicators. The app invoked its speech output path; this
+  check did not measure acoustic playback. Temporary pairing and test database
+  were cleared. Sleep/wake and startup-failure recovery still need acceptance.
 - Remaining: verify startup failures and recovery, truthful runtime status, and
-  run hardware acceptance for microphone/camera and sleep/wake behavior.
+  sleep/wake behavior on hardware.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.

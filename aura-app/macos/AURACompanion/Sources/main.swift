@@ -333,9 +333,21 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
     }
 
     func consume(_ buffer: AVAudioPCMBuffer) {
+        // The audio engine owns and may reuse tap buffers as soon as this call
+        // returns. Keep an owned copy before handing the data to our queue.
+        guard let source = buffer.floatChannelData,
+              let owned = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameLength),
+              let destination = owned.floatChannelData else { return }
+        let channels = Int(buffer.format.channelCount)
+        let frames = Int(buffer.frameLength)
+        guard channels > 0, frames > 0 else { return }
+        owned.frameLength = buffer.frameLength
+        for channel in 0..<channels {
+            destination[channel].update(from: source[channel], count: frames)
+        }
         queue.async { [weak self] in
-            guard let self, !self.stopped, let channel = buffer.floatChannelData?[0] else { return }
-            let count = Int(buffer.frameLength)
+            guard let self, !self.stopped, let channel = owned.floatChannelData?[0] else { return }
+            let count = Int(owned.frameLength)
             guard count > 0 else { return }
             let step = max(1, count / 512)
             var squares: Float = 0
@@ -346,10 +358,10 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
                 self.quietBuffers = 0
                 if self.request == nil { self.beginRequest() }
                 self.inSpeech = true
-                self.request?.append(buffer)
+                self.request?.append(owned)
             } else if self.inSpeech {
                 self.quietBuffers += 1
-                self.request?.append(buffer)
+                self.request?.append(owned)
                 if self.quietBuffers >= 9 {
                     self.inSpeech = false
                     self.quietBuffers = 0
