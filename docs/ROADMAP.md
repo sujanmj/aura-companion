@@ -353,3 +353,8 @@ Status: simulated safety workflows exist; production validation remains.
 - External alerts remain explicitly authorized; no unverified emergency guarantees.
 - Package supported platforms, verify clean installation and upgrades, preserve
   memory, and sign/notarize distributions when signing credentials are available.
+- Publish only builds whose stated scope has passed its release gates.
+
+Exit: release checklist and evidence identify tested platforms, known limitations,
+hardware coverage and rollback instructions. A preview is never labeled production
+ready solely because it compiles or passes CI.
