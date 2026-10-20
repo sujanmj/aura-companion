@@ -136,6 +136,54 @@ struct LifecycleTests {
         try? await Task.sleep(nanoseconds: 20_000_000)
         precondition(timeoutFired, "A stalled permission callback must reach its startup deadline")
 
+        var stalledLifecycle = AmbientLifecycle()
+        let stalledToken = stalledLifecycle.begin()!
+        var stalledStartup = true
+        var stalledTimedOut = false
+        var permissionContinuation: CheckedContinuation<Void, Never>?
+        let stalledPermission = Task { @MainActor in
+            await withCheckedContinuation { continuation in
+                permissionContinuation = continuation
+            }
+            if stalledLifecycle.contains(stalledToken) {
+                _ = stalledLifecycle.activate(stalledToken)
+            }
+        }
+        _ = StartupWatchdog.schedule(afterNanoseconds: 1_000_000) {
+            let didExpire = StartupWatchdog.expire(
+                token: stalledToken,
+                lifecycle: stalledLifecycle,
+                isStarting: stalledStartup
+            ) {
+                stalledLifecycle.pause()
+                stalledStartup = false
+                stalledTimedOut = true
+            }
+            precondition(didExpire, "The live startup session must expire while permission remains pending")
+        }
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        precondition(stalledTimedOut, "A suspended permission callback must trigger startup recovery")
+        precondition(stalledLifecycle.phase == .paused, "A timed-out startup must leave capture paused")
+        permissionContinuation?.resume()
+        await stalledPermission.value
+        precondition(stalledLifecycle.phase == .paused, "A late permission callback must not restart timed-out capture")
+
+        var completedLifecycle = AmbientLifecycle()
+        let completedToken = completedLifecycle.begin()!
+        var completedStartup = true
+        precondition(completedLifecycle.activate(completedToken), "A valid callback may complete the current startup")
+        completedStartup = false
+        precondition(
+            !StartupWatchdog.expire(
+                token: completedToken,
+                lifecycle: completedLifecycle,
+                isStarting: completedStartup,
+                onTimeout: { completedLifecycle.pause() }
+            ),
+            "The watchdog must not expire after startup has completed"
+        )
+        precondition(completedLifecycle.phase == .active, "A completed startup must remain active")
+
         var cancelledTimeoutFired = false
         let cancelledWatchdog = StartupWatchdog.schedule(afterNanoseconds: 20_000_000) {
             cancelledTimeoutFired = true
@@ -144,6 +192,6 @@ struct LifecycleTests {
         try? await Task.sleep(nanoseconds: 30_000_000)
         precondition(!cancelledTimeoutFired, "A completed or cancelled startup must not run its timeout")
 
-        print("PASS: capture lifecycle, pairing and audio/camera callback generations, 1000 restart cycles, speech output echo suppression, Keychain save failures, startup timeout/cancellation, sleep/wake ordering, and privacy settings recovery")
+        print("PASS: capture lifecycle, pairing and audio/camera callback generations, 1000 restart cycles, speech output echo suppression, Keychain save failures, suspended-permission startup timeout and late callback recovery, sleep/wake ordering, and privacy settings recovery")
     }
 }

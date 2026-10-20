@@ -193,9 +193,15 @@ struct AURAAmbientApp: App {
         status = "Checking Speech Recognition permission…"
         startupTimeoutTask?.cancel()
         startupTimeoutTask = StartupWatchdog.schedule(afterNanoseconds: 60_000_000_000) { [weak self] in
-            guard let self, self.lifecycle.contains(generation), self.isStarting else { return }
-            self.stop()
-            self.status = "Ambient startup timed out. Check permission prompts and connected devices, then try again."
+            guard let self else { return }
+            _ = StartupWatchdog.expire(
+                token: generation,
+                lifecycle: self.lifecycle,
+                isStarting: self.isStarting
+            ) {
+                self.stop()
+                self.status = "Ambient startup timed out. Check permission prompts and connected devices, then try again."
+            }
         }
         defer {
             if lifecycle.contains(generation) {

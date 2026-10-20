@@ -79,6 +79,11 @@ Status: in progress; this is the current phase.
   safely pauses instead of leaving the user on an indefinite startup state;
   manual Cancel remains available and late callbacks are rejected by the
   session generation. Native tests cover watchdog expiry and cancellation.
+- Strengthened: native startup tests now hold a permission callback suspended,
+  drive the same watchdog-expiry gate used by the Mac helper, verify the capture
+  lifecycle returns to Paused, then release the late callback and verify it
+  cannot reactivate capture. This validates the timeout recovery logic without
+  claiming a real macOS permission prompt was stalled.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing

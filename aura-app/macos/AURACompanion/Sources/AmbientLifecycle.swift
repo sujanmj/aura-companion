@@ -16,6 +16,18 @@ enum StartupWatchdog {
             onTimeout()
         }
     }
+
+    @MainActor
+    static func expire(
+        token: UInt64,
+        lifecycle: AmbientLifecycle,
+        isStarting: Bool,
+        onTimeout: @MainActor () -> Void
+    ) -> Bool {
+        guard lifecycle.contains(token), isStarting else { return false }
+        onTimeout()
+        return true
+    }
 }
 
 // Pure session state, shared by the native helper and its hardware-free tests.
