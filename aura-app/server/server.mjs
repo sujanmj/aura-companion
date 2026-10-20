@@ -175,6 +175,20 @@ const server = http.createServer(async (req, res) => {
           hardware: "not_tested",
         });
       }
+      if (req.method === "GET" && url.pathname === "/api/memory/export") {
+        try {
+          const exported = await memory("export");
+          res.writeHead(200, {
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Disposition": 'attachment; filename="aura-memory-export.json"',
+          });
+          return res.end(`${JSON.stringify(exported, null, 2)}\n`);
+        } catch {
+          return json(res, 503, {
+            error: "Memory export is unavailable. Check the local memory service.",
+          });
+        }
+      }
       if (req.method === "GET" && url.pathname === "/api/status")
         return json(res, 200, {
           ...(await memory("status")),

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 async function connect(page, suffix = "") {
   await page.goto("/" + suffix);
   await page.getByLabel("Session code").fill("browser-test-session-123456789");
@@ -158,4 +159,26 @@ test("saved facts can be corrected and forgetting requires confirmation", async 
   await expect(
     page.locator(".fact").filter({ hasText: "recent anxiety" }),
   ).toHaveCount(0);
+});
+
+test("memory export downloads the current authenticated account data", async ({
+  page,
+}) => {
+  await connect(page);
+  await page.getByLabel("Your message").fill("Please remember I like green tea");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  const downloadReady = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download all my AURA data (JSON)" }).click();
+  const download = await downloadReady;
+  expect(download.suggestedFilename()).toBe("aura-memory-export.json");
+  const exported = JSON.parse(await readFile(await download.path(), "utf8"));
+  expect(exported.format).toBe("aura-memory-export");
+  expect(exported.records.conversation_logs).toContainEqual(
+    expect.objectContaining({
+      role: "user",
+      message: "Please remember I like green tea",
+    }),
+  );
 });

@@ -4,6 +4,7 @@ import json
 import sqlite3
 from pathlib import Path
 from typing import Any
+from datetime import datetime, timezone
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +51,60 @@ class AuraMemoryStore:
             return int(row["id"])
 
         return self.create_user(name=name, preferred_name=preferred_name)
+
+    def export_user_memory(self, user_id: int) -> dict[str, Any]:
+        user = self.conn.execute(
+            "SELECT id, name, preferred_name, comfort_style, created_at FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        if not user:
+            raise ValueError("User not found")
+
+        tables = (
+            "conversation_logs",
+            "memory_facts",
+            "forgotten_memory_facts",
+            "observations",
+            "mood_logs",
+            "routine_memory",
+            "safety_events",
+            "emergency_contacts",
+            "response_feedback",
+            "device_events",
+            "action_logs",
+            "known_people",
+            "person_events",
+            "escalation_plans",
+            "escalation_logs",
+            "confirmation_requests",
+            "incidents",
+            "service_heartbeats",
+        )
+        records: dict[str, list[dict[str, Any]]] = {}
+        for table in tables:
+            records[table] = [
+                dict(row)
+                for row in self.conn.execute(
+                    f"SELECT * FROM {table} WHERE user_id = ? ORDER BY rowid",
+                    (user_id,),
+                ).fetchall()
+            ]
+        records["incident_timeline_items"] = [
+            dict(row)
+            for row in self.conn.execute(
+                """SELECT item.* FROM incident_timeline_items AS item
+                   JOIN incidents ON incidents.id = item.incident_id
+                   WHERE incidents.user_id = ? ORDER BY item.rowid""",
+                (user_id,),
+            ).fetchall()
+        ]
+        return {
+            "format": "aura-memory-export",
+            "version": 1,
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "user": dict(user),
+            "records": records,
+        }
 
     def add_conversation(
         self,

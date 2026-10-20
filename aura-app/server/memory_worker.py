@@ -53,6 +53,8 @@ def main():
                               'facts': store.get_memory_facts(user),
                               'conversations': list(reversed(store.get_recent_conversations(user, limit=30))),
                               'observations': list(reversed(store.get_latest_observations(user, limit=10)))}
+                elif op == 'export':
+                    result = store.export_user_memory(user)
                 elif op == 'update_fact':
                     fact_id = req.get('fact_id')
                     value = req.get('value')

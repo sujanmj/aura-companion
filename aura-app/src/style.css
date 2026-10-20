@@ -708,6 +708,12 @@ footer {
   gap: 8px;
   margin-top: 10px;
 }
+.memory-export {
+  display: inline-block;
+  margin: 0 0 16px;
+  color: var(--accent);
+  font-size: 13px;
+}
 .memory-controls button {
   color: var(--accent);
   font-size: 12px;

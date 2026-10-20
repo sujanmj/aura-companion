@@ -144,5 +144,7 @@ In **Memory**, correct a saved fact or forget it with a confirmation. A correcti
 is marked as user-provided. Forgetting an inferred fact also prevents AURA from
 automatically saving that same fact key again. Your original chat messages stay in
 history and may still inform recent replies; this feature removes a saved summary,
-not the source messages. Deleting conversation history, exporting all memory, and
-reviewing routines/observations remain future controls.
+not the source messages. **Download all my AURA data** exports your profile,
+conversations, facts, observations and other records stored for your account as a
+JSON file. The export is generated locally, requires the current session, and is
+not sent to a cloud service.

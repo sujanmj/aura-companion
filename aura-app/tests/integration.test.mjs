@@ -131,6 +131,29 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     ).json();
     assert.equal(status.conversations.length, 2);
     assert.ok(status.facts.some((f) => f.fact_key === "recent_anxiety"));
+    const exportResponse = await fetch(base + "/api/memory/export", {
+      headers: { Cookie: cookie },
+    });
+    assert.equal(exportResponse.status, 200);
+    assert.match(exportResponse.headers.get("content-type"), /application\/json/);
+    assert.match(
+      exportResponse.headers.get("content-disposition"),
+      /aura-memory-export\.json/,
+    );
+    const memoryExport = await exportResponse.json();
+    assert.equal(memoryExport.format, "aura-memory-export");
+    assert.equal(memoryExport.version, 1);
+    assert.equal(memoryExport.records.conversation_logs.length, 2);
+    assert.ok(
+      memoryExport.records.memory_facts.some(
+        (fact) => fact.fact_key === "recent_anxiety",
+      ),
+    );
+    assert.equal(
+      (await fetch(base + "/api/memory/export")).status,
+      401,
+      "memory export requires the local AURA session",
+    );
     const anxietyFact = status.facts.find(
       (f) => f.fact_key === "recent_anxiety",
     );

@@ -578,6 +578,9 @@ function App() {
                   These are the facts in your existing AURA memory.
                   Conversations and feedback continue in the same database.
                 </p>
+                <a className="memory-export" href="/api/memory/export" download>
+                  Download all my AURA data (JSON)
+                </a>
                 {status.facts.length === 0 ? (
                   <p>No facts yet. Start a conversation.</p>
                 ) : (

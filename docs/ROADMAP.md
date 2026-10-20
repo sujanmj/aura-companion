@@ -62,6 +62,10 @@ invent credentials, silently enable tools, or substitute mock results for it.
 Status: foundations exist in the original reaction/memory engines.
 
 - Review, correct, export and forget remembered information deliberately.
+- Implemented: authenticated JSON export contains the selected user's profile and
+  records across conversations, saved and forgotten facts, feedback, observations,
+  routines, device/safety records and related timelines. Cross-user scoping is
+  tested; the download stays on the local AURA service.
 - Consent-based check-ins with quiet hours and clear pause controls.
 - Handle interruptions, uncertainty and emotional cues without claiming mind-reading.
 

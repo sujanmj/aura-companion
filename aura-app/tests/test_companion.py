@@ -13,6 +13,23 @@ from companion.reaction_engine import CompanionReactionEngine
 from brain.llm_provider import ClaudeProvider
 
 class CompanionTest(unittest.TestCase):
+    def test_memory_export_is_scoped_to_the_selected_user(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store=AuraMemoryStore(Path(folder)/'test.db');store.apply_schema()
+            owner=store.get_or_create_user('Owner')
+            other=store.get_or_create_user('Other')
+            store.add_conversation(owner,'user','private owner message')
+            store.add_conversation(other,'user','other user message')
+            store.remember_fact(owner,'favorite_drink','tea')
+            store.remember_fact(other,'favorite_drink','coffee')
+            exported=store.export_user_memory(owner)
+            self.assertEqual(exported['format'],'aura-memory-export')
+            self.assertEqual(exported['user']['name'],'Owner')
+            self.assertEqual(exported['records']['conversation_logs'][0]['message'],'private owner message')
+            self.assertEqual(exported['records']['memory_facts'][0]['fact_value'],'tea')
+            self.assertNotIn('other user message',str(exported))
+            self.assertNotIn('coffee',str(exported))
+            store.close()
     def test_original_personality_memory_and_cloud_provider(self):
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {'AURA_BRAIN_PROVIDER':'claude','ANTHROPIC_API_KEY':'test-key','ANTHROPIC_MODEL':'claude-sonnet-4-6'}):
             store=AuraMemoryStore(Path(folder)/'test.db');store.apply_schema()
