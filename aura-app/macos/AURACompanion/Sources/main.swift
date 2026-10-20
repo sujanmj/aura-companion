@@ -175,13 +175,22 @@ struct AURAAmbientApp: App {
                     self.handle(text)
                 }
             }
-            let camera = LocalCamera { [weak self] labels, present in
-                Task { @MainActor in
-                    guard let self, self.lifecycle.contains(generation), self.isActive else { return }
-                    self.contextLabels = labels; self.scene = labels.joined(separator: ", ")
-                    self.isPersonPresent = present
+            let camera = LocalCamera(
+                onScene: { [weak self] labels, present in
+                    Task { @MainActor in
+                        guard let self, self.lifecycle.contains(generation), self.isActive else { return }
+                        self.contextLabels = labels; self.scene = labels.joined(separator: ", ")
+                        self.isPersonPresent = present
+                    }
+                },
+                onFailure: { [weak self] message in
+                    Task { @MainActor in
+                        guard let self, self.lifecycle.contains(generation), self.isActive else { return }
+                        self.stop()
+                        self.status = message
+                    }
                 }
-            }
+            )
             self.camera = camera
             try await camera.start()
             guard lifecycle.contains(generation) else { camera.stop(); return }
@@ -334,8 +343,16 @@ private final class LocalCamera: NSObject, AVCaptureVideoDataOutputSampleBufferD
     private var lastVisionTime = Date.distantPast
     private var stopped = false
     private let onScene: @Sendable ([String], Bool) -> Void
+    private let onFailure: @Sendable (String) -> Void
+    private var failureObservers: [NSObjectProtocol] = []
 
-    init(onScene: @escaping @Sendable ([String], Bool) -> Void) { self.onScene = onScene }
+    init(
+        onScene: @escaping @Sendable ([String], Bool) -> Void,
+        onFailure: @escaping @Sendable (String) -> Void
+    ) {
+        self.onScene = onScene
+        self.onFailure = onFailure
+    }
 
     func start() async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -343,6 +360,7 @@ private final class LocalCamera: NSObject, AVCaptureVideoDataOutputSampleBufferD
                 do {
                     guard !self.stopped else { throw CancellationError() }
                     try self.configure()
+                    self.observeSessionFailures()
                     self.session.startRunning()
                     guard self.session.isRunning else { throw CaptureError.startFailed }
                     continuation.resume()
@@ -365,10 +383,41 @@ private final class LocalCamera: NSObject, AVCaptureVideoDataOutputSampleBufferD
         session.addOutput(output)
     }
 
+    private func observeSessionFailures() {
+        let center = NotificationCenter.default
+        let interrupted = center.addObserver(
+            forName: .AVCaptureSessionWasInterrupted,
+            object: session,
+            queue: nil
+        ) { [weak self] _ in
+            self?.reportFailure("macOS interrupted AURA’s camera. Ambient mode paused; close other camera apps, then start it again.")
+        }
+        let runtimeError = center.addObserver(
+            forName: .AVCaptureSessionRuntimeError,
+            object: session,
+            queue: nil
+        ) { [weak self] notification in
+            let detail = (notification.userInfo?[AVCaptureSessionErrorKey] as? Error)?.localizedDescription
+            let message = detail.map { "AURA’s camera stopped: \($0). Ambient mode paused; check camera access, then start it again." }
+                ?? "AURA’s camera stopped unexpectedly. Ambient mode paused; check camera access, then start it again."
+            self?.reportFailure(message)
+        }
+        failureObservers = [interrupted, runtimeError]
+    }
+
+    private func reportFailure(_ message: String) {
+        queue.async { [weak self] in
+            guard let self, !self.stopped else { return }
+            self.onFailure(message)
+        }
+    }
+
     func stop(completion: @escaping @Sendable () -> Void = {}) {
         queue.async {
             guard !self.stopped else { completion(); return }
             self.stopped = true
+            self.failureObservers.forEach(NotificationCenter.default.removeObserver)
+            self.failureObservers.removeAll()
             self.output.setSampleBufferDelegate(nil, queue: nil)
             if self.session.isRunning { self.session.stopRunning() }
             completion()

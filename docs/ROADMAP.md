@@ -62,6 +62,9 @@ Status: in progress; this is the current phase.
 - Clarified: the macOS Speech Recognition permission prompt distinguishes raw
   audio (not saved) from triggered transcripts that may enter local SQLite
   memory.
+- Fixed: camera interruption and runtime-error notifications now pause the
+  complete ambient session and report recovery guidance instead of leaving a
+  stale active indicator while microphone capture continues.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing
