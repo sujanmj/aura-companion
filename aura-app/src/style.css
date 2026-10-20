@@ -727,6 +727,39 @@ footer {
   min-height: 84px;
   padding: 10px;
 }
+.acceptance-steps {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+}
+.acceptance-step {
+  border: 1px solid #ffffff14;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #ffffff04;
+}
+.acceptance-step label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+}
+.acceptance-step input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+.acceptance-step p {
+  margin: 8px 0;
+  font-size: 12px;
+}
+.acceptance-step button,
+.acceptance-checklist > button {
+  padding: 6px 10px;
+  color: var(--accent);
+  font-size: 11px;
+}
 .memory-review {
   margin-top: 24px;
 }

@@ -48,6 +48,68 @@ type Readiness = {
   hardware: string;
 };
 type Approval = { id: string; name: string; input: unknown; expires: number };
+const acceptanceSteps = [
+  {
+    id: "conversation",
+    title: "Check a real conversation",
+    detail:
+      "Send a direct, non-greeting question. Confirm the reply is useful and its provider label matches the brain you configured; a LOCAL RESPONSE means the fallback answered.",
+    tab: "conversation",
+  },
+  {
+    id: "voice-input",
+    title: "Review a voice draft",
+    detail:
+      "Opt in to the microphone, say Hey AURA and a short request, then edit the transcript before sending it. Turn the microphone off afterward.",
+    tab: "conversation",
+  },
+  {
+    id: "voice-output",
+    title: "Test spoken replies and Stop",
+    detail:
+      "Enable Speak replies, confirm you can hear a response, then use Stop speaking to interrupt one. Browser speech availability varies by device.",
+    tab: "conversation",
+  },
+  {
+    id: "memory",
+    title: "Confirm memory continuity",
+    detail:
+      "Share a low-sensitivity preference, open Memory, and confirm the saved fact appears for your account. Correct or forget it if you do not want to keep it.",
+    tab: "memory",
+  },
+  {
+    id: "ambient",
+    title: "Accept the Mac ambient session",
+    detail:
+      "On a Mac, pair the native helper and explicitly start ambient mode. Check its live mic/camera indicators, Pause, restart, and sleep/wake. Permission denial recovery and acoustic feedback need a real-device check.",
+    tab: "setup",
+  },
+  {
+    id: "actions",
+    title: "Review optional tool approvals",
+    detail:
+      "Only if you configured a trusted MCP server: test a harmless tool, deny one call, and approve a separate call. Every call should show its exact name and arguments first.",
+    tab: "actions",
+  },
+] as const;
+const acceptanceStorageKey = "aura-first-device-acceptance-v1";
+function loadAcceptanceChecks(): Record<string, boolean> {
+  try {
+    const value = localStorage.getItem(acceptanceStorageKey);
+    if (!value) return {};
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      return {};
+    return Object.fromEntries(
+      acceptanceSteps.map(({ id }) => [
+        id,
+        (parsed as Record<string, unknown>)[id] === true,
+      ]),
+    );
+  } catch {
+    return {};
+  }
+}
 class OrbBoundary extends Component<
   { children: ReactNode },
   { failed: boolean }
@@ -86,6 +148,7 @@ function App() {
     ),
     [taskInput, setTaskInput] = useState(""),
     [readiness, setReadiness] = useState<Readiness | null>(null),
+    [acceptanceChecks, setAcceptanceChecks] = useState(loadAcceptanceChecks),
     [checkinPreferences, setCheckinPreferences] =
       useState<CheckinPreferences | null>(null),
     [editingFact, setEditingFact] = useState<number | null>(null),
@@ -629,6 +692,73 @@ function App() {
                     </article>
                   </>
                 )}
+                <article className="fact acceptance-checklist">
+                  <h3>First-device acceptance</h3>
+                  <p>
+                    Work through the checks on this device. These boxes are
+                    manual notes saved only in this browser; checking one does
+                    not run a test or prove a capability by itself.
+                  </p>
+                  <div className="acceptance-steps">
+                    {acceptanceSteps.map((step) => (
+                      <div className="acceptance-step" key={step.id}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={acceptanceChecks[step.id] === true}
+                            onChange={(event) => {
+                              const next = {
+                                ...acceptanceChecks,
+                                [step.id]: event.target.checked,
+                              };
+                              setAcceptanceChecks(next);
+                              try {
+                                localStorage.setItem(
+                                  acceptanceStorageKey,
+                                  JSON.stringify(next),
+                                );
+                              } catch {
+                                setError(
+                                  "Could not save these checklist notes in this browser.",
+                                );
+                              }
+                            }}
+                          />
+                          <span>{step.title}</span>
+                        </label>
+                        <p>{step.detail}</p>
+                        {step.tab !== "setup" && (
+                          <button
+                            type="button"
+                            onClick={() => setTab(step.tab)}
+                          >
+                            Open{" "}
+                            {step.tab === "memory"
+                              ? "Memory"
+                              : step.tab === "actions"
+                                ? "Actions"
+                                : "Conversation"}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAcceptanceChecks({});
+                      try {
+                        localStorage.removeItem(acceptanceStorageKey);
+                      } catch {
+                        setError(
+                          "Could not clear these checklist notes in this browser.",
+                        );
+                      }
+                    }}
+                  >
+                    Clear checklist notes
+                  </button>
+                </article>
                 {checkinPreferences && (
                   <article className="fact checkin-settings">
                     <h3>Companion check-ins</h3>

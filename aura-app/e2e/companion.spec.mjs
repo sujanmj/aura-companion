@@ -117,6 +117,23 @@ test("setup distinguishes local availability from live verification", async ({
   await page.reload();
   await page.getByRole("button", { name: "Setup 04" }).click();
   await expect(page.getByLabel("Allow AURA to check in")).toBeChecked();
+  const conversationCheck = page.getByRole("checkbox", {
+    name: "Check a real conversation",
+  });
+  await expect(conversationCheck).not.toBeChecked();
+  await expect(
+    page.getByText("These boxes are manual notes saved only in this browser"),
+  ).toBeVisible();
+  await conversationCheck.check();
+  await page.reload();
+  await page.getByRole("button", { name: "Setup 04" }).click();
+  await expect(
+    page.getByRole("checkbox", { name: "Check a real conversation" }),
+  ).toBeChecked();
+  await page.getByRole("button", { name: "Clear checklist notes" }).click();
+  await expect(
+    page.getByRole("checkbox", { name: "Check a real conversation" }),
+  ).not.toBeChecked();
 });
 
 test("saved facts can be corrected and forgetting requires confirmation", async ({
@@ -265,8 +282,8 @@ test("conversation history can be cleared while saved memory remains", async ({
   const clearButton = page.getByRole("button", {
     name: "Clear conversation history",
   });
-  const beforeDismiss = await page.evaluate(async () =>
-    await (await fetch("/api/status")).json(),
+  const beforeDismiss = await page.evaluate(
+    async () => await (await fetch("/api/status")).json(),
   );
   expect(beforeDismiss.conversations.length).toBeGreaterThan(0);
   expect(beforeDismiss.facts.length).toBeGreaterThan(0);
@@ -277,8 +294,8 @@ test("conversation history can be cleared while saved memory remains", async ({
     void dialog.dismiss();
   });
   await clearButton.click();
-  const afterDismiss = await page.evaluate(async () =>
-    (await (await fetch("/api/status")).json()).conversations,
+  const afterDismiss = await page.evaluate(
+    async () => (await (await fetch("/api/status")).json()).conversations,
   );
   expect(afterDismiss).toHaveLength(beforeDismiss.conversations.length);
   page.once("dialog", (dialog) => void dialog.accept());
@@ -288,13 +305,14 @@ test("conversation history can be cleared while saved memory remains", async ({
   );
   await expect
     .poll(async () =>
-      page.evaluate(async () =>
-        (await (await fetch("/api/status")).json()).conversations.length,
+      page.evaluate(
+        async () =>
+          (await (await fetch("/api/status")).json()).conversations.length,
       ),
     )
     .toBe(0);
-  const afterClear = await page.evaluate(async () =>
-    await (await fetch("/api/status")).json(),
+  const afterClear = await page.evaluate(
+    async () => await (await fetch("/api/status")).json(),
   );
   expect(afterClear.facts).toEqual(beforeDismiss.facts);
   await page.getByRole("button", { name: "Conversation 01" }).click();

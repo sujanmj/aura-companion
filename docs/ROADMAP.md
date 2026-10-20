@@ -79,10 +79,17 @@ Status: in progress; this is the current phase.
   recognition through the Mac microphone, an ambient reply, and Pause clearing
   the live mic/camera indicators. The app invoked its speech output path; this
   check did not measure acoustic playback. Temporary pairing and test database
-  were cleared. Sleep/wake and startup-failure recovery still need acceptance.
-- Remaining: verify camera shutdown/restart, permission-denial recovery and
-  sleep/wake behavior on hardware. The newly rebuilt stop acknowledgement has
-  automated coverage but awaits a repeat Mac check because the Mac is locked.
+  were cleared.
+- Latest unlocked-Mac check (2026-10-20): paired the rebuilt helper to a new
+  disposable SQLite database. macOS already showed AURA microphone and camera
+  permissions enabled. Starting ambient mode caused the native window to become
+  unavailable to UI inspection, so active capture, indicators, shutdown/restart,
+  permission-denial recovery, sleep/wake and acoustic feedback could not be
+  verified in this pass. The helper and temporary server were stopped and the
+  test database was removed. This is a failed/incomplete acceptance attempt,
+  not a pass.
+- Remaining: repeat and record camera startup/shutdown/restart, permission
+  recovery, sleep/wake, startup failure recovery and acoustic feedback on Mac.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.
@@ -92,6 +99,12 @@ separately. Missing hardware access must remain an explicit unresolved gate.
 Status: partial components exist; acceptance not complete.
 
 - Implemented: diagnose configuration and service readiness without exposing secrets.
+- Implemented: Setup includes a guided first-device acceptance checklist for
+  conversation/provider, reviewed voice input, spoken output/Stop, memory
+  continuity, Mac ambient mode and optional MCP approvals. Checklist marks are
+  manual notes stored in that browser only; they do not run tests or claim that
+  a provider, microphone, speaker, camera or tool worked. Browser end-to-end
+  coverage checks persistence and clearing of those notes.
 - Verify real voice conversations, interruption, memory continuity and opt-in tools.
 - Exercise real Claude/MCP and optional voice-provider paths when configured.
 - Provide a repeatable onboarding and acceptance procedure.
