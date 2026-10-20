@@ -208,10 +208,11 @@ Status: in progress; this is the current phase.
   no microphone or camera capture began. This clean-install prompt blocker
   remains unresolved. Existing permission recovery succeeded before the reset,
   but the grant could not be restored through the missing prompt in this run.
-- Speech privacy update (2026-10-20): on macOS 27 and later, ambient
-  transcription now uses Apple's `SpeechAnalyzer` and `SpeechTranscriber` with
-  supported on-device English assets; older systems retain the explicitly
-  on-device-only Speech framework path. The modern build compiled and reached
+- Speech privacy update (2026-10-20): when built with the macOS 27 / Swift 6.4
+  SDK and run on macOS 27 or later, ambient transcription uses Apple's
+  `SpeechAnalyzer` and `SpeechTranscriber` with supported on-device English
+  assets. Older build SDKs and older systems retain the explicitly on-device-
+  only Speech framework path. The modern build compiled and reached
   LIVE with local camera classifications, but a synthetic spoken request
   produced no visible speech-recognition status or conversation row. A later
   fresh launch timed out while checking microphone permission even though
@@ -223,6 +224,11 @@ Status: in progress; this is the current phase.
   converter produced finalized English transcription segments before the input
   stream closed. Temporary clip and harness were removed. This verifies the
   on-device model and analyzer path, not AVAudioEngine delivery or an AURA reply.
+- macOS CI compatibility fix (2026-10-20): run 39465895378 exposed that the
+  macOS 26 SDK does not include Apple's `AnalyzerInputConverter`. The modern
+  SpeechAnalyzer implementation is now compile-gated to Swift 6.4+ and macOS 27
+  runtime; older SDKs compile the on-device-only fallback. The local macOS 27
+  build and app tests pass; the macOS 26 CI rerun is pending.
 - Remaining: hardware sleep/wake, automatic clean-install permission prompt
   recovery, multi-hour stability of the rebuilt audio-queue version, and
   calibrated acoustic loudness/feedback testing on Mac. Live Claude behavior

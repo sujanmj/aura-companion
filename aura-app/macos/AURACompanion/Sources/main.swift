@@ -254,6 +254,7 @@ struct AURAAmbientApp: App {
                     self.handle(text)
                 }
             }
+#if compiler(>=6.4)
             if #available(macOS 27.0, *) {
                 status = "Preparing private on-device English speech recognition…"
                 self.transcriber = try await SpeechAnalyzerTranscriber.make(onFinal: onFinal)
@@ -281,6 +282,30 @@ struct AURAAmbientApp: App {
                 }
                 self.transcriber = LegacySpeechPipeline(recognizer: recognizer, onFinal: onFinal)
             }
+#else
+            status = "Checking Speech Recognition permission…"
+            let authorization = SFSpeechRecognizer.authorizationStatus()
+            let authorized: Bool
+            switch authorization {
+            case .authorized:
+                authorized = true
+            case .notDetermined:
+                authorized = await withCheckedContinuation { continuation in
+                    SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
+                }
+            case .denied, .restricted:
+                authorized = false
+            @unknown default:
+                authorized = false
+            }
+            guard lifecycle.contains(generation) else { return }
+            guard authorized else { status = "Allow Speech Recognition in System Settings to use local listening."; return }
+            status = "Checking on-device English speech support…"
+            guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US")), recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else {
+                status = "On-device English speech recognition isn’t available on this Mac. AURA won’t send ambient audio to a server."; return
+            }
+            self.transcriber = LegacySpeechPipeline(recognizer: recognizer, onFinal: onFinal)
+#endif
             guard lifecycle.contains(generation) else { self.transcriber?.stop(); self.transcriber = nil; return }
             status = "Checking camera access…"
             let cameraAllowed = await requestCapturePermission(for: .video)
@@ -786,6 +811,7 @@ private final class LegacySpeechPipeline: AmbientTranscriber, @unchecked Sendabl
     }
 }
 
+#if compiler(>=6.4)
 @available(macOS 27.0, *)
 private final class SpeechAnalyzerTranscriber: AmbientTranscriber, @unchecked Sendable {
     private static let maximumBufferedInputs = 128
@@ -919,6 +945,7 @@ private enum SpeechPipelineError: LocalizedError {
         }
     }
 }
+#endif
 
 private struct MenuView: View {
     @ObservedObject var monitor: AmbientMonitor
