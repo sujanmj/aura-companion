@@ -19,6 +19,18 @@ CREATE TABLE IF NOT EXISTS conversation_logs (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- Retry metadata only. Message and event payloads are re-read from their source
+-- rows when sent, so clearing local conversation history also removes its queue.
+CREATE TABLE IF NOT EXISTS cloud_sync_outbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_type TEXT NOT NULL CHECK(record_type IN ('conversation', 'sensor_event', 'conversation_delete')),
+    local_id INTEGER NOT NULL,
+    device_id TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at REAL NOT NULL DEFAULT 0,
+    UNIQUE(record_type, local_id, device_id)
+);
+
 CREATE TABLE IF NOT EXISTS memory_facts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

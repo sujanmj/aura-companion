@@ -10,7 +10,7 @@ For sensor experiments, plan on a separate ADC board such as an ADS1115 or MCP30
 
 - `aura-app` has a full-screen face at `http://127.0.0.1:8790/?kiosk=1` after session login.
 - The existing Python companion brain can call the configured Claude provider or the new server-side OpenAI Responses provider.
-- Personal memory continues to work in local SQLite. An optional Supabase sync now copies user/assistant conversation rows and sensor events to cloud tables; profile facts, routines, and complete incident/action history are not synced yet. Sync is best-effort and does not have a durable retry queue.
+- Personal memory continues to work in local SQLite. Optional Supabase sync copies user/assistant conversation rows and sensor events to cloud tables; profile facts, routines, and complete incident/action history are not synced. Failed uploads are retained in a durable SQLite outbox as source-row references and retried with capped backoff. Message text and event summaries are read from their source rows only when sending; they are not duplicated in the outbox. Clearing local conversation history removes pending uploads and queues a remote delete for previously synced rows while the device ID and cloud credentials remain configured.
 - The current continuous camera and microphone service uses Apple frameworks and only runs on macOS. The Pi ambient capture daemon, local wake-word/STT, camera scene context, sensor drivers, cloud database, and Pi boot service are not implemented yet.
 - The existing sensor API and tests model gas, fire, water, and other events, but that is event-processing logic, not Raspberry Pi GPIO driver code.
 
@@ -27,7 +27,7 @@ OPENAI_API_KEY=YOUR_SERVER_ONLY_KEY
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
-The sync sends each new user and assistant conversation entry and each sensor event over HTTPS. Audio and video are not synced. The current sync runs alongside local SQLite writes, so the companion still works when Supabase is unavailable; missed cloud rows are not retried automatically yet. Set the OpenAI or Claude key on the server only. Hosted model requests contain the text/context AURA is asked to answer, so avoid sending private ambient observations unless you choose to enable that behavior.
+The sync sends each new user and assistant conversation entry and each sensor event over HTTPS. Audio and video are not synced. The local SQLite outbox retries after outages without blocking memory writes. Clearing local chat history also queues deletion of its cloud rows; if the cloud device ID or credentials are removed before that delete succeeds, the remote copy may remain. Set the OpenAI or Claude key on the server only. Hosted model requests contain the text/context AURA is asked to answer, so avoid sending private ambient observations unless you choose to enable that behavior.
 
 ## Planned Pi service boundary
 

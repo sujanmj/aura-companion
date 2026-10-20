@@ -14,7 +14,12 @@ from config.env_loader import load_env_file
 from memory.sqlite_store import AuraMemoryStore, DEFAULT_DB_PATH
 from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
-from cloud.supabase_sync import sync_conversation
+from cloud.supabase_sync import (
+    discard_pending_conversations,
+    enqueue_conversation_deletions,
+    start_retry_worker,
+    sync_conversation,
+)
 from readiness import brain_readiness, test_provider_connection
 
 
@@ -30,6 +35,7 @@ def main():
             source.backup(dest)
     store = AuraMemoryStore(path)
     store.apply_schema()
+    start_retry_worker()
     user = store.get_or_create_user('Sujan M J', 'Sujan')
     if os.environ.get('AURA_USER_ID'):
         user = int(os.environ['AURA_USER_ID'])
@@ -76,7 +82,16 @@ def main():
                 elif op == 'export':
                     result = store.export_user_memory(user)
                 elif op == 'clear_conversations':
-                    result = {'deleted': store.clear_conversation_history(user)}
+                    pending_ids = [
+                        int(row['id'])
+                        for row in store.conn.execute(
+                            'SELECT id FROM conversation_logs WHERE user_id=?', (user,)
+                        ).fetchall()
+                    ]
+                    deleted = store.clear_conversation_history(user)
+                    discard_pending_conversations(pending_ids)
+                    enqueue_conversation_deletions(pending_ids)
+                    result = {'deleted': deleted}
                 elif op == 'update_fact':
                     fact_id = req.get('fact_id')
                     value = req.get('value')

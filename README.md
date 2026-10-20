@@ -1,6 +1,6 @@
 # AURA Companion
 
-The existing AURA companion and sensor-event engine are being prepared for Raspberry Pi 5 deployment. See [`docs/raspberry_pi.md`](docs/raspberry_pi.md) for the hardware target, optional Supabase conversation/sensor sync, and what still requires the actual Pi and sensor modules. The current repository includes simulated sensor event handling; it does not yet contain GPIO drivers for physical gas, distance, fire, or water modules.
+The existing AURA companion and sensor-event engine are being prepared for Raspberry Pi 5 deployment. See [`docs/raspberry_pi.md`](docs/raspberry_pi.md) for the hardware target, optional Supabase conversation/sensor sync with a local durable retry outbox, and what still requires the actual Pi and sensor modules. The current repository includes simulated sensor event handling; it does not yet contain GPIO drivers for physical gas, distance, fire, or water modules.
 
 ## New Mac-compatible companion interface
 

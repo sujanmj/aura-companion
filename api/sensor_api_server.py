@@ -14,13 +14,13 @@ from actions.voice_runtime import create_runtime_speaker
 from api.dashboard_service import DashboardService
 from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
-from memory.sqlite_store import AuraMemoryStore
+from memory.sqlite_store import AuraMemoryStore, DEFAULT_DB_PATH
 from incidents.incident_service import IncidentService, incident_api_summary
 from runtime.heartbeat import RuntimeHeartbeat
 from safety.confirmation_engine import ConfirmationEngine
 from safety.escalation_engine import EscalationEngine
 from safety.safety_engine import SafetyEngine
-from cloud.supabase_sync import sync_sensor_event
+from cloud.supabase_sync import start_retry_worker, sync_sensor_event
 
 DEFAULT_USER_NAME = "Sujan M J"
 DEFAULT_PREFERRED_NAME = "Sujan"
@@ -642,8 +642,10 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
 def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
     load_env_file()
-    store = AuraMemoryStore()
+    db_path = Path(os.environ.get("AURA_DB_PATH", str(DEFAULT_DB_PATH))).expanduser().resolve()
+    store = AuraMemoryStore(db_path)
     store.apply_schema()
+    start_retry_worker()
 
     user_id = store.get_or_create_user(
         name=DEFAULT_USER_NAME,

@@ -359,6 +359,14 @@ Status: security hardening is progressing; kiosk UI, event API and simulators ex
   appear online for 90 seconds after their last contact. Credential enrollment
   and revocation, room/source binding, and status are API-tested. A production Pi
   background service and room-to-room conversation handoff remain.
+- Implemented: optional Supabase sync now has a durable SQLite retry outbox for
+  conversation and sensor-event rows. The outbox stores source-row references,
+  device IDs and retry metadata rather than duplicating message/event text;
+  capped backoff avoids rapid repeat requests. A cleared local conversation
+  cancels pending uploads and queues an idempotent remote delete for any already
+  synced row. Offline tests cover queue/retry, backoff, source-row deletion and
+  remote cleanup. This does not sync profile facts/routines or verify a live
+  Supabase account.
 - Conversation handoff without duplicate replies or accidental cross-user memory.
 - Real camera/microphone and GPIO sensor acceptance on target hardware.
 
