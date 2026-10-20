@@ -51,6 +51,9 @@ Status: in progress; this is the current phase.
   Stale speech-completion callbacks cannot reopen the microphone after a newer
   utterance or Pause; native tests cover those generations. Acoustic feedback
   still needs confirmation on the unlocked Mac.
+- Fixed: closing the AURA companion window or quitting the app pauses ambient
+  microphone and camera capture. Reopening AURA from the Dock restores the
+  window without restarting capture; the user must opt in again.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing
