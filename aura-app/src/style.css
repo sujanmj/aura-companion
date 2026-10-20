@@ -727,3 +727,13 @@ footer {
   min-height: 84px;
   padding: 10px;
 }
+.memory-review {
+  margin-top: 24px;
+}
+.memory-review > h3 {
+  margin-bottom: 10px;
+}
+.memory-review time {
+  opacity: 0.65;
+  font-size: 11px;
+}

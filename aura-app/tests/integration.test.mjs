@@ -223,6 +223,7 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
         (o) => o.event_type === "ambient_context" && o.source === "mac_local",
       ),
     );
+    assert.ok(Array.isArray(withContext.routines));
     const page = await fetch(base);
     assert.equal(page.status, 200);
     assert.match(await page.text(), /AURA Companion/);

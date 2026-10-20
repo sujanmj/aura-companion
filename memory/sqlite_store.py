@@ -285,6 +285,14 @@ class AuraMemoryStore:
         )
         return [dict(row) for row in cur.fetchall()]
 
+    def get_routine_memory(self, user_id: int) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """SELECT id, routine_key, routine_value, confidence, last_seen_at, created_at
+               FROM routine_memory WHERE user_id = ? ORDER BY last_seen_at DESC""",
+            (user_id,),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
     def add_response_feedback(
         self,
         user_id: int,

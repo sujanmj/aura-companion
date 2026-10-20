@@ -14,6 +14,18 @@ type Status = {
   provider: string;
   model: string;
   facts: { id: number; fact_key: string; fact_value: string }[];
+  routines: {
+    id: number;
+    routine_key: string;
+    routine_value: string;
+    last_seen_at: string;
+  }[];
+  observations: {
+    event_type: string;
+    event_summary: string;
+    source: string;
+    created_at: string;
+  }[];
   conversations: Message[];
   actions: boolean;
   stt: boolean;
@@ -666,6 +678,38 @@ function App() {
                     </article>
                   ))
                 )}
+                <section className="memory-review">
+                  <h3>Routines</h3>
+                  {status.routines.length === 0 ? (
+                    <p>No routines have been saved.</p>
+                  ) : (
+                    status.routines.map((routine) => (
+                      <article className="fact" key={routine.id}>
+                        <small>{routine.routine_key.replaceAll("_", " ")}</small>
+                        <p>{routine.routine_value}</p>
+                      </article>
+                    ))
+                  )}
+                </section>
+                <section className="memory-review">
+                  <h3>Recent observations</h3>
+                  {status.observations.length === 0 ? (
+                    <p>No observations have been saved.</p>
+                  ) : (
+                    status.observations.map((observation, index) => (
+                      <article
+                        className="fact"
+                        key={`${observation.created_at}-${index}`}
+                      >
+                        <small>
+                          {observation.event_type.replaceAll("_", " ")} · {observation.source}
+                        </small>
+                        <p>{observation.event_summary}</p>
+                        <time>{observation.created_at}</time>
+                      </article>
+                    ))
+                  )}
+                </section>
               </div>
             ) : (
               <div className="details">

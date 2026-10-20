@@ -26,6 +26,10 @@ test("conversation, memory, feedback and disabled actions work in the browser", 
   });
   await page.getByRole("button", { name: "Memory 02" }).click();
   await expect(page.locator(".fact")).not.toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Routines" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Recent observations" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Actions 03" }).click();
   await expect(
     page.getByRole("heading", { name: "Actions are switched off." }),
