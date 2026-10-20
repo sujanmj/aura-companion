@@ -48,6 +48,12 @@ struct LifecycleTests {
         recognition.invalidate()
         precondition(!recognition.isCurrent(currentUtterance), "Stopping recognition must invalidate queued callbacks")
 
+        var pairing = PairingGeneration()
+        let storedCookieValidation = pairing.issue()
+        let explicitPair = pairing.issue()
+        precondition(!pairing.isCurrent(storedCookieValidation), "A stale validation cannot overwrite a newer pairing")
+        precondition(pairing.isCurrent(explicitPair), "The newest pairing operation remains current")
+
         var output = SpeechOutputSuppression()
         let firstOutput = output.begin()
         precondition(output.contains(firstOutput), "Microphone recognition must be suppressed while AURA speaks")
@@ -118,6 +124,6 @@ struct LifecycleTests {
             "Normal status must not show permission recovery directions"
         )
 
-        print("PASS: capture lifecycle, audio/camera callback generations, 1000 restart cycles, speech output echo suppression, Keychain save failures, sleep/wake ordering, and privacy settings recovery")
+        print("PASS: capture lifecycle, pairing and audio/camera callback generations, 1000 restart cycles, speech output echo suppression, Keychain save failures, sleep/wake ordering, and privacy settings recovery")
     }
 }

@@ -59,6 +59,8 @@ Status: in progress; this is the current phase.
   one, so a save failure does not delete a previously stored credential.
   Native tests cover update, add, access-denied, and add-failure results without
   touching the real Keychain.
+- Fixed: startup validation of a stored pairing cannot clear a newer explicit
+  pairing, and duplicate pairing attempts are serialized.
 - Clarified: the macOS Speech Recognition permission prompt distinguishes raw
   audio (not saved) from triggered transcripts that may enter local SQLite
   memory.

@@ -58,6 +58,7 @@ struct AURAAmbientApp: App {
 @MainActor final class AmbientMonitor: NSObject, ObservableObject {
     @Published var isActive = false
     @Published var isStarting = false
+    @Published var isPairing = false
     @Published var isPaired = false
     @Published var microphoneOn = false
     @Published var cameraOn = false
@@ -70,6 +71,7 @@ struct AURAAmbientApp: App {
 
     private var camera: LocalCamera?
     private var lifecycle = AmbientLifecycle()
+    private var pairingGeneration = PairingGeneration()
     private var replyTask: Task<Void, Never>?
     private var hasAudioTap = false
     private let engine = AVAudioEngine()
@@ -84,7 +86,10 @@ struct AURAAmbientApp: App {
     override init() {
         cookie = Keychain.read()
         super.init()
-        if cookie != nil { Task { await validatePairing() } }
+        if let savedCookie = cookie {
+            let generation = pairingGeneration.issue()
+            Task { await validatePairing(cookie: savedCookie, generation: generation) }
+        }
         let center = NSWorkspace.shared.notificationCenter
         center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
@@ -103,12 +108,13 @@ struct AURAAmbientApp: App {
         }
     }
 
-    private func validatePairing() async {
-        guard let cookie, let url = URL(string: "http://127.0.0.1:8790/api/status") else { return }
+    private func validatePairing(cookie: String, generation: UInt64) async {
+        guard let url = URL(string: "http://127.0.0.1:8790/api/status") else { return }
         var request = URLRequest(url: url)
         request.setValue(cookie, forHTTPHeaderField: "Cookie")
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
+            guard pairingGeneration.isCurrent(generation) else { return }
             if (response as? HTTPURLResponse)?.statusCode == 200 {
                 isPaired = true; status = "Paired securely with this AURA session."
             } else {
@@ -116,12 +122,19 @@ struct AURAAmbientApp: App {
                 status = "Pair with the current AURA session code from its terminal."
             }
         } catch {
+            guard pairingGeneration.isCurrent(generation) else { return }
             isPaired = false
             status = "Start the AURA web app, then pair using its current session code."
         }
     }
 
     func pair() async {
+        guard !isPairing else { return }
+        let generation = pairingGeneration.issue()
+        isPairing = true
+        defer {
+            if pairingGeneration.isCurrent(generation) { isPairing = false }
+        }
         let candidate = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard candidate.count >= 24 else { status = "Enter the session code from the AURA terminal."; return }
         guard let url = URL(string: "http://127.0.0.1:8790/api/login") else { return }
@@ -131,6 +144,7 @@ struct AURAAmbientApp: App {
             request.setValue("http://127.0.0.1:8790", forHTTPHeaderField: "Origin")
             request.httpBody = try JSONSerialization.data(withJSONObject: ["token": candidate])
             let (_, response) = try await URLSession.shared.data(for: request)
+            guard pairingGeneration.isCurrent(generation) else { return }
             guard let http = response as? HTTPURLResponse, http.statusCode == 200,
                   let value = http.value(forHTTPHeaderField: "Set-Cookie")?.components(separatedBy: ";").first else {
                 status = "Couldn’t pair. Check the current AURA session code and that the web app is running."; return
@@ -141,7 +155,10 @@ struct AURAAmbientApp: App {
             }
             cookie = value; isPaired = true; code = ""
             status = "Paired securely with this AURA session."
-        } catch { status = "AURA is not reachable on this Mac yet." }
+        } catch {
+            guard pairingGeneration.isCurrent(generation) else { return }
+            status = "AURA is not reachable on this Mac yet."
+        }
     }
 
     func start() async {
@@ -341,7 +358,11 @@ struct AURAAmbientApp: App {
         }
     }
 
-    func forgetPairing() { stop(); cookie = nil; Keychain.delete(); isPaired = false; status = "Session pairing cleared." }
+    func forgetPairing() {
+        _ = pairingGeneration.issue()
+        isPairing = false
+        stop(); cookie = nil; Keychain.delete(); isPaired = false; status = "Session pairing cleared."
+    }
 
     var permissionSettingsURL: URL? {
         guard let target = PermissionSettings.target(for: status) else { return nil }
@@ -588,7 +609,8 @@ private struct MenuView: View {
             HStack(spacing: 8) { Label(monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
             if !monitor.isPaired {
                 SecureField("Session code from AURA terminal", text: $monitor.code)
-                Button("Pair with AURA") { Task { await monitor.pair() } }.disabled(monitor.code.isEmpty)
+                Button(monitor.isPairing ? "Pairing securely…" : "Pair with AURA") { Task { await monitor.pair() } }
+                    .disabled(monitor.code.isEmpty || monitor.isPairing)
             } else {
                 Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: []).disabled(monitor.cameraStopping)
                 if !monitor.recentResponse.isEmpty { Divider(); Text("AURA").font(.caption).foregroundStyle(.secondary); Text(monitor.recentResponse).font(.system(size: 12)).textSelection(.enabled) }
