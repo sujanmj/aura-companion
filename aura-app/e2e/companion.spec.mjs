@@ -136,6 +136,70 @@ test("setup distinguishes local availability from live verification", async ({
   ).not.toBeChecked();
 });
 
+test("browser speech voice and pace are local and persist after reload", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window.speechSynthesis, "getVoices", {
+      value: () => [
+        {
+          voiceURI: "aura-test-en",
+          name: "AURA Test Voice",
+          lang: "en-US",
+          localService: true,
+          default: true,
+        },
+      ],
+    });
+    Object.defineProperty(window, "SpeechSynthesisUtterance", {
+      value: class {
+        rate = 1;
+        voice = null;
+        onend = null;
+        onerror = null;
+      },
+    });
+    window.auraSpeechResult = null;
+    Object.defineProperty(window.speechSynthesis, "speak", {
+      value: (utterance) => {
+        window.auraSpeechResult = {
+          rate: utterance.rate,
+          voiceURI: utterance.voice?.voiceURI || "",
+        };
+        queueMicrotask(() => utterance.onend?.());
+      },
+    });
+  });
+  await connect(page);
+  await page.getByRole("button", { name: "Setup 04" }).click();
+  await page.getByLabel("Installed browser voice").selectOption("aura-test-en");
+  const pace = page.locator("#browser-voice-rate");
+  await pace.focus();
+  await pace.press("Home");
+  for (let index = 0; index < 7; index++) {
+    await page.keyboard.press("ArrowRight");
+  }
+  await expect(page.getByLabel("Browser speaking pace (1.15×)")).toHaveValue(
+    "1.15",
+  );
+  await page.reload();
+  await page.getByRole("button", { name: "Setup 04" }).click();
+  await expect(page.getByLabel("Installed browser voice")).toHaveValue(
+    "aura-test-en",
+  );
+  await expect(page.getByLabel("Browser speaking pace (1.15×)")).toHaveValue(
+    "1.15",
+  );
+  await page.getByRole("button", { name: "Conversation 01" }).click();
+  await page.getByLabel("Speak replies").check();
+  await page.getByLabel("Your message").fill("Say this using my chosen voice");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => window.auraSpeechResult))
+    .toEqual({ rate: 1.15, voiceURI: "aura-test-en" });
+});
+
 test("saved facts can be corrected and forgetting requires confirmation", async ({
   page,
 }) => {

@@ -110,6 +110,29 @@ function loadAcceptanceChecks(): Record<string, boolean> {
     return {};
   }
 }
+type SpeechPreferences = { voiceURI: string; rate: number };
+const speechPreferencesKey = "aura-browser-speech-preferences-v1";
+function loadSpeechPreferences(): SpeechPreferences {
+  try {
+    const value = localStorage.getItem(speechPreferencesKey);
+    if (!value) return { voiceURI: "", rate: 0.97 };
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object")
+      return { voiceURI: "", rate: 0.97 };
+    const preferences = parsed as Partial<SpeechPreferences>;
+    return {
+      voiceURI:
+        typeof preferences.voiceURI === "string" ? preferences.voiceURI : "",
+      rate:
+        typeof preferences.rate === "number" &&
+        Number.isFinite(preferences.rate)
+          ? Math.min(1.2, Math.max(0.8, preferences.rate))
+          : 0.97,
+    };
+  } catch {
+    return { voiceURI: "", rate: 0.97 };
+  }
+}
 class OrbBoundary extends Component<
   { children: ReactNode },
   { failed: boolean }
@@ -149,6 +172,10 @@ function App() {
     [taskInput, setTaskInput] = useState(""),
     [readiness, setReadiness] = useState<Readiness | null>(null),
     [acceptanceChecks, setAcceptanceChecks] = useState(loadAcceptanceChecks),
+    [speechPreferences, setSpeechPreferences] = useState<SpeechPreferences>(
+      loadSpeechPreferences,
+    ),
+    [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]),
     [checkinPreferences, setCheckinPreferences] =
       useState<CheckinPreferences | null>(null),
     [editingFact, setEditingFact] = useState<number | null>(null),
@@ -222,6 +249,23 @@ function App() {
     localStorage.setItem("aura-theme", theme);
   }, [theme]);
   useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    const updateVoices = () =>
+      setBrowserVoices(window.speechSynthesis.getVoices());
+    updateVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", updateVoices);
+    return () =>
+      window.speechSynthesis.removeEventListener("voiceschanged", updateVoices);
+  }, []);
+  function updateSpeechPreferences(next: SpeechPreferences) {
+    setSpeechPreferences(next);
+    try {
+      localStorage.setItem(speechPreferencesKey, JSON.stringify(next));
+    } catch {
+      setError("Could not save voice preferences in this browser.");
+    }
+  }
+  useEffect(() => {
     if (!status?.actions) return;
     const timer = setInterval(() => {
       api<{ task: typeof task; approvals: Approval[] }>("task")
@@ -282,9 +326,12 @@ function App() {
       setStatus(data);
       if (voice) {
         setSpeaking(true);
-        void speak(result.response, status?.tts || false).finally(() =>
-          setSpeaking(false),
-        );
+        void speak(
+          result.response,
+          status?.tts || false,
+          speechPreferences.voiceURI,
+          speechPreferences.rate,
+        ).finally(() => setSpeaking(false));
       }
     } catch (e) {
       setError(String(e));
@@ -679,6 +726,52 @@ function App() {
                         recognition still require a real-device check. Browser
                         recognition may use the browser vendor’s cloud service.
                       </p>
+                      <label htmlFor="browser-voice">
+                        Installed browser voice
+                      </label>
+                      <select
+                        id="browser-voice"
+                        value={speechPreferences.voiceURI}
+                        onChange={(event) =>
+                          updateSpeechPreferences({
+                            ...speechPreferences,
+                            voiceURI: event.target.value,
+                          })
+                        }
+                      >
+                        <option value="">System default</option>
+                        {browserVoices.map((browserVoice) => (
+                          <option
+                            key={browserVoice.voiceURI}
+                            value={browserVoice.voiceURI}
+                          >
+                            {browserVoice.name} ({browserVoice.lang})
+                          </option>
+                        ))}
+                      </select>
+                      <label htmlFor="browser-voice-rate">
+                        Browser speaking pace (
+                        {speechPreferences.rate.toFixed(2)}×)
+                      </label>
+                      <input
+                        id="browser-voice-rate"
+                        type="range"
+                        min="0.8"
+                        max="1.2"
+                        step="0.05"
+                        value={speechPreferences.rate}
+                        onChange={(event) =>
+                          updateSpeechPreferences({
+                            ...speechPreferences,
+                            rate: Number(event.target.value),
+                          })
+                        }
+                      />
+                      <small>
+                        Saved only in this browser. These choices apply to
+                        browser speech and local fallback if cloud speech is
+                        configured.
+                      </small>
                     </article>
                     <article className="fact">
                       <h3>External actions</h3>

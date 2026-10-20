@@ -49,7 +49,11 @@ export async function listen(
       armedUntil = 0;
       return;
     }
-    if (/\b(?:i need help|i need support|i feel overwhelmed|i feel panicked|i feel unsafe|i can.t cope)\b/i.test(text))
+    if (
+      /\b(?:i need help|i need support|i feel overwhelmed|i feel panicked|i feel unsafe|i can.t cope)\b/i.test(
+        text,
+      )
+    )
       onText(text);
   };
   try {
@@ -141,7 +145,12 @@ export function silence() {
   currentAudio = undefined;
   finishSpeech();
 }
-export async function speak(text: string, cloud: boolean) {
+export async function speak(
+  text: string,
+  cloud: boolean,
+  voiceURI = "",
+  rate = 0.97,
+) {
   silence();
   const epoch = speechEpoch;
   if (cloud) {
@@ -181,7 +190,13 @@ export async function speak(text: string, cloud: boolean) {
   }
   if (epoch !== speechEpoch) return;
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.97;
+  utterance.rate = Math.min(1.2, Math.max(0.8, rate));
+  if (voiceURI) {
+    utterance.voice =
+      speechSynthesis
+        .getVoices()
+        .find((voice) => voice.voiceURI === voiceURI) ?? null;
+  }
   await new Promise<void>((resolve) => {
     let finished = false;
     const done = () => {

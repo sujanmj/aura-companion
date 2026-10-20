@@ -105,6 +105,11 @@ Status: partial components exist; acceptance not complete.
   manual notes stored in that browser only; they do not run tests or claim that
   a provider, microphone, speaker, camera or tool worked. Browser end-to-end
   coverage checks persistence and clearing of those notes.
+- Implemented: browser spoken replies can use an installed system voice and a
+  selectable 0.8×–1.2× pace. Preferences stay in the current browser and also
+  apply when configured cloud speech falls back to local browser speech. The
+  default voice and existing opt-in Speak replies behavior are unchanged;
+  end-to-end tests verify persistence and the actual utterance settings.
 - Verify real voice conversations, interruption, memory continuity and opt-in tools.
 - Exercise real Claude/MCP and optional voice-provider paths when configured.
 - Provide a repeatable onboarding and acceptance procedure.

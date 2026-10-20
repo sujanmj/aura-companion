@@ -44,6 +44,7 @@ Use the Sonnet model ID already working in your account. No provider key is sent
 - Click **Enable microphone**, then say **Hey AURA**, followed by your message. You can also pause after the wake phrase and speak within 15 seconds.
 - Speech becomes an **editable draft**. Click Send to store it and get a response. Ambient speech does not submit actions.
 - Toggle **Speak replies** for browser TTS; **Stop speaking** interrupts output. Turning off the microphone releases media tracks.
+- Choose an installed browser speech voice and pace under **Setup**. These preferences stay in the current browser and apply to browser speech, including as the local fallback for configured cloud speech.
 - Browser speech recognition may send audio to the browser vendor. It is not promised offline. Mic use is opt-in and should be turned off when no longer needed.
 - Optional cloud voice: export `ELEVENLABS_API_KEY` and `AURA_VOICE_ID` into the server environment before launching. STT uses Scribe; TTS uses Eleven multilingual v2. API keys stay server-side. With cloud STT enabled, detected speech segments go to ElevenLabs while the mic is on, including segments before a wake phrase. The local VAD is adapted from Jarvis.
 - Choose **Calm glow** or **Holographic**. Theme choice alone is saved in browser storage. No Iron Man artwork, movie dialogue, original demo audio, or wake-word media is bundled.
