@@ -70,10 +70,12 @@ test("kiosk requires review by default and honors current auto-send consent", as
   expect(chats).toHaveLength(0);
   await page.getByRole("button", { name: "Send message", exact: true }).click();
   await expect.poll(() => chats.length).toBe(1);
-  await expect(page.locator(".kiosk-reply")).toBeVisible();
+  await expect(page.locator(".kiosk-reply")).toHaveText(/\S+/);
+  await expect(page.locator(".presence")).toHaveAttribute("aria-busy", "false");
   await autoSend.check();
   await emit("Hey AURA help me plan tomorrow");
   await expect.poll(() => chats.length).toBe(2);
+  await expect(page.locator(".presence")).toHaveAttribute("aria-busy", "false");
   await autoSend.uncheck();
   await emit("Hey AURA keep this as a draft");
   await expect(page.getByLabel("Review your message")).toHaveValue(

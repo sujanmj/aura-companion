@@ -323,7 +323,7 @@ function App() {
           </span>
         </header>
         <div className="workspace">
-          <section className="presence">
+          <section className="presence" aria-busy={busy}>
             <div className="orb">
               <OrbBoundary>
                 <Scene
