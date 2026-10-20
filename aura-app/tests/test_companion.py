@@ -101,6 +101,28 @@ class CompanionTest(unittest.TestCase):
             self.assertTrue(store.delete_observation(owner, observation_id))
             self.assertEqual(store.get_latest_observations(owner), [])
             store.close()
+
+    def test_old_emotion_and_quiet_camera_context_do_not_label_current_mood(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            user = store.get_or_create_user('Owner')
+            store.add_conversation(user, 'user', 'I am anxious about my interview')
+            store.add_conversation(user, 'assistant', 'I am here with you.')
+            store.add_conversation(user, 'user', 'Can you recommend a good book?')
+            store.add_observation(
+                user, 'ambient_context', 'A person is sitting quietly.', source='mac_local'
+            )
+
+            inference = CompanionReactionEngine(store).infer_situation(
+                CompanionReactionEngine(store).build_context(user)
+            )
+
+            self.assertFalse(inference['has_anxiety_signal'])
+            self.assertFalse(inference['has_presentation_signal'])
+            self.assertFalse(inference['has_low_mood_signal'])
+            self.assertEqual(inference['emotional_need'], 'presence')
+            store.close()
     def test_original_personality_memory_and_cloud_provider(self):
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {'AURA_BRAIN_PROVIDER':'claude','ANTHROPIC_API_KEY':'test-key','ANTHROPIC_MODEL':'claude-sonnet-4-6'}):
             store=AuraMemoryStore(Path(folder)/'test.db');store.apply_schema()

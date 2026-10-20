@@ -70,7 +70,6 @@ class CompanionReactionEngine:
         presentation_terms = ("presentation", "present", "speak", "talk", "meeting", "interview")
         work_mode_terms = ("office", "work", "formal", "dressed", "professional")
         low_mood_terms = ("sad", "lonely", "alone", "low", "heavy", "down")
-        quiet_observation_terms = ("quiet", "still", "sitting", "silent")
 
         anxiety_fact_keys = {"recent_anxiety", "presentation_anxiety"}
         work_event_fact_keys = {"important_work_event", "presentation_anxiety"}
@@ -103,10 +102,15 @@ class CompanionReactionEngine:
             if any(term in blob for term in ("stress", "stressed")):
                 has_stress_signal = True
 
-        for conv in conversations:
-            if conv.get("role") != "user":
-                continue
-            blob = f"{conv.get('message', '')} {conv.get('emotion_tag') or ''}".lower()
+        # Emotional cues describe the current turn. Older user messages remain
+        # available as relevant memory, but must not make unrelated requests
+        # sound anxious or sad.
+        current_turn = next(
+            (conv for conv in conversations if conv.get("role") == "user"),
+            None,
+        )
+        if current_turn:
+            blob = f"{current_turn.get('message', '')} {current_turn.get('emotion_tag') or ''}".lower()
             if any(term in blob for term in anxiety_terms):
                 has_anxiety_signal = True
                 add_reason("Recent conversation suggests some nervousness.", 0.8)
@@ -129,13 +133,6 @@ class CompanionReactionEngine:
                     f"Observation suggests work/office mode: {obs.get('event_summary')}",
                     score,
                 )
-            if any(term in blob for term in quiet_observation_terms):
-                has_low_mood_signal = True
-                add_reason(
-                    f"Observation suggests quiet or stillness: {obs.get('event_summary')}",
-                    score,
-                )
-
         if has_low_mood_signal:
             situation = "User may need quiet emotional support."
             emotional_need = "comfort"

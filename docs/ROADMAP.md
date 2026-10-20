@@ -86,6 +86,9 @@ Status: foundations exist in the original reaction/memory engines.
 - Implemented: ambient observations can be deleted individually from the
   authenticated Memory view; deletion is scoped to the current user's SQLite
   records and removes that observation from future exports.
+- Fixed: emotional cues are inferred from the current user turn instead of
+  accumulating across unrelated older messages. Quiet or still camera context
+  no longer counts as evidence that someone is sad or lonely.
 - Implemented: consent-based local check-ins default off, wait for a saved idle
   interval, honor quiet hours, and only appear while the web companion is open.
 - Remaining: broader native controls and lifecycle acceptance.
