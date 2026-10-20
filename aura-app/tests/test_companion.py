@@ -123,6 +123,43 @@ class CompanionTest(unittest.TestCase):
             self.assertFalse(inference['has_low_mood_signal'])
             self.assertEqual(inference['emotional_need'], 'presence')
             store.close()
+
+    def test_explicit_emotional_negation_does_not_create_or_reuse_mood_labels(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            user = store.get_or_create_user('Owner')
+            MemoryExtractor(store).process_user_message(
+                user,
+                "I'm not anxious about my interview and I'm not sad; can you recommend a book?",
+            )
+
+            facts = store.get_memory_facts(user)
+            inference = CompanionReactionEngine(store).infer_situation(
+                CompanionReactionEngine(store).build_context(user)
+            )
+
+            self.assertNotIn('recent_anxiety', [fact['fact_key'] for fact in facts])
+            self.assertNotIn('recent_low_mood', [fact['fact_key'] for fact in facts])
+            self.assertFalse(inference['has_anxiety_signal'])
+            self.assertFalse(inference['has_low_mood_signal'])
+            self.assertEqual(inference['emotional_need'], 'presence')
+            store.close()
+
+    def test_a_later_positive_emotion_cue_overrides_an_earlier_negated_cue(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            user = store.get_or_create_user('Owner')
+            MemoryExtractor(store).process_user_message(
+                user, "I'm not nervous, but I am anxious about my interview."
+            )
+            inference = CompanionReactionEngine(store).infer_situation(
+                CompanionReactionEngine(store).build_context(user)
+            )
+            self.assertTrue(inference['has_anxiety_signal'])
+            self.assertEqual(inference['emotional_need'], 'encouragement')
+            store.close()
     def test_original_personality_memory_and_cloud_provider(self):
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {'AURA_BRAIN_PROVIDER':'claude','ANTHROPIC_API_KEY':'test-key','ANTHROPIC_MODEL':'claude-sonnet-4-6'}):
             store=AuraMemoryStore(Path(folder)/'test.db');store.apply_schema()

@@ -6,6 +6,7 @@ from brain.llm_provider import LLMProvider
 from brain.prompt_builder import PromptBuilder
 from companion.context_relevance import ContextRelevanceFilter
 from companion.style_policy import StylePolicy
+from companion.text_signals import contains_signal, negates_signal
 from memory.sqlite_store import AuraMemoryStore
 
 
@@ -31,6 +32,14 @@ class CompanionReactionEngine:
         conversations = context.get("conversations", [])
 
         latest_user_message = self._latest_user_message(conversations)
+        anxiety_terms = ("nervous", "anxious", "anxiety", "stress", "stressed", "worried", "worry", "tension")
+        low_mood_terms = ("sad", "lonely", "alone", "low", "heavy", "down")
+        denies_anxiety = negates_signal(
+            latest_user_message, anxiety_terms
+        ) and not contains_signal(latest_user_message, anxiety_terms)
+        denies_low_mood = negates_signal(
+            latest_user_message, low_mood_terms
+        ) and not contains_signal(latest_user_message, low_mood_terms)
         latest_observation = observations[0].get("event_summary") if observations else None
         preferred_name = self._preferred_name(facts)
 
@@ -66,10 +75,8 @@ class CompanionReactionEngine:
         has_low_mood_signal = False
         has_work_event_signal = False
 
-        anxiety_terms = ("nervous", "anxious", "anxiety", "stress", "stressed", "worried", "worry", "tension")
         presentation_terms = ("presentation", "present", "speak", "talk", "meeting", "interview")
         work_mode_terms = ("office", "work", "formal", "dressed", "professional")
-        low_mood_terms = ("sad", "lonely", "alone", "low", "heavy", "down")
 
         anxiety_fact_keys = {"recent_anxiety", "presentation_anxiety"}
         work_event_fact_keys = {"important_work_event", "presentation_anxiety"}
@@ -86,7 +93,10 @@ class CompanionReactionEngine:
             blob = f"{fact_key} {fact.get('fact_value', '')}".lower()
             score = float(fact.get("confidence", 0.7))
 
-            if fact_key in anxiety_fact_keys or any(term in blob for term in anxiety_terms):
+            if not denies_anxiety and (
+                fact_key in anxiety_fact_keys
+                or contains_signal(blob, anxiety_terms)
+            ):
                 has_anxiety_signal = True
                 add_reason(f"Memory notes anxiety: {fact_key}", score)
 
@@ -95,7 +105,10 @@ class CompanionReactionEngine:
                 has_work_event_signal = True
                 add_reason(f"Memory mentions work event: {fact_key}", score)
 
-            if fact_key in low_mood_fact_keys or any(term in blob for term in low_mood_terms):
+            if not denies_low_mood and (
+                fact_key in low_mood_fact_keys
+                or contains_signal(blob, low_mood_terms)
+            ):
                 has_low_mood_signal = True
                 add_reason(f"Memory notes low mood: {fact_key}", score)
 
@@ -111,17 +124,17 @@ class CompanionReactionEngine:
         )
         if current_turn:
             blob = f"{current_turn.get('message', '')} {current_turn.get('emotion_tag') or ''}".lower()
-            if any(term in blob for term in anxiety_terms):
+            if not denies_anxiety and contains_signal(blob, anxiety_terms):
                 has_anxiety_signal = True
                 add_reason("Recent conversation suggests some nervousness.", 0.8)
-            if any(term in blob for term in presentation_terms):
+            if contains_signal(blob, presentation_terms):
                 has_presentation_signal = True
                 has_work_event_signal = True
                 add_reason("Recent conversation mentions a work-related event.", 0.85)
-            if any(term in blob for term in low_mood_terms):
+            if not denies_low_mood and contains_signal(blob, low_mood_terms):
                 has_low_mood_signal = True
                 add_reason("Recent conversation suggests feeling low or alone.", 0.8)
-            if any(term in blob for term in ("stress", "stressed")):
+            if not denies_anxiety and contains_signal(blob, ("stress", "stressed")):
                 has_stress_signal = True
 
         for obs in observations:
@@ -149,7 +162,7 @@ class CompanionReactionEngine:
             situation = "User has an important work event coming up and seems to be carrying some nerves."
             emotional_need = "encouragement"
             tone = "warm_confident"
-        elif has_anxiety_signal or has_presentation_signal or has_stress_signal:
+        elif has_anxiety_signal or has_stress_signal:
             situation = "User seems to have something weighing on them, possibly a presentation or stressful moment."
             emotional_need = "encouragement"
             tone = "warm_confident"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from memory.sqlite_store import AuraMemoryStore
+from companion.text_signals import contains_signal
 
 
 class MemoryExtractor:
@@ -12,7 +13,7 @@ class MemoryExtractor:
         lowered = message.lower()
         emotion_tag: str | None = None
 
-        if any(term in lowered for term in ("nervous", "anxious", "stress", "tension", "worried")):
+        if contains_signal(lowered, ("nervous", "anxious", "stress", "tension", "worried")):
             emotion_tag = "anxious"
             self.store.remember_fact(
                 user_id,
@@ -33,7 +34,7 @@ class MemoryExtractor:
             )
             actions.append("remembered fact: important_work_event")
 
-        if any(term in lowered for term in ("sad", "lonely", "alone", "low")):
+        if contains_signal(lowered, ("sad", "lonely", "alone", "low")):
             emotion_tag = "low"
             self.store.remember_fact(
                 user_id,

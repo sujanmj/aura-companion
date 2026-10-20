@@ -89,6 +89,8 @@ Status: foundations exist in the original reaction/memory engines.
 - Fixed: emotional cues are inferred from the current user turn instead of
   accumulating across unrelated older messages. Quiet or still camera context
   no longer counts as evidence that someone is sad or lonely.
+- Fixed: simple explicit negation such as “I am not anxious” no longer creates
+  or reuses anxiety and low-mood labels from the current turn.
 - Implemented: consent-based local check-ins default off, wait for a saved idle
   interval, honor quiet hours, and only appear while the web companion is open.
 - Remaining: broader native controls and lifecycle acceptance.
