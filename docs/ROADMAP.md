@@ -100,10 +100,19 @@ Status: in progress; this is the current phase.
   temporary pairing, service, and database were cleared. This verifies denied
   permission recovery for all three macOS access types; phrase recognition and
   acoustic reply are not established by this check.
+- Local voice-loop check (2026-10-20): with MCP actions disabled, the selected
+  brain provider reporting local-only, cloud sync explicitly disabled, and an
+  isolated SQLite database, played a synthetic test request through the Mac
+  speakers while ambient mode was live. On-device recognition transcribed the
+  request with a minor wording error; the local AURA fallback produced a reply,
+  native speech output completed, and the helper returned to Listening locally.
+  Pause turned off both sensors; pairing, service, database and generated audio
+  were cleared. This verifies the local request-to-reply and synthesizer path,
+  not acoustic loudness/quality or live Claude behavior.
 - Remaining: repeat and record camera startup/shutdown/restart, permission
   recovery on a clean install, sleep/wake, startup timeout recovery and acoustic
-  feedback on Mac. Live phrase recognition and reply also need an explicit
-  hardware acceptance.
+  feedback measurement on Mac. Live Claude behavior also needs acceptance when
+  credentials are configured.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.
