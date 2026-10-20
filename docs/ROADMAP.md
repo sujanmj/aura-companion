@@ -59,6 +59,9 @@ Status: in progress; this is the current phase.
   one, so a save failure does not delete a previously stored credential.
   Native tests cover update, add, access-denied, and add-failure results without
   touching the real Keychain.
+- Clarified: the macOS Speech Recognition permission prompt distinguishes raw
+  audio (not saved) from triggered transcripts that may enter local SQLite
+  memory.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing

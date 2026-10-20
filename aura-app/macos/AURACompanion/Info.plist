@@ -11,6 +11,6 @@
 
 <key>NSMicrophoneUsageDescription</key><string>AURA listens locally for its name, direct requests, and explicit support requests. Audio recordings are not saved.</string>
 <key>NSCameraUsageDescription</key><string>AURA checks the scene locally for context while ambient mode is on. Video frames are not saved.</string>
-<key>NSSpeechRecognitionUsageDescription</key><string>AURA transcribes speech on this Mac to detect direct requests. Ambient speech is not saved.</string>
+<key>NSSpeechRecognitionUsageDescription</key><string>AURA transcribes speech on this Mac to detect direct requests. Triggered transcripts may be saved in AURA's local SQLite memory; raw audio is not saved.</string>
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict></plist>
