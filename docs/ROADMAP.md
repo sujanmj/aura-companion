@@ -150,9 +150,16 @@ Status: in progress; this is the current phase.
   with microphone and camera on, without a restart or startup timeout. Pause
   turned both sensors off and the temporary pairing, service, and database
   were cleared. This is a short soak only; the long-run stability gate remains.
-- Remaining: sleep/wake, successful clean-install permission prompt recovery,
-  long-run stability, and calibrated acoustic loudness/feedback testing on Mac.
-  Live Claude behavior also needs acceptance when credentials are configured.
+- Extended idle soak (2026-10-20): ran the helper LIVE for 30 minutes with an
+  isolated local-only service and external actions disabled. The UI remained
+  LIVE with microphone and camera on; local scene classifications continued
+  updating, and Listening locally remained the status without a restart or
+  startup timeout. Pause turned both sensors off. The temporary pairing,
+  service, and database were cleared. Multi-hour stability is still unverified.
+- Remaining: hardware sleep/wake, automatic clean-install permission prompt
+  recovery, multi-hour stability, and calibrated acoustic loudness/feedback
+  testing on Mac. Live Claude behavior also needs acceptance when credentials
+  are configured.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.
