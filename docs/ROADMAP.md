@@ -156,6 +156,13 @@ Status: in progress; this is the current phase.
   updating, and Listening locally remained the status without a restart or
   startup timeout. Pause turned both sensors off. The temporary pairing,
   service, and database were cleared. Multi-hour stability is still unverified.
+- One-hour Mac soak (2026-10-20): with a fresh isolated local-only service and
+  external actions disabled, the helper remained LIVE for one hour with
+  microphone and camera on. The UI continued to report Listening locally and
+  local scene classifications updated throughout sampled checks. No restart,
+  timeout, or sensor drop was observed; Pause turned both sensors off. The
+  temporary pairing, service, and database were cleared. This is an hour-long
+  stability check, not multi-hour or sleep/wake acceptance.
 - Remaining: hardware sleep/wake, automatic clean-install permission prompt
   recovery, multi-hour stability, and calibrated acoustic loudness/feedback
   testing on Mac. Live Claude behavior also needs acceptance when credentials
