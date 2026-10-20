@@ -18,7 +18,7 @@ struct AURAAmbientApp: App {
     }
 }
 
-@MainActor final class AURAAppDelegate: NSObject, NSApplicationDelegate {
+@MainActor final class AURAAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let monitor = AmbientMonitor()
     private var window: NSWindow?
 
@@ -30,12 +30,29 @@ struct AURAAmbientApp: App {
         window.center()
         window.contentView = NSHostingView(rootView: MenuView(monitor: monitor))
         window.isReleasedWhenClosed = false
+        window.delegate = self
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         self.window = window
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        guard let window else { return false }
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        return true
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard notification.object as? NSWindow === window else { return }
+        monitor.stop()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        monitor.stop()
+    }
 }
 
 @MainActor final class AmbientMonitor: NSObject, ObservableObject {
@@ -506,7 +523,7 @@ private struct MenuView: View {
                 Button("Open Privacy Settings") { monitor.openPermissionSettings() }
                     .buttonStyle(.bordered)
             }
-            Divider(); Text("Close camera covers to pause vision. Press Pause before leaving your Mac.").font(.system(size: 10)).foregroundStyle(.tertiary)
+            Divider(); Text("Closing this window or pressing Pause stops local listening and camera capture.").font(.system(size: 10)).foregroundStyle(.tertiary)
         }.padding(18).frame(width: 350)
     }
 }
