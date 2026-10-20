@@ -88,7 +88,12 @@ Status: in progress; this is the current phase.
   macOS for AURA's test item. Removing that item in Keychain Access restored one
   successful pairing, but the next restart and update stalled again. The
   app reports the uncertainty and offers an explicit in-memory session option;
-  this option and reliable saved-pairing recovery still need acceptance.
+  this option and reliable saved-pairing recovery still need acceptance. After
+  the app was rebuilt with Hardened Runtime and capture entitlements (2026-10-20),
+  one isolated test saved a pairing, quit and relaunched AURA, recovered the
+  pairing from Keychain, cleared it successfully, and verified that the item was
+  absent in Keychain Access. This is one successful cycle, not proof of repeated
+  Keychain reliability; earlier stalls remain part of the evidence.
 - Fixed: ambient startup now names each permission/device setup stage and has a
   60-second watchdog. If a macOS permission or capture callback stalls, AURA
   safely pauses instead of leaving the user on an indefinite startup state;
@@ -348,8 +353,3 @@ Status: simulated safety workflows exist; production validation remains.
 - External alerts remain explicitly authorized; no unverified emergency guarantees.
 - Package supported platforms, verify clean installation and upgrades, preserve
   memory, and sign/notarize distributions when signing credentials are available.
-- Publish only builds whose stated scope has passed its release gates.
-
-Exit: release checklist and evidence identify tested platforms, known limitations,
-hardware coverage and rollback instructions. A preview is never labeled production
-ready solely because it compiles or passes CI.
