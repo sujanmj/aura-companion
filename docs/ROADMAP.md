@@ -145,6 +145,11 @@ Status: in progress; this is the current phase.
   Pause turned both sensors off and the temporary pairing, service, database,
   and audio file were cleared. This does not measure calibrated loudness or
   prove feedback behavior across rooms and volumes.
+- Idle soak spot check (2026-10-20): left the rebuilt helper in LIVE ambient
+  mode for five minutes with the isolated local-only service. It remained LIVE
+  with microphone and camera on, without a restart or startup timeout. Pause
+  turned both sensors off and the temporary pairing, service, and database
+  were cleared. This is a short soak only; the long-run stability gate remains.
 - Remaining: sleep/wake, successful clean-install permission prompt recovery,
   long-run stability, and calibrated acoustic loudness/feedback testing on Mac.
   Live Claude behavior also needs acceptance when credentials are configured.
