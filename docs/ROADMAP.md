@@ -117,7 +117,11 @@ Status: security hardening is progressing; kiosk UI, event API and simulators ex
   uniqueness by user, source and UUID. The Pi simulator retries transient network
   and server errors using the same UUID; duplicate requests return the original
   event without repeating observations or safety processing. Device-specific
-  enrollment, offline node health and room-to-room conversation handoff remain.
+  enrollment now issues separate random node credentials stored as hashes;
+  nodes can send scoped events and heartbeats, be revoked independently, and
+  appear online for 90 seconds after their last contact. Credential enrollment
+  and revocation, room/source binding, and status are API-tested. A production Pi
+  background service and room-to-room conversation handoff remain.
 - Conversation handoff without duplicate replies or accidental cross-user memory.
 - Real camera/microphone and GPIO sensor acceptance on target hardware.
 

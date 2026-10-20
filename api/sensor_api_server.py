@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -23,7 +24,7 @@ from cloud.supabase_sync import sync_sensor_event
 
 DEFAULT_USER_NAME = "Sujan M J"
 DEFAULT_PREFERRED_NAME = "Sujan"
-API_VERSION = "0.3"
+API_VERSION = "0.4"
 AUTH_HEADER = "X-AURA-API-Token"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_STATIC_FILES = {
@@ -220,7 +221,7 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
 
 
 class AuraSensorAPIHandler(BaseHTTPRequestHandler):
-    server_version = "AuraSensorAPI/0.3"
+    server_version = "AuraSensorAPI/0.4"
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"[sensor-api] {self.address_string()} - {format % args}")
@@ -261,6 +262,16 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
     def _require_auth(self) -> bool:
         if is_request_authorized(self):
+            return True
+        self._send_unauthorized()
+        return False
+
+    def _require_sensor_node_auth(self) -> bool:
+        store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+        provided = self.headers.get(AUTH_HEADER, "")
+        node = store.get_sensor_node_by_token(provided) if len(provided) >= 32 else None
+        if node:
+            self.authenticated_sensor_node = node
             return True
         self._send_unauthorized()
         return False
@@ -323,6 +334,12 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
                         "version": API_VERSION,
                     },
                 )
+                return
+
+            if path == "/nodes/status":
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                self._send_json(200, {"ok": True, "nodes": store.list_sensor_nodes(user_id)})
                 return
 
             if path in WEB_STATIC_FILES:
@@ -455,7 +472,14 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"ok": False, "error": "internal_server_error"})
 
     def do_POST(self) -> None:
-        if not self._require_auth():
+        path = urlparse(self.path).path
+        if path == "/nodes/heartbeat":
+            if not self._require_sensor_node_auth():
+                return
+        elif path == "/events":
+            if not is_request_authorized(self) and not self._require_sensor_node_auth():
+                return
+        elif not self._require_auth():
             return
 
         store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
@@ -464,7 +488,68 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             metadata={"path": self.path, "method": "POST"},
         )
 
-        path = urlparse(self.path).path
+        if path == "/nodes/enroll":
+            payload = self._read_json_body()
+            if payload is None:
+                self._send_json(400, {"ok": False, "error": "invalid_json"})
+                return
+            node_id = payload.get("node_id")
+            room = payload.get("room")
+            display_name = payload.get("display_name", node_id)
+            if (
+                not isinstance(node_id, str)
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", node_id)
+                or not isinstance(room, str)
+                or not room.strip()
+                or len(room.strip()) > 80
+                or not isinstance(display_name, str)
+                or not display_name.strip()
+                or len(display_name.strip()) > 80
+            ):
+                self._send_json(400, {"ok": False, "error": "invalid_node_registration"})
+                return
+            try:
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                node, token = store.enroll_sensor_node(
+                    user_id, node_id, display_name.strip(), room.strip()
+                )
+                self._send_json(
+                    201,
+                    {
+                        "ok": True,
+                        "node": node,
+                        "token": token,
+                        "token_notice": "Copy this token to the node now; it is only returned during enrollment.",
+                    },
+                )
+            except Exception as exc:
+                print(f"[sensor-api] POST /nodes/enroll error: {exc}")
+                self._send_json(500, {"ok": False, "error": "internal_server_error"})
+            return
+
+        if path == "/nodes/revoke":
+            payload = self._read_json_body()
+            node_id = payload.get("node_id") if payload else None
+            if not isinstance(node_id, str) or not node_id.strip():
+                self._send_json(400, {"ok": False, "error": "missing_node_id"})
+                return
+            store.apply_schema()
+            user_id = self._get_user_id(store)
+            revoked = store.revoke_sensor_node(user_id, node_id.strip())
+            self._send_json(200 if revoked else 404, {"ok": revoked, "revoked": revoked})
+            return
+
+        if path == "/nodes/heartbeat":
+            node = self.authenticated_sensor_node
+            payload = self._read_json_body()
+            requested_node_id = payload.get("node_id") if payload else None
+            if requested_node_id != node["node_id"]:
+                self._send_json(403, {"ok": False, "error": "node_identity_mismatch"})
+                return
+            updated = store.touch_sensor_node(int(node["user_id"]), str(node["node_id"]))
+            self._send_json(200 if updated else 401, {"ok": updated, "node_id": node["node_id"]})
+            return
 
         if path == "/confirmations/respond":
             if not self._require_auth():
@@ -506,9 +591,6 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"ok": False, "error": "not_found"})
             return
 
-        if not self._require_auth():
-            return
-
         payload = self._read_json_body()
         if payload is None:
             self._send_json(400, {"ok": False, "error": "invalid_json"})
@@ -516,18 +598,42 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
         event_type = payload.get("event_type")
         event_summary = payload.get("event_summary")
-        if not event_type or not event_summary:
+        if (
+            not isinstance(event_type, str)
+            or not event_type.strip()
+            or not isinstance(event_summary, str)
+            or not event_summary.strip()
+        ):
             self._send_json(
                 400,
                 {"ok": False, "error": "missing_event_type_or_summary"},
             )
             return
 
+        event_uuid = payload.get("event_uuid")
+        if event_uuid is not None and (
+            not isinstance(event_uuid, str)
+            or not event_uuid.strip()
+            or len(event_uuid.strip()) > 128
+        ):
+            self._send_json(400, {"ok": False, "error": "invalid_event_uuid"})
+            return
+
+        node = getattr(self, "authenticated_sensor_node", None)
+        if node:
+            if not event_uuid:
+                self._send_json(400, {"ok": False, "error": "event_uuid_required_for_node"})
+                return
+            payload["source"] = node["node_id"]
+            payload["room"] = node["room"]
+
         try:
             store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
             store.apply_schema()
             user_id = self._get_user_id(store)
             result = process_sensor_event(store, user_id, payload)
+            if node:
+                store.touch_sensor_node(int(node["user_id"]), str(node["node_id"]))
             self._send_json(200, result)
         except Exception as exc:
             print(f"[sensor-api] POST /events error: {exc}")

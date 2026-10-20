@@ -145,7 +145,7 @@ python scripts/test_full_safety_action_flow.py
 
 Sensor Node API v0.1 exposes a local HTTP API so Raspberry Pi, camera, and sensor nodes can send events over Wi-Fi. Uses built-in `http.server` — no FastAPI yet. See [docs/sensor_node_api.md](docs/sensor_node_api.md) for endpoint details and example payloads.
 
-Sensor API v0.3 requires a shared token of at least 32 characters for protected event and dashboard routes. Missing or weak configuration denies access; `GET /health` and static dashboard files remain public. The simulator refuses to send without a configured token and never prints token contents. Keep the API on a trusted local network only. See [docs/sensor_node_api.md](docs/sensor_node_api.md).
+Sensor API v0.4 requires a strong hub token, supports individually enrolled sensor-node credentials, and deduplicates retried events. The hub stores only node-token hashes; node credentials can be revoked independently. Missing or weak hub-token configuration denies protected access; `GET /health` and static dashboard files remain public. Keep the API on a trusted local network only. See [docs/sensor_node_api.md](docs/sensor_node_api.md).
 
 ```powershell
 python scripts/generate_sensor_api_token.py

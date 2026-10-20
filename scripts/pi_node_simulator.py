@@ -211,6 +211,36 @@ def post_event(hub_url: str, payload: dict[str, Any], token: str | None) -> dict
     raise ConnectionError("sensor event could not be delivered")
 
 
+def send_node_heartbeat(node_id: str, hub_url: str | None = None) -> int:
+    load_env_file()
+    token = os.environ.get("AURA_SENSOR_NODE_TOKEN", "").strip()
+    if len(token) < 32:
+        print("AURA_PI_NODE_HEARTBEAT_ERROR: set AURA_SENSOR_NODE_TOKEN from enrollment")
+        return 1
+    base_url = (hub_url or get_hub_url()).rstrip("/")
+    request = urllib.request.Request(
+        f"{base_url}/nodes/heartbeat",
+        data=json.dumps({"node_id": node_id}).encode("utf-8"),
+        headers={"Content-Type": "application/json", AUTH_HEADER: token},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            body = response.read().decode("utf-8")
+            result = json.loads(body) if body else {}
+            if response.status != 200 or not result.get("ok"):
+                print("AURA_PI_NODE_HEARTBEAT_ERROR: hub rejected heartbeat")
+                return 1
+    except urllib.error.HTTPError as exc:
+        print(f"AURA_PI_NODE_HEARTBEAT_ERROR: HTTP {exc.code}")
+        return 1
+    except urllib.error.URLError:
+        print("AURA_PI_NODE_HEARTBEAT_ERROR: hub is unreachable")
+        return 1
+    print(f"AURA_PI_NODE_HEARTBEAT_OK node_id={node_id}")
+    return 0
+
+
 def send_simulated_event(
     node: str,
     event_type: str,
@@ -221,7 +251,7 @@ def send_simulated_event(
 ) -> int:
     load_env_file()
     resolved_hub_url = (hub_url or get_hub_url()).rstrip("/")
-    token = os.environ.get("AURA_SENSOR_API_TOKEN")
+    token = os.environ.get("AURA_SENSOR_NODE_TOKEN") or os.environ.get("AURA_SENSOR_API_TOKEN")
 
     if token:
         token = token.strip()
@@ -284,6 +314,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--confidence", type=float, default=None, help="Override confidence")
     parser.add_argument("--source", default=None, help="Override source identifier")
     parser.add_argument("--summary", default=None, help="Override event summary")
+    parser.add_argument("--heartbeat", default=None, help="Send node heartbeat with its enrolled token")
     parser.add_argument("--loop", type=int, default=1, help="Send event N times")
     parser.add_argument("--delay", type=float, default=3.0, help="Delay between loop sends")
     parser.add_argument(
@@ -300,6 +331,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.list:
         print_supported_nodes()
         return 0
+
+    if args.heartbeat:
+        return send_node_heartbeat(args.heartbeat, hub_url=args.hub_url)
 
     if not args.node or not args.event_type:
         print("Usage: python scripts/pi_node_simulator.py <node> <event_type>")

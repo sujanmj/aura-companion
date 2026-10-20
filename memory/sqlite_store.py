@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import secrets
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -62,6 +64,71 @@ class AuraMemoryStore:
             return int(row["id"])
 
         return self.create_user(name=name, preferred_name=preferred_name)
+
+    def enroll_sensor_node(
+        self,
+        user_id: int,
+        node_id: str,
+        display_name: str,
+        room: str,
+    ) -> tuple[dict[str, Any], str]:
+        token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        self.conn.execute(
+            """INSERT INTO sensor_nodes (user_id, node_id, display_name, room, token_hash)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(user_id, node_id) DO UPDATE SET
+                   display_name=excluded.display_name,
+                   room=excluded.room,
+                   token_hash=excluded.token_hash,
+                   last_seen_at=NULL,
+                   disabled=0""",
+            (user_id, node_id, display_name, room, token_hash),
+        )
+        self.conn.commit()
+        node = self.conn.execute(
+            """SELECT id, node_id, display_name, room, created_at, last_seen_at, disabled
+               FROM sensor_nodes WHERE user_id = ? AND node_id = ?""",
+            (user_id, node_id),
+        ).fetchone()
+        return dict(node), token
+
+    def get_sensor_node_by_token(self, token: str) -> dict[str, Any] | None:
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        row = self.conn.execute(
+            """SELECT id, user_id, node_id, display_name, room, created_at, last_seen_at
+               FROM sensor_nodes WHERE token_hash = ? AND disabled = 0""",
+            (token_hash,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def touch_sensor_node(self, user_id: int, node_id: str) -> bool:
+        cur = self.conn.execute(
+            """UPDATE sensor_nodes SET last_seen_at=CURRENT_TIMESTAMP
+               WHERE user_id = ? AND node_id = ? AND disabled = 0""",
+            (user_id, node_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def list_sensor_nodes(self, user_id: int) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            """SELECT id, node_id, display_name, room, created_at, last_seen_at,
+                      CASE WHEN last_seen_at >= datetime('now', '-90 seconds')
+                           THEN 1 ELSE 0 END AS online
+               FROM sensor_nodes WHERE user_id = ? AND disabled = 0
+               ORDER BY node_id""",
+            (user_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def revoke_sensor_node(self, user_id: int, node_id: str) -> bool:
+        cur = self.conn.execute(
+            "UPDATE sensor_nodes SET disabled=1 WHERE user_id = ? AND node_id = ?",
+            (user_id, node_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
 
     def export_user_memory(self, user_id: int) -> dict[str, Any]:
         user = self.conn.execute(

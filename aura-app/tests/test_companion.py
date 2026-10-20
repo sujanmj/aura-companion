@@ -176,7 +176,7 @@ class CompanionTest(unittest.TestCase):
                 ):
                     with urllib.request.urlopen(base + '/health', timeout=2) as response:
                         self.assertEqual(response.status, 200)
-                        self.assertEqual(json.loads(response.read())['version'], '0.3')
+                        self.assertEqual(json.loads(response.read())['version'], '0.4')
 
                     for request in (
                         urllib.request.Request(base + '/events/latest'),
@@ -200,6 +200,124 @@ class CompanionTest(unittest.TestCase):
                         request = urllib.request.Request(base + '/events/latest', headers={'X-AURA-API-Token': token})
                         with urllib.request.urlopen(request, timeout=2) as response:
                             self.assertEqual(response.status, 200)
+
+                        request = urllib.request.Request(
+                            base + '/events',
+                            data=json.dumps({
+                                'event_type': 'bad_id',
+                                'event_summary': 'invalid ID should be rejected',
+                                'event_uuid': 7,
+                            }).encode(),
+                            headers={
+                                'Content-Type': 'application/json',
+                                'X-AURA-API-Token': token,
+                            },
+                            method='POST',
+                        )
+                        with self.assertRaises(urllib.error.HTTPError) as error:
+                            urllib.request.urlopen(request, timeout=2)
+                        self.assertEqual(error.exception.code, 400)
+                        error.exception.close()
+
+                        request = urllib.request.Request(
+                            base + '/nodes/enroll',
+                            data=json.dumps({
+                                'node_id': 'pi_bedroom_node',
+                                'display_name': 'Bedroom Pi',
+                                'room': 'bedroom',
+                            }).encode(),
+                            headers={
+                                'Content-Type': 'application/json',
+                                'X-AURA-API-Token': token,
+                            },
+                            method='POST',
+                        )
+                        with urllib.request.urlopen(request, timeout=2) as response:
+                            enrollment = json.loads(response.read())
+                        node_token = enrollment['token']
+                        self.assertNotIn(
+                            node_token,
+                            store.conn.execute('SELECT token_hash FROM sensor_nodes').fetchone()[0],
+                        )
+
+                        request = urllib.request.Request(
+                            base + '/nodes/heartbeat',
+                            data=json.dumps({'node_id': 'pi_bedroom_node'}).encode(),
+                            headers={'Content-Type': 'application/json', 'X-AURA-API-Token': node_token},
+                            method='POST',
+                        )
+                        with urllib.request.urlopen(request, timeout=2) as response:
+                            self.assertTrue(json.loads(response.read())['ok'])
+
+                        request = urllib.request.Request(
+                            base + '/nodes/status',
+                            headers={'X-AURA-API-Token': token},
+                        )
+                        with urllib.request.urlopen(request, timeout=2) as response:
+                            nodes = json.loads(response.read())['nodes']
+                        self.assertEqual(nodes[0]['node_id'], 'pi_bedroom_node')
+                        self.assertTrue(nodes[0]['online'])
+
+                        node_event = {
+                            'event_type': 'node_check',
+                            'event_summary': 'node-authenticated event',
+                            'source': 'spoofed_source',
+                            'room': 'spoofed_room',
+                            'severity': 'low',
+                            'confidence': 0.5,
+                            'requires_action': False,
+                            'event_uuid': '3b6cfd8c-5874-4213-bbe0-b8e814d4721f',
+                        }
+                        missing_id = {key: value for key, value in node_event.items() if key != 'event_uuid'}
+                        request = urllib.request.Request(
+                            base + '/events',
+                            data=json.dumps(missing_id).encode(),
+                            headers={
+                                'Content-Type': 'application/json',
+                                'X-AURA-API-Token': node_token,
+                            },
+                            method='POST',
+                        )
+                        with self.assertRaises(urllib.error.HTTPError) as error:
+                            urllib.request.urlopen(request, timeout=2)
+                        self.assertEqual(error.exception.code, 400)
+                        error.exception.close()
+
+                        request = urllib.request.Request(
+                            base + '/events',
+                            data=json.dumps(node_event).encode(),
+                            headers={
+                                'Content-Type': 'application/json',
+                                'X-AURA-API-Token': node_token,
+                            },
+                            method='POST',
+                        )
+                        with urllib.request.urlopen(request, timeout=2) as response:
+                            node_event_response = json.loads(response.read())
+                        self.assertEqual(node_event_response['event']['source'], 'pi_bedroom_node')
+                        self.assertEqual(node_event_response['event']['room'], 'bedroom')
+
+                        request = urllib.request.Request(
+                            base + '/nodes/revoke',
+                            data=json.dumps({'node_id': 'pi_bedroom_node'}).encode(),
+                            headers={
+                                'Content-Type': 'application/json',
+                                'X-AURA-API-Token': token,
+                            },
+                            method='POST',
+                        )
+                        with urllib.request.urlopen(request, timeout=2) as response:
+                            self.assertTrue(json.loads(response.read())['revoked'])
+                        request = urllib.request.Request(
+                            base + '/nodes/heartbeat',
+                            data=json.dumps({'node_id': 'pi_bedroom_node'}).encode(),
+                            headers={'Content-Type': 'application/json', 'X-AURA-API-Token': node_token},
+                            method='POST',
+                        )
+                        with self.assertRaises(urllib.error.HTTPError) as error:
+                            urllib.request.urlopen(request, timeout=2)
+                        self.assertEqual(error.exception.code, 401)
+                        error.exception.close()
 
                         event = {
                             'event_type': 'retry_test',
@@ -229,9 +347,9 @@ class CompanionTest(unittest.TestCase):
                         self.assertEqual(responses[0]['event']['event_id'], responses[1]['event']['event_id'])
 
                 event_count = store.conn.execute('SELECT COUNT(*) FROM device_events').fetchone()[0]
-                self.assertEqual(event_count, 1)
+                self.assertEqual(event_count, 2)
                 observation_count = store.conn.execute('SELECT COUNT(*) FROM observations').fetchone()[0]
-                self.assertEqual(observation_count, 1)
+                self.assertEqual(observation_count, 2)
             finally:
                 server.shutdown()
                 thread.join(timeout=2)
