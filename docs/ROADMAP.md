@@ -228,7 +228,17 @@ Status: in progress; this is the current phase.
   macOS 26 SDK does not include Apple's `AnalyzerInputConverter`. The modern
   SpeechAnalyzer implementation is now compile-gated to Swift 6.4+ and macOS 27
   runtime; older SDKs compile the on-device-only fallback. The local macOS 27
-  build and app tests pass; the macOS 26 CI rerun is pending.
+  build and app tests pass; macOS 26 and Ubuntu CI passed in run 39466315415.
+- Microphone permission check (2026-10-20): AURA now uses Apple's
+  `AVAudioApplication` recording-permission API on macOS 14+ and keeps the
+  capture-device permission path for older macOS and camera access. On this
+  Mac, the microphone switch is on in Privacy Settings, but the app reports
+  permission as undetermined; its permission request produced no prompt and
+  did not return before the 60-second startup watchdog. No capture began. The
+  timeout now identifies the stalled prompt and links to Microphone settings.
+  This is a verified blocker, not a successful hardware acceptance. The app
+  currently uses an ad-hoc signature without a Team ID, so stable TCC identity
+  and a clean-install Allow prompt still need testing with a Developer ID build.
 - Remaining: hardware sleep/wake, automatic clean-install permission prompt
   recovery, multi-hour stability of the rebuilt audio-queue version, and
   calibrated acoustic loudness/feedback testing on Mac. Live Claude behavior

@@ -114,12 +114,13 @@ struct LifecycleTests {
             "A stalled Speech Recognition permission request must identify the stage and offer its privacy pane"
         )
         precondition(
-            PermissionSettings.target(for: StartupWatchdog.timeoutMessage(for: "Checking microphone access…")) == "Privacy_Microphone",
-            "A stalled microphone permission request must link to its privacy pane"
+            StartupWatchdog.timeoutMessage(for: "Waiting for macOS microphone permission…").hasPrefix("Microphone permission request timed out") &&
+                PermissionSettings.target(for: StartupWatchdog.timeoutMessage(for: "Waiting for macOS microphone permission…")) == "Privacy_Microphone",
+            "A stalled macOS microphone prompt must explain recovery and link to its privacy pane"
         )
         precondition(
-            PermissionSettings.target(for: StartupWatchdog.timeoutMessage(for: "Checking camera access…")) == "Privacy_Camera",
-            "A stalled camera permission request must link to its privacy pane"
+            PermissionSettings.target(for: StartupWatchdog.timeoutMessage(for: "Waiting for macOS camera permission…")) == "Privacy_Camera",
+            "A stalled macOS camera prompt must explain recovery and link to its privacy pane"
         )
         precondition(
             PermissionSettings.target(for: "Microphone access is off. Allow it in System Settings.") == "Privacy_Microphone",

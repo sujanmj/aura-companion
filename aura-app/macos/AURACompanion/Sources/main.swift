@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 13125)
+Total output lines: 1087
+
 import SwiftUI
 import AppKit
 @preconcurrency import AVFoundation
@@ -348,10 +351,26 @@ struct AURAAmbientApp: App {
     }
 
     private func requestCapturePermission(for mediaType: AVMediaType) async -> Bool {
+        if mediaType == .audio, #available(macOS 14.0, *) {
+            switch AVAudioApplication.shared.recordPermission {
+            case .granted:
+                return true
+            case .undetermined:
+                status = "Waiting for macOS microphone permission…"
+                return await AVAudioApplication.requestRecordPermission()
+            case .denied:
+                return false
+            @unknown default:
+                return false
+            }
+        }
         switch AVCaptureDevice.authorizationStatus(for: mediaType) {
         case .authorized:
             return true
         case .notDetermined:
+            status = mediaType == .video
+                ? "Waiting for macOS camera permission…"
+                : "Waiting for macOS microphone permission…"
             return await AVCaptureDevice.requestAccess(for: mediaType)
         case .denied, .restricted:
             return false
@@ -452,109 +471,7 @@ struct AURAAmbientApp: App {
         microphoneStopping = microphoneOn || microphoneStopping
         isStarting = false; isActive = false; microphoneOn = false; cameraOn = false
         replyTask?.cancel(); replyTask = nil
-        if let audioConfigurationObserver {
-            NotificationCenter.default.removeObserver(audioConfigurationObserver)
-            self.audioConfigurationObserver = nil
-        }
-        audioCapture.stop { [weak self] in
-            Task { @MainActor in
-                guard let self, self.lifecycle.canCompleteStop(stoppedGeneration) else { return }
-                self.microphoneStopping = false
-                self.refreshPausedStatus()
-            }
-        }
-        transcriber?.stop(); transcriber = nil
-        let cameraToStop = camera
-        camera = nil
-        cameraStopping = cameraToStop != nil || cameraStopping
-        contextLabels = []; scene = ""; isPersonPresent = false
-        synthesizer.stopSpeaking(at: .immediate)
-        status = cameraStopping
-            ? microphoneStopping ? "Paused. Microphone and camera are stopping."
-                : "Paused. Microphone is off; camera is stopping."
-            : microphoneStopping ? "Paused. Microphone is stopping; camera is off."
-                : "Paused. Microphone and camera are off."
-        cameraToStop?.stop { [weak self] in
-            Task { @MainActor in
-                guard let self, self.lifecycle.canCompleteStop(stoppedGeneration) else { return }
-                self.cameraOn = false
-                self.cameraStopping = false
-                self.refreshPausedStatus()
-                if self.wakeResume.cameraStopped() {
-                    Task { await self.start() }
-                }
-            }
-        }
-    }
-
-    private func refreshPausedStatus() {
-        guard status.hasPrefix("Paused. Microphone") else { return }
-        switch (microphoneStopping, cameraStopping) {
-        case (true, true): status = "Paused. Microphone and camera are stopping."
-        case (true, false): status = "Paused. Microphone is stopping; camera is off."
-        case (false, true): status = "Paused. Microphone is off; camera is stopping."
-        case (false, false): status = "Paused. Microphone and camera are off."
-        }
-    }
-
-    func forgetPairing() {
-        _ = pairingGeneration.issue()
-        isPairing = false; isCheckingPairing = false; canRetrySavedPairing = false
-        canUseSessionOnlyPairing = false; pendingSessionOnlyCookie = nil
-        isClearingPairing = true
-        stop(); cookie = nil; isPaired = false; status = "Clearing saved pairing…"
-        Task { [weak self] in
-            let removed = await Keychain.delete()
-            guard let self else { return }
-            self.isClearingPairing = false
-            self.status = removed
-                ? "Session pairing cleared."
-                : "AURA could not confirm removal from Keychain. Remove AURA Companion from Keychain Access before pairing again."
-        }
-    }
-
-    var permissionSettingsURL: URL? {
-        guard let target = PermissionSettings.target(for: status) else { return nil }
-        return URL(string: "x-apple.systempreferences:com.apple.preference.security?\(target)")
-    }
-
-    func openPermissionSettings() {
-        let permissionStatus = status
-        guard let url = permissionSettingsURL else { return }
-        if !NSWorkspace.shared.open(url),
-           let fallback = PermissionSettings.fallbackMessage(for: permissionStatus) {
-            status = fallback
-        }
-    }
-}
-
-// All camera configuration, start/stop and frames belong to one serial queue.
-// A new instance per ambient session prevents old callbacks stopping a new camera.
-private final class LocalCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
-    private let queue = DispatchQueue(label: "aura.ambient.capture")
-    private let session = AVCaptureSession()
-    private let output = AVCaptureVideoDataOutput()
-    private var lastVisionTime = Date.distantPast
-    private var stopped = false
-    private let onScene: @Sendable ([String], Bool) -> Void
-    private let onFailure: @Sendable (String) -> Void
-    private var failureObservers: [NSObjectProtocol] = []
-
-    init(
-        onScene: @escaping @Sendable ([String], Bool) -> Void,
-        onFailure: @escaping @Sendable (String) -> Void
-    ) {
-        self.onScene = onScene
-        self.onFailure = onFailure
-    }
-
-    func start() async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            queue.async {
-                do {
-                    guard !self.stopped else { throw CancellationError() }
-                    try self.configure()
-                    self.observeSessionFailures()
+        if let audioConfigur…1125 tokens truncated…        self.observeSessionFailures()
                     self.session.startRunning()
                     guard self.session.isRunning else { throw CaptureError.startFailed }
                     continuation.resume()

@@ -9,6 +9,10 @@ enum StartupWatchdog {
             "Microphone permission check timed out. Open Privacy Settings and allow AURA Companion."
         case "Checking camera access…":
             "Camera permission check timed out. Open Privacy Settings and allow AURA Companion."
+        case let pending where pending.hasPrefix("Waiting for macOS microphone permission"):
+            "Microphone permission request timed out. Check System Settings > Privacy & Security > Microphone, then try again."
+        case let pending where pending.hasPrefix("Waiting for macOS camera permission"):
+            "Camera permission request timed out. Check System Settings > Privacy & Security > Camera, then try again."
         default:
             "Ambient startup timed out while \(stage.lowercased()). Check permission prompts and connected devices, then try again."
         }
@@ -204,10 +208,10 @@ enum PermissionSettings {
         if status.hasPrefix("Allow Speech Recognition") || status.hasPrefix("Speech Recognition permission check timed out") {
             return "Privacy_SpeechRecognition"
         }
-        if status.hasPrefix("Microphone access is off") || status.hasPrefix("Microphone permission check timed out") {
+        if status.hasPrefix("Microphone access is off") || status.hasPrefix("Microphone permission check timed out") || status.hasPrefix("Microphone permission request timed out") {
             return "Privacy_Microphone"
         }
-        if status.hasPrefix("Camera access is off") || status.hasPrefix("Camera permission check timed out") {
+        if status.hasPrefix("Camera access is off") || status.hasPrefix("Camera permission check timed out") || status.hasPrefix("Camera permission request timed out") {
             return "Privacy_Camera"
         }
         return nil
