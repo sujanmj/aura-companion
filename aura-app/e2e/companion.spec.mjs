@@ -98,6 +98,12 @@ test("setup distinguishes local availability from live verification", async ({
   await expect(
     page.getByText("Local rule-based replies.", { exact: false }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Test configured provider" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText(/sends only “Reply with exactly: AURA connection confirmed\.”/),
+  ).toBeVisible();
   await expect(page.getByText("Disabled. No tool task can run.")).toBeVisible();
   await page.getByRole("button", { name: "Refresh readiness" }).click();
   await expect(

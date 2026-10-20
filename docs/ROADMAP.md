@@ -248,6 +248,14 @@ Status: in progress; this is the current phase.
   was exposed to the UI automation session and the request again timed out.
   AURA remained paused and did not capture. Stable TCC identity and an observed
   Allow flow still need testing with a Developer ID build.
+- Repeated permission attempt (2026-10-20): the rebuilt app paired to an
+  isolated temporary service and database; System Settings still showed the
+  microphone switch on. Starting ambient mode again produced no visible Allow
+  dialog and timed out waiting for macOS microphone permission. AURA stayed
+  paused with microphone and camera off. The isolated pairing, service and
+  database were cleared. The older local app copy has a different ad-hoc
+  signature from the code hash in the prior TCC record, and this Mac has no
+  installed code-signing identity. No new live-capture acceptance is claimed.
 - Remaining: hardware sleep/wake, automatic clean-install permission prompt
   recovery, multi-hour stability of the rebuilt audio-queue version, and
   calibrated acoustic loudness/feedback testing on Mac. Live Claude behavior
@@ -277,6 +285,13 @@ Status: partial components exist; acceptance not complete.
   manual notes stored in that browser only; they do not run tests or claim that
   a provider, microphone, speaker, camera or tool worked. Browser end-to-end
   coverage checks persistence and clearing of those notes.
+- Implemented: Setup can explicitly send a fixed, memory-free test prompt to the
+  selected configured provider. AURA returns only whether the provider replied;
+  it does not save the response or expose provider credentials. Refreshing
+  readiness remains configuration-only, and the test action is unavailable
+  until readiness identifies a supported provider to test. Unit, authenticated API/CSRF integration,
+  and browser tests cover the opt-in and default local-only behavior. A live
+  provider check still requires user configuration and a button click.
 - Implemented: browser spoken replies can use an installed system voice and a
   selectable 0.8×–1.2× pace. Preferences stay in the current browser and also
   apply when configured cloud speech falls back to local browser speech. The

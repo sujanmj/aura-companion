@@ -15,7 +15,7 @@ from memory.sqlite_store import AuraMemoryStore, DEFAULT_DB_PATH
 from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
 from cloud.supabase_sync import sync_conversation
-from readiness import brain_readiness
+from readiness import brain_readiness, test_provider_connection
 
 
 def main():
@@ -46,6 +46,8 @@ def main():
                 if op == 'readiness':
                     store.conn.execute('SELECT 1').fetchone()
                     result = {'brain': brain_readiness(), 'memory': 'available'}
+                elif op == 'provider_test':
+                    result = test_provider_connection()
                 elif op == 'status':
                     brain = brain_readiness()
                     result = {'provider': brain['provider'],

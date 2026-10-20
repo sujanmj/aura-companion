@@ -93,6 +93,19 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     assert.equal(readiness.hardware, "not_tested");
     assert.equal("conversations" in readiness, false);
     assert.equal("facts" in readiness, false);
+    assert.equal((await post("readiness/provider-test", {})).status, 401);
+    assert.equal(
+      (await post("readiness/provider-test", {}, cookie, "https://evil.test"))
+        .status,
+      403,
+    );
+    const providerTest = await post("readiness/provider-test", {}, cookie);
+    assert.equal(providerTest.status, 200);
+    assert.deepEqual(await providerTest.json(), {
+      provider: "local",
+      state: "local_only",
+      verified: false,
+    });
     assert.equal(
       (await post("chat", { message: "hello" }, cookie, "https://evil.test"))
         .status,

@@ -120,11 +120,15 @@ Memory worker failures fail closed: exit, missing Python, and a 45-second respon
 
 ## Readiness and live acceptance
 
-Open **Setup** after pairing. Its checks read configuration and confirm the memory
-worker responds; they never call a provider, start an MCP server, or turn on a
-microphone/camera. “Configured” is not a successful live test. Missing settings
-list only variable names, never key values. Restart after changing configuration.
-The selected model now matches the selected brain, including OpenAI and Ollama.
+Open **Setup** after pairing. Refreshing readiness reads configuration and
+confirms the memory worker responds; it does not call a provider, start an MCP
+server, or turn on a microphone/camera. “Configured” is not a successful live
+test. When a provider is configured, the separate **Test configured provider**
+button sends only the fixed text “Reply with exactly: AURA connection confirmed.”
+to that provider. It includes no conversation or saved memory, and AURA does not
+retain the reply. Missing settings list only variable names, never key values.
+Restart after changing configuration. The selected model now matches the
+selected brain, including OpenAI and Ollama.
 
 Before declaring the single-device companion ready, record these live results:
 

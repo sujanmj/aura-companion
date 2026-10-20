@@ -175,6 +175,17 @@ const server = http.createServer(async (req, res) => {
           hardware: "not_tested",
         });
       }
+      if (req.method === "POST" && url.pathname === "/api/readiness/provider-test") {
+        try {
+          await body(req, 1024);
+          return json(res, 200, await memory("provider_test"));
+        } catch (error) {
+          if (error.status) return json(res, error.status, { error: "Request too large" });
+          return json(res, 503, {
+            error: "Provider test could not run. Check the local memory service and provider configuration.",
+          });
+        }
+      }
       if (req.method === "GET" && url.pathname === "/api/memory/export") {
         try {
           const exported = await memory("export");
