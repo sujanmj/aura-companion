@@ -50,6 +50,35 @@ struct RecognitionGeneration {
     }
 }
 
+// Keep AURA's own speech from becoming a new ambient microphone request. A
+// generation prevents a delayed completion from re-opening recognition after
+// a newer utterance or a manual Pause.
+struct SpeechOutputSuppression {
+    private(set) var generation: UInt64 = 0
+    private(set) var isSuppressed = false
+
+    mutating func begin() -> UInt64 {
+        generation &+= 1
+        isSuppressed = true
+        return generation
+    }
+
+    func contains(_ token: UInt64) -> Bool {
+        generation == token && isSuppressed
+    }
+
+    mutating func finish(_ token: UInt64) -> Bool {
+        guard contains(token) else { return false }
+        isSuppressed = false
+        return true
+    }
+
+    mutating func cancel() {
+        generation &+= 1
+        isSuppressed = false
+    }
+}
+
 // Preserve an active ambient session across sleep, regardless of whether the
 // camera's serialized stop callback runs before or after the wake notification.
 struct WakeResumeState {

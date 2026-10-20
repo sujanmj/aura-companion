@@ -57,6 +57,7 @@ struct AURAAmbientApp: App {
     private var hasAudioTap = false
     private let engine = AVAudioEngine()
     private let synthesizer = AVSpeechSynthesizer()
+    private var speechOutputSuppression = SpeechOutputSuppression()
     private var transcriber: LocalSpeechPipeline?
     private var cookie: String?
     private var contextLabels: [String] = []
@@ -233,7 +234,19 @@ struct AURAAmbientApp: App {
                 guard lifecycle.contains(generation), isActive, !Task.isCancelled else { return }
                 recentResponse = response.response; status = "AURA replied. Still listening locally."
                 let utterance = AVSpeechUtterance(string: response.response); utterance.voice = AVSpeechSynthesisVoice(language: "en-US"); utterance.rate = 0.48
+                let outputGeneration = speechOutputSuppression.begin()
+                transcriber?.setOutputSuppressed(true)
                 synthesizer.speak(utterance)
+                Task { [weak self] in
+                    guard let self else { return }
+                    while speechOutputSuppression.contains(outputGeneration), synthesizer.isSpeaking {
+                        try? await Task.sleep(nanoseconds: 100_000_000)
+                    }
+                    guard speechOutputSuppression.contains(outputGeneration) else { return }
+                    try? await Task.sleep(nanoseconds: 800_000_000)
+                    guard speechOutputSuppression.finish(outputGeneration) else { return }
+                    transcriber?.setOutputSuppressed(false)
+                }
             }
         } catch {
             guard lifecycle.contains(generation), !Task.isCancelled else { return }
@@ -242,6 +255,7 @@ struct AURAAmbientApp: App {
     }
 
     func stop(preservingWakeResume: Bool = false) {
+        speechOutputSuppression.cancel()
         if !cameraStopping { lifecycle.pause() }
         let stoppedGeneration = lifecycle.generation
         if !preservingWakeResume { wakeResume.cancel() }
@@ -365,6 +379,7 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
     private var inSpeech = false
     private var quietBuffers = 0
     private var stopped = false
+    private var outputSuppressed = false
     private var requestGeneration = RecognitionGeneration()
 
     init(recognizer: SFSpeechRecognizer, onFinal: @escaping @Sendable (String) -> Void) {
@@ -386,7 +401,8 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
             destination[channel].update(from: source[channel], count: frames)
         }
         queue.async { [weak self] in
-            guard let self, !self.stopped, let channel = owned.floatChannelData?[0] else { return }
+            guard let self, !self.stopped, !self.outputSuppressed,
+                  let channel = owned.floatChannelData?[0] else { return }
             let count = Int(owned.frameLength)
             guard count > 0 else { return }
             let step = max(1, count / 512)
@@ -423,7 +439,11 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
             guard let self else { return }
             if let result, result.isFinal {
                 let text = result.bestTranscription.formattedString
-                self.onFinal(text)
+                self.queue.async {
+                    guard !self.stopped, !self.outputSuppressed,
+                          self.requestGeneration.isCurrent(generation) else { return }
+                    self.onFinal(text)
+                }
             }
             if error != nil {
                 self.queue.async {
@@ -443,6 +463,19 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
             self.task?.cancel()
             self.request = nil
             self.task = nil
+        }
+    }
+
+    func setOutputSuppressed(_ suppressed: Bool) {
+        queue.async {
+            guard self.outputSuppressed != suppressed, !self.stopped else { return }
+            self.outputSuppressed = suppressed
+            guard suppressed else { return }
+            self.requestGeneration.invalidate()
+            self.request?.endAudio()
+            self.task?.cancel()
+            self.request = nil; self.task = nil
+            self.inSpeech = false; self.quietBuffers = 0
         }
     }
 }

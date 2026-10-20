@@ -43,6 +43,17 @@ struct LifecycleTests {
         recognition.invalidate()
         precondition(!recognition.isCurrent(currentUtterance), "Stopping recognition must invalidate queued callbacks")
 
+        var output = SpeechOutputSuppression()
+        let firstOutput = output.begin()
+        precondition(output.contains(firstOutput), "Microphone recognition must be suppressed while AURA speaks")
+        let nextOutput = output.begin()
+        precondition(!output.finish(firstOutput), "A stale speech completion must not resume microphone recognition")
+        precondition(output.finish(nextOutput), "Recognition resumes after the current utterance finishes")
+        precondition(!output.isSuppressed)
+        let interruptedOutput = output.begin()
+        output.cancel()
+        precondition(!output.finish(interruptedOutput), "Pause must cancel delayed recognition resume")
+
         var wake = WakeResumeState()
         wake.willSleep(wasActive: true)
         precondition(!wake.cameraStopped(), "Do not restart while the Mac is still asleep")
@@ -74,6 +85,6 @@ struct LifecycleTests {
             "Normal status must not offer a misleading permission shortcut"
         )
 
-        print("PASS: capture lifecycle, 1000 restart cycles, stop isolation, sleep/wake ordering, and privacy settings recovery")
+        print("PASS: capture lifecycle, 1000 restart cycles, speech output echo suppression, sleep/wake ordering, and privacy settings recovery")
     }
 }

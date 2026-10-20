@@ -46,6 +46,11 @@ Status: in progress; this is the current phase.
   camera teardown if wake arrives first and never restarts while still asleep.
   Manual Pause cancels a pending automatic resume. Hardware sleep/wake remains
   unverified.
+- Fixed: AURA's spoken reply temporarily suppresses microphone transcription and
+  cancels any in-flight recognition, then resumes after a quiet grace period.
+  Stale speech-completion callbacks cannot reopen the microphone after a newer
+  utterance or Pause; native tests cover those generations. Acoustic feedback
+  still needs confirmation on the unlocked Mac.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing
