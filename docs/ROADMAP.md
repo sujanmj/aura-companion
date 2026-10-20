@@ -82,12 +82,13 @@ Status: in progress; this is the current phase.
   Pause/start cycles; final Pause confirmed both sensors off. A multi-hour soak
   of this rebuilt audio-queue version remains to be run.
 - Fixed after a stalled pairing test (2026-10-20): Keychain reads, saves, and
-  deletes now share one serial queue and return to the UI after an eight-second
-  bound, so a wedged macOS Keychain call cannot freeze AURA or spawn overlapping
-  Security framework requests. A Mac test found an old AURA cookie whose
-  Keychain decrypt was stuck inside macOS; removing that test-only item in
-  Keychain Access restored clean startup and pairing. The rebuilt app then
-  paired successfully and Clear pairing removed the temporary credential.
+  deletes return to the UI after an eight-second bound. Each request runs
+  independently so a stalled system call cannot starve later UI operations.
+  On this Mac, `SecItemCopyMatching` and `SecItemUpdate` have both stalled inside
+  macOS for AURA's test item. Removing that item in Keychain Access restored one
+  successful pairing, but the next restart and update stalled again. The
+  app reports the uncertainty and offers an explicit in-memory session option;
+  this option and reliable saved-pairing recovery still need acceptance.
 - Fixed: ambient startup now names each permission/device setup stage and has a
   60-second watchdog. If a macOS permission or capture callback stalls, AURA
   safely pauses instead of leaving the user on an indefinite startup state;
@@ -207,6 +208,16 @@ Status: in progress; this is the current phase.
   no microphone or camera capture began. This clean-install prompt blocker
   remains unresolved. Existing permission recovery succeeded before the reset,
   but the grant could not be restored through the missing prompt in this run.
+- Speech privacy update (2026-10-20): on macOS 27 and later, ambient
+  transcription now uses Apple's `SpeechAnalyzer` and `SpeechTranscriber` with
+  supported on-device English assets; older systems retain the explicitly
+  on-device-only Speech framework path. The modern build compiled and reached
+  LIVE with local camera classifications, but a synthetic spoken request
+  produced no visible speech-recognition status or conversation row. A later
+  fresh launch timed out while checking microphone permission even though
+  System Settings listed AURA as allowed, and no Allow prompt appeared. The new
+  on-device speech-to-reply path and stable signed permission identity remain
+  unverified; the earlier live voice-loop result applies to the older path.
 - Remaining: hardware sleep/wake, automatic clean-install permission prompt
   recovery, multi-hour stability of the rebuilt audio-queue version, and
   calibrated acoustic loudness/feedback testing on Mac. Live Claude behavior

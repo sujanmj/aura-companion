@@ -62,6 +62,7 @@ struct AURAAmbientApp: App {
     @Published var isCheckingPairing = false
     @Published var isClearingPairing = false
     @Published var canRetrySavedPairing = false
+    @Published var canUseSessionOnlyPairing = false
     @Published var isPaired = false
     @Published var microphoneOn = false
     @Published var microphoneStopping = false
@@ -82,8 +83,9 @@ struct AURAAmbientApp: App {
     private let synthesizer = AVSpeechSynthesizer()
     private var speechOutputSuppression = SpeechOutputSuppression()
     private var audioConfigurationObserver: NSObjectProtocol?
-    private var transcriber: LocalSpeechPipeline?
+    private var transcriber: (any AmbientTranscriber)?
     private var cookie: String?
+    private var pendingSessionOnlyCookie: String?
     private var contextLabels: [String] = []
     private var wakeResume = WakeResumeState()
 
@@ -188,17 +190,29 @@ struct AURAAmbientApp: App {
             let saveResult = await Keychain.save(value)
             guard pairingGeneration.isCurrent(generation) else { return }
             guard saveResult.saved else {
+                if saveResult.timedOut {
+                    pendingSessionOnlyCookie = value
+                    canUseSessionOnlyPairing = true
+                }
                 status = saveResult.timedOut
-                    ? "macOS Keychain did not respond, so AURA could not confirm whether pairing was saved. Restart AURA and check the saved pairing before trying again."
+                    ? "macOS Keychain did not respond. AURA cannot confirm whether this pairing was saved. You can continue for this run; check Keychain Access before sharing this Mac."
                     : "Couldn’t save the secure AURA pairing in Keychain. Check macOS Keychain access and try again."
                 return
             }
             cookie = value; isPaired = true; code = ""; canRetrySavedPairing = false
+            canUseSessionOnlyPairing = false; pendingSessionOnlyCookie = nil
             status = "Paired securely with this AURA session."
         } catch {
             guard pairingGeneration.isCurrent(generation) else { return }
             status = "AURA is not reachable on this Mac yet."
         }
+    }
+
+    func useSessionOnlyPairing() {
+        guard let value = pendingSessionOnlyCookie else { return }
+        cookie = value; isPaired = true; code = ""
+        canUseSessionOnlyPairing = false; pendingSessionOnlyCookie = nil
+        status = "Paired in memory for this run. Keychain may still contain the token; use Clear pairing and verify it in Keychain Access."
     }
 
     func start() async {
@@ -207,7 +221,7 @@ struct AURAAmbientApp: App {
         guard !cameraStopping else { status = "The camera is still stopping. Try again in a moment."; return }
         guard let generation = lifecycle.begin() else { return }
         isStarting = true
-        status = "Checking Speech Recognition permission…"
+        status = "Checking microphone access…"
         startupTimeoutTask?.cancel()
         startupTimeoutTask = StartupWatchdog.schedule(afterNanoseconds: 60_000_000_000) { [weak self] in
             guard let self else { return }
@@ -230,39 +244,50 @@ struct AURAAmbientApp: App {
             }
         }
         do {
-            let authorization = SFSpeechRecognizer.authorizationStatus()
-            let authorized: Bool
-            switch authorization {
-            case .authorized:
-                authorized = true
-            case .notDetermined:
-                authorized = await withCheckedContinuation { continuation in
-                    SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
-                }
-            case .denied, .restricted:
-                authorized = false
-            @unknown default:
-                authorized = false
-            }
-            guard lifecycle.contains(generation) else { return }
-            guard authorized else { status = "Allow Speech Recognition in System Settings to use local listening."; return }
-            status = "Checking microphone access…"
-            let mic = await AVCaptureDevice.requestAccess(for: .audio)
+            let mic = await requestCapturePermission(for: .audio)
             guard lifecycle.contains(generation) else { return }
             guard mic else { status = "Microphone access is off. Allow it in System Settings."; return }
-            status = "Checking camera access…"
-            let cameraAllowed = await AVCaptureDevice.requestAccess(for: .video)
-            guard lifecycle.contains(generation) else { return }
-            guard cameraAllowed else { status = "Camera access is off. Allow it in System Settings."; return }
-            status = "Checking on-device English speech support…"
-            guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US")), recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else {
-                status = "On-device English speech recognition isn’t available on this Mac. AURA won’t send ambient audio to a server."; return
-            }
-            self.transcriber = LocalSpeechPipeline(recognizer: recognizer) { [weak self] text in
+            let onFinal: @Sendable (String) -> Void = { [weak self] text in
                 Task { @MainActor in
                     guard let self, self.lifecycle.contains(generation) else { return }
+                    self.status = "Speech recognized locally. Only direct requests or explicit support phrases get a reply."
                     self.handle(text)
                 }
+            }
+            if #available(macOS 27.0, *) {
+                status = "Preparing private on-device English speech recognition…"
+                self.transcriber = try await SpeechAnalyzerTranscriber.make(onFinal: onFinal)
+            } else {
+                status = "Checking Speech Recognition permission…"
+                let authorization = SFSpeechRecognizer.authorizationStatus()
+                let authorized: Bool
+                switch authorization {
+                case .authorized:
+                    authorized = true
+                case .notDetermined:
+                    authorized = await withCheckedContinuation { continuation in
+                        SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
+                    }
+                case .denied, .restricted:
+                    authorized = false
+                @unknown default:
+                    authorized = false
+                }
+                guard lifecycle.contains(generation) else { return }
+                guard authorized else { status = "Allow Speech Recognition in System Settings to use local listening."; return }
+                status = "Checking on-device English speech support…"
+                guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US")), recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else {
+                    status = "On-device English speech recognition isn’t available on this Mac. AURA won’t send ambient audio to a server."; return
+                }
+                self.transcriber = LegacySpeechPipeline(recognizer: recognizer, onFinal: onFinal)
+            }
+            guard lifecycle.contains(generation) else { self.transcriber?.stop(); self.transcriber = nil; return }
+            status = "Checking camera access…"
+            let cameraAllowed = await requestCapturePermission(for: .video)
+            guard lifecycle.contains(generation) else { return }
+            guard cameraAllowed else {
+                self.transcriber?.stop(); self.transcriber = nil
+                status = "Camera access is off. Allow it in System Settings."; return
             }
             let camera = LocalCamera(
                 onScene: { [weak self] labels, present in
@@ -294,6 +319,19 @@ struct AURAAmbientApp: App {
         } catch {
             guard lifecycle.contains(generation) else { return }
             stop(); status = "Couldn’t start the local microphone and camera: \(error.localizedDescription)"
+        }
+    }
+
+    private func requestCapturePermission(for mediaType: AVMediaType) async -> Bool {
+        switch AVCaptureDevice.authorizationStatus(for: mediaType) {
+        case .authorized:
+            return true
+        case .notDetermined:
+            return await AVCaptureDevice.requestAccess(for: mediaType)
+        case .denied, .restricted:
+            return false
+        @unknown default:
+            return false
         }
     }
 
@@ -437,6 +475,7 @@ struct AURAAmbientApp: App {
     func forgetPairing() {
         _ = pairingGeneration.issue()
         isPairing = false; isCheckingPairing = false; canRetrySavedPairing = false
+        canUseSessionOnlyPairing = false; pendingSessionOnlyCookie = nil
         isClearingPairing = true
         stop(); cookie = nil; isPaired = false; status = "Clearing saved pairing…"
         Task { [weak self] in
@@ -582,7 +621,7 @@ private final class LocalAudioCapture: @unchecked Sendable {
     private let engine = AVAudioEngine()
     private var hasTap = false
 
-    func start(transcriber: LocalSpeechPipeline?) async throws {
+    func start(transcriber: (any AmbientTranscriber)?) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             queue.async {
                 do {
@@ -590,8 +629,8 @@ private final class LocalAudioCapture: @unchecked Sendable {
                     let format = input.outputFormat(forBus: 0)
                     guard format.channelCount > 0 else { throw CaptureError.noMicrophone }
                     guard !self.hasTap else { throw CaptureError.startFailed }
-                    input.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
-                        transcriber?.consume(buffer)
+                    input.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, time in
+                        transcriber?.consume(buffer, at: time)
                     }
                     self.hasTap = true
                     self.engine.prepare()
@@ -629,7 +668,15 @@ private final class LocalAudioCapture: @unchecked Sendable {
     }
 }
 
-private final class LocalSpeechPipeline: @unchecked Sendable {
+private protocol AmbientTranscriber: AnyObject, Sendable {
+    func consume(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime)
+    func stop()
+    func setOutputSuppressed(_ suppressed: Bool)
+}
+
+// Compatibility path for older macOS releases. Recognition is explicitly
+// restricted to on-device models; it never falls back to Apple server capture.
+private final class LegacySpeechPipeline: AmbientTranscriber, @unchecked Sendable {
     private let queue = DispatchQueue(label: "aura.local.speech")
     private let recognizer: SFSpeechRecognizer
     private let onFinal: @Sendable (String) -> Void
@@ -646,7 +693,7 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
         self.onFinal = onFinal
     }
 
-    func consume(_ buffer: AVAudioPCMBuffer) {
+    func consume(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime) {
         // The audio engine owns and may reuse tap buffers as soon as this call
         // returns. Keep an owned copy before handing the data to our queue.
         guard let source = buffer.floatChannelData,
@@ -739,13 +786,147 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
     }
 }
 
+@available(macOS 27.0, *)
+private final class SpeechAnalyzerTranscriber: AmbientTranscriber, @unchecked Sendable {
+    private static let maximumBufferedInputs = 128
+    private let queue = DispatchQueue(label: "aura.local.speech-analyzer")
+    private let analyzer: SpeechAnalyzer
+    private let module: SpeechTranscriber
+    private let converter: AnalyzerInputConverter
+    private let inputContinuation: AsyncStream<AnalyzerInput>.Continuation
+    private let onFinal: @Sendable (String) -> Void
+    private var resultTask: Task<Void, Never>?
+    private var stopped = false
+    private var outputSuppressed = false
+
+    private init(
+        analyzer: SpeechAnalyzer,
+        module: SpeechTranscriber,
+        converter: AnalyzerInputConverter,
+        inputContinuation: AsyncStream<AnalyzerInput>.Continuation,
+        onFinal: @escaping @Sendable (String) -> Void
+    ) {
+        self.analyzer = analyzer
+        self.module = module
+        self.converter = converter
+        self.inputContinuation = inputContinuation
+        self.onFinal = onFinal
+    }
+
+    static func make(onFinal: @escaping @Sendable (String) -> Void) async throws -> SpeechAnalyzerTranscriber {
+        guard SpeechTranscriber.isAvailable,
+              let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-US")) else {
+            throw SpeechPipelineError.onDeviceEnglishUnavailable
+        }
+        let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
+        if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
+            try await request.downloadAndInstall()
+        }
+        guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
+            throw SpeechPipelineError.onDeviceEnglishUnavailable
+        }
+        let converter = AnalyzerInputConverter(analyzerFormat: format)
+        let analyzer = SpeechAnalyzer(modules: [module])
+        let (inputSequence, inputContinuation) = AsyncStream<AnalyzerInput>.makeStream(
+            of: AnalyzerInput.self,
+            bufferingPolicy: .bufferingNewest(maximumBufferedInputs)
+        )
+        try await analyzer.start(inputSequence: inputSequence)
+        let pipeline = SpeechAnalyzerTranscriber(
+            analyzer: analyzer,
+            module: module,
+            converter: converter,
+            inputContinuation: inputContinuation,
+            onFinal: onFinal
+        )
+        pipeline.startResults()
+        return pipeline
+    }
+
+    private func startResults() {
+        resultTask = Task { [weak self, module] in
+            do {
+                for try await result in module.results {
+                    guard result.isFinal else { continue }
+                    let text = String(result.text.characters).trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !text.isEmpty else { continue }
+                    self?.deliver(text)
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                // Do not expose framework diagnostics or audio-related details in UI/logs.
+            }
+        }
+    }
+
+    private func deliver(_ text: String) {
+        queue.async { [weak self] in
+            guard let self, !self.stopped, !self.outputSuppressed else { return }
+            self.onFinal(text)
+        }
+    }
+
+    func consume(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime) {
+        guard let source = buffer.floatChannelData,
+              let owned = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameLength),
+              let destination = owned.floatChannelData else { return }
+        let channels = Int(buffer.format.channelCount)
+        let frames = Int(buffer.frameLength)
+        guard channels > 0, frames > 0 else { return }
+        owned.frameLength = buffer.frameLength
+        for channel in 0..<channels {
+            destination[channel].update(from: source[channel], count: frames)
+        }
+        queue.async { [weak self] in
+            guard let self, !self.stopped, !self.outputSuppressed else { return }
+            do {
+                for input in try self.converter.convert(owned, at: time) {
+                    self.inputContinuation.yield(input)
+                }
+            } catch {
+                // A later valid audio buffer may restore conversion; never forward raw audio.
+            }
+        }
+    }
+
+    func stop() {
+        queue.async {
+            guard !self.stopped else { return }
+            self.stopped = true
+            self.inputContinuation.finish()
+            self.resultTask?.cancel()
+            self.resultTask = nil
+            Task { await self.analyzer.cancelAndFinishNow() }
+        }
+    }
+
+    func setOutputSuppressed(_ suppressed: Bool) {
+        queue.async {
+            guard !self.stopped else { return }
+            self.outputSuppressed = suppressed
+        }
+    }
+}
+
+private enum SpeechPipelineError: LocalizedError {
+    case onDeviceEnglishUnavailable
+
+    var errorDescription: String? {
+        switch self {
+        case .onDeviceEnglishUnavailable:
+            "Private on-device English speech recognition is unavailable on this Mac."
+        }
+    }
+}
+
 private struct MenuView: View {
     @ObservedObject var monitor: AmbientMonitor
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
             HStack { Text("✳ AURA").font(.system(size: 22, weight: .medium)); Spacer(); Text(monitor.isActive ? "LIVE" : "PAUSED").font(.caption2).tracking(2).foregroundStyle(monitor.isActive ? .green : .secondary) }
             Text("Ambient companion").font(.headline)
-            Text("AURA checks speech and the room on this Mac. Raw audio and frames are never saved or sent. Speech recognition runs on-device; only direct requests and explicit support phrases reach your AURA companion.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text("AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. Only direct requests and explicit support phrases reach your AURA companion.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) { Label(monitor.microphoneStopping ? "Microphone stopping" : monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn || monitor.microphoneStopping ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
             if !monitor.isPaired {
                 if monitor.canRetrySavedPairing {
@@ -757,6 +938,10 @@ private struct MenuView: View {
                 SecureField("Session code from AURA terminal", text: $monitor.code)
                 Button(monitor.isPairing ? "Pairing securely…" : "Pair with AURA") { Task { await monitor.pair() } }
                     .disabled(monitor.code.isEmpty || monitor.isPairing || monitor.isClearingPairing)
+                if monitor.canUseSessionOnlyPairing {
+                    Button("Continue for this run only") { monitor.useSessionOnlyPairing() }
+                        .disabled(monitor.isPairing || monitor.isClearingPairing)
+                }
             } else {
                 Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: []).disabled(monitor.cameraStopping || monitor.microphoneStopping)
                 if !monitor.recentResponse.isEmpty { Divider(); Text("AURA").font(.caption).foregroundStyle(.secondary); Text(monitor.recentResponse).font(.system(size: 12)).textSelection(.enabled) }
@@ -775,13 +960,15 @@ private struct MenuView: View {
 
 private enum Keychain {
     private static let account = "aura-companion-cookie"
-    private static let queue = DispatchQueue(label: "aura.keychain.serial")
     private static let timeout: TimeInterval = 8
 
     static func read() async -> (value: String?, timedOut: Bool) {
         await withCheckedContinuation { continuation in
             let gate = KeychainCompletionGate<(value: String?, timedOut: Bool)>()
-            queue.async {
+            // Security.framework can stall inside SecItemCopyMatching on a damaged
+            // or unavailable keychain. Keep each call independent so one blocked
+            // request cannot starve later save or clear attempts.
+            DispatchQueue.global(qos: .utility).async {
                 guard !gate.isCompleted else { return }
                 var result: CFTypeRef?
                 let status = SecItemCopyMatching([kSecClass: kSecClassGenericPassword, kSecAttrService: "AURA Companion", kSecAttrAccount: account, kSecReturnData: true] as CFDictionary, &result)
@@ -797,7 +984,7 @@ private enum Keychain {
     static func save(_ value: String) async -> (saved: Bool, timedOut: Bool) {
         await withCheckedContinuation { continuation in
             let gate = KeychainCompletionGate<(saved: Bool, timedOut: Bool)>()
-            queue.async {
+            DispatchQueue.global(qos: .utility).async {
                 guard !gate.isCompleted else { return }
                 let identity: [String: Any] = [
                     kSecClass as String: kSecClassGenericPassword,
@@ -825,7 +1012,7 @@ private enum Keychain {
     static func delete() async -> Bool {
         await withCheckedContinuation { continuation in
             let gate = KeychainCompletionGate<Bool>()
-            queue.async {
+            DispatchQueue.global(qos: .utility).async {
                 guard !gate.isCompleted else { return }
                 let status = SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: "AURA Companion", kSecAttrAccount: account] as CFDictionary)
                 gate.resolve(status == errSecSuccess || status == errSecItemNotFound, continuation)
