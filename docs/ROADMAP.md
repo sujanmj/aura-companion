@@ -74,6 +74,20 @@ Status: in progress; this is the current phase.
 - Fixed: an AVAudioEngine input/output configuration change now pauses the
   complete ambient session. The notification is handled asynchronously, and
   generation checks discard events from previous sessions.
+- Fixed after Mac restart testing (2026-10-20): AVAudioEngine setup, start,
+  tap removal, and stop now run on a dedicated serial queue. Startup awaits the
+  audio result without blocking the main actor, so the UI and startup watchdog
+  can still respond if CoreAudio stalls during a device change. The rebuilt Mac
+  helper reached LIVE after permission recovery and completed two consecutive
+  Pause/start cycles; final Pause confirmed both sensors off. A multi-hour soak
+  of this rebuilt audio-queue version remains to be run.
+- Fixed after a stalled pairing test (2026-10-20): Keychain reads, saves, and
+  deletes now share one serial queue and return to the UI after an eight-second
+  bound, so a wedged macOS Keychain call cannot freeze AURA or spawn overlapping
+  Security framework requests. A Mac test found an old AURA cookie whose
+  Keychain decrypt was stuck inside macOS; removing that test-only item in
+  Keychain Access restored clean startup and pairing. The rebuilt app then
+  paired successfully and Clear pairing removed the temporary credential.
 - Fixed: ambient startup now names each permission/device setup stage and has a
   60-second watchdog. If a macOS permission or capture callback stalls, AURA
   safely pauses instead of leaving the user on an indefinite startup state;
@@ -163,10 +177,40 @@ Status: in progress; this is the current phase.
   timeout, or sensor drop was observed; Pause turned both sensors off. The
   temporary pairing, service, and database were cleared. This is an hour-long
   stability check, not multi-hour or sleep/wake acceptance.
+- Interrupted Mac soak (2026-10-20): an attempted longer run reached about
+  34 minutes before macOS reported an audio configuration change. AURA safely
+  paused and turned off both sensors. The first restart stalled during local
+  microphone startup; its Cancel control was activated through macOS
+  accessibility, and the old helper produced an EXC_BAD_ACCESS report in
+  SwiftUI's accessibility button dispatch. This was preserved as failure
+  evidence and prompted moving AVAudioEngine work off the main actor.
+- Two-hour Mac soak (2026-10-20, pre audio-queue fix): after restarting the
+  helper, it remained LIVE for 2 hours 4 seconds with microphone and camera on.
+  Read-only UI samples showed Listening locally and changing local scene labels;
+  two-minute process/service/database samples stayed healthy. External actions
+  and cloud sync were disabled, and the isolated SQLite database recorded no
+  conversation, observation, or safety rows. Pause turned both sensors off,
+  pairing and service were cleared, and test database files were deleted. This
+  validates the pre-fix build only; the rebuilt audio-queue version still needs
+  its own multi-hour soak.
+- Rebuilt permission recovery check (2026-10-20): the first ambient start
+  reached the 60-second Speech Recognition watchdog, which returned the helper
+  to PAUSED with sensors off. System Settings showed AURA Companion already
+  enabled for Speech Recognition. A subsequent retry reached LIVE; two
+  additional Pause/start cycles also returned to LIVE. Final Pause turned both
+  sensors off, and the temporary pairing, service, and database were cleared.
+  This does not verify a fresh-install Allow prompt or sleep/wake.
+- Fresh-install permission check (2026-10-20): after an explicitly approved
+  Speech Recognition permission reset, the macOS settings pane no longer
+  listed AURA and no Allow prompt appeared. AURA's requestAuthorization callback
+  remained pending until the 60-second watchdog safely returned it to PAUSED;
+  no microphone or camera capture began. This clean-install prompt blocker
+  remains unresolved. Existing permission recovery succeeded before the reset,
+  but the grant could not be restored through the missing prompt in this run.
 - Remaining: hardware sleep/wake, automatic clean-install permission prompt
-  recovery, multi-hour stability, and calibrated acoustic loudness/feedback
-  testing on Mac. Live Claude behavior also needs acceptance when credentials
-  are configured.
+  recovery, multi-hour stability of the rebuilt audio-queue version, and
+  calibrated acoustic loudness/feedback testing on Mac. Live Claude behavior
+  also needs acceptance when credentials are configured.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.

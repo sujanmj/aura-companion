@@ -60,9 +60,11 @@ struct AURAAmbientApp: App {
     @Published var isStarting = false
     @Published var isPairing = false
     @Published var isCheckingPairing = false
+    @Published var isClearingPairing = false
     @Published var canRetrySavedPairing = false
     @Published var isPaired = false
     @Published var microphoneOn = false
+    @Published var microphoneStopping = false
     @Published var cameraOn = false
     @Published var cameraStopping = false
     @Published var isPersonPresent = false
@@ -76,8 +78,7 @@ struct AURAAmbientApp: App {
     private var pairingGeneration = PairingGeneration()
     private var replyTask: Task<Void, Never>?
     private var startupTimeoutTask: Task<Void, Never>?
-    private var hasAudioTap = false
-    private let engine = AVAudioEngine()
+    private let audioCapture = LocalAudioCapture()
     private let synthesizer = AVSpeechSynthesizer()
     private var speechOutputSuppression = SpeechOutputSuppression()
     private var audioConfigurationObserver: NSObjectProtocol?
@@ -87,12 +88,21 @@ struct AURAAmbientApp: App {
     private var wakeResume = WakeResumeState()
 
     override init() {
-        cookie = Keychain.read()
         super.init()
-        if let savedCookie = cookie {
-            let generation = pairingGeneration.issue()
-            isCheckingPairing = true
-            Task { await validatePairing(cookie: savedCookie, generation: generation) }
+        let generation = pairingGeneration.issue()
+        isCheckingPairing = true
+        Task { [weak self] in
+            let readResult = await Keychain.read()
+            guard let self, self.pairingGeneration.isCurrent(generation) else { return }
+            if readResult.timedOut {
+                self.isCheckingPairing = false
+                self.status = "macOS Keychain did not respond. Pairing will remain available, but saved pairing could not be checked."
+                return
+            }
+            let savedCookie = readResult.value
+            guard let savedCookie else { self.isCheckingPairing = false; return }
+            self.cookie = savedCookie
+            await self.validatePairing(cookie: savedCookie, generation: generation)
         }
         let center = NSWorkspace.shared.notificationCenter
         center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
@@ -128,7 +138,9 @@ struct AURAAmbientApp: App {
                 isPaired = true; status = "Paired securely with this AURA session."
                 canRetrySavedPairing = false
             case .expired:
-                Keychain.delete(); self.cookie = nil; isPaired = false
+                _ = await Keychain.delete()
+                guard pairingGeneration.isCurrent(generation) else { return }
+                self.cookie = nil; isPaired = false
                 status = "Pair with the current AURA session code from its terminal."
                 canRetrySavedPairing = false
             case .temporarilyUnavailable:
@@ -173,8 +185,12 @@ struct AURAAmbientApp: App {
                   let value = http.value(forHTTPHeaderField: "Set-Cookie")?.components(separatedBy: ";").first else {
                 status = "Couldn’t pair. Check the current AURA session code and that the web app is running."; return
             }
-            guard Keychain.save(value) else {
-                status = "Couldn’t save the secure AURA pairing in Keychain. Check macOS Keychain access and try again."
+            let saveResult = await Keychain.save(value)
+            guard pairingGeneration.isCurrent(generation) else { return }
+            guard saveResult.saved else {
+                status = saveResult.timedOut
+                    ? "macOS Keychain did not respond, so AURA could not confirm whether pairing was saved. Restart AURA and check the saved pairing before trying again."
+                    : "Couldn’t save the secure AURA pairing in Keychain. Check macOS Keychain access and try again."
                 return
             }
             cookie = value; isPaired = true; code = ""; canRetrySavedPairing = false
@@ -187,6 +203,7 @@ struct AURAAmbientApp: App {
 
     func start() async {
         guard isPaired, cookie != nil else { status = "Pair with the AURA web app first."; return }
+        guard !microphoneStopping else { status = "The microphone is still stopping. Try again in a moment."; return }
         guard !cameraStopping else { status = "The camera is still stopping. Try again in a moment."; return }
         guard let generation = lifecycle.begin() else { return }
         isStarting = true
@@ -213,8 +230,19 @@ struct AURAAmbientApp: App {
             }
         }
         do {
-            let authorized = await withCheckedContinuation { continuation in
-                SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
+            let authorization = SFSpeechRecognizer.authorizationStatus()
+            let authorized: Bool
+            switch authorization {
+            case .authorized:
+                authorized = true
+            case .notDetermined:
+                authorized = await withCheckedContinuation { continuation in
+                    SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
+                }
+            case .denied, .restricted:
+                authorized = false
+            @unknown default:
+                authorized = false
             }
             guard lifecycle.contains(generation) else { return }
             guard authorized else { status = "Allow Speech Recognition in System Settings to use local listening."; return }
@@ -257,10 +285,11 @@ struct AURAAmbientApp: App {
             try await camera.start()
             guard lifecycle.contains(generation) else { camera.stop(); return }
             status = "Starting local microphone recognition…"
-            try startAudio()
+            try await audioCapture.start(transcriber: transcriber)
+            guard lifecycle.contains(generation) else { audioCapture.stop(); return }
             guard lifecycle.activate(generation) else { return }
             observeAudioConfigurationChange(generation: generation)
-            isActive = true; microphoneOn = true; cameraOn = true; cameraStopping = false
+            isActive = true; microphoneOn = true; microphoneStopping = false; cameraOn = true; cameraStopping = false
             status = "Listening locally. Only Hey AURA, direct requests, or explicit support phrases get a reply."
         } catch {
             guard lifecycle.contains(generation) else { return }
@@ -268,24 +297,8 @@ struct AURAAmbientApp: App {
         }
     }
 
-    private func startAudio() throws {
-        let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        guard format.channelCount > 0 else { throw CaptureError.noMicrophone }
-        let transcriber = self.transcriber
-        input.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
-            transcriber?.consume(buffer)
-        }
-        hasAudioTap = true
-        engine.prepare(); try engine.start()
-    }
-
     private func observeAudioConfigurationChange(generation: UInt64) {
-        audioConfigurationObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange,
-            object: engine,
-            queue: nil
-        ) { [weak self] _ in
+        audioConfigurationObserver = audioCapture.observeConfigurationChanges { [weak self] in
             Task { @MainActor in
                 guard let self, self.lifecycle.acceptsCaptureEvent(generation) else { return }
                 self.stop()
@@ -373,14 +386,20 @@ struct AURAAmbientApp: App {
         if !cameraStopping { lifecycle.pause() }
         let stoppedGeneration = lifecycle.generation
         if !preservingWakeResume { wakeResume.cancel() }
+        microphoneStopping = microphoneOn || microphoneStopping
         isStarting = false; isActive = false; microphoneOn = false; cameraOn = false
         replyTask?.cancel(); replyTask = nil
         if let audioConfigurationObserver {
             NotificationCenter.default.removeObserver(audioConfigurationObserver)
             self.audioConfigurationObserver = nil
         }
-        if hasAudioTap { engine.inputNode.removeTap(onBus: 0); hasAudioTap = false }
-        engine.stop()
+        audioCapture.stop { [weak self] in
+            Task { @MainActor in
+                guard let self, self.lifecycle.canCompleteStop(stoppedGeneration) else { return }
+                self.microphoneStopping = false
+                self.refreshPausedStatus()
+            }
+        }
         transcriber?.stop(); transcriber = nil
         let cameraToStop = camera
         camera = nil
@@ -388,16 +407,16 @@ struct AURAAmbientApp: App {
         contextLabels = []; scene = ""; isPersonPresent = false
         synthesizer.stopSpeaking(at: .immediate)
         status = cameraStopping
-            ? "Paused. Microphone is off; camera is stopping."
-            : "Paused. Microphone and camera are off."
+            ? microphoneStopping ? "Paused. Microphone and camera are stopping."
+                : "Paused. Microphone is off; camera is stopping."
+            : microphoneStopping ? "Paused. Microphone is stopping; camera is off."
+                : "Paused. Microphone and camera are off."
         cameraToStop?.stop { [weak self] in
             Task { @MainActor in
                 guard let self, self.lifecycle.canCompleteStop(stoppedGeneration) else { return }
                 self.cameraOn = false
                 self.cameraStopping = false
-                if self.status == "Paused. Microphone is off; camera is stopping." {
-                    self.status = "Paused. Microphone and camera are off."
-                }
+                self.refreshPausedStatus()
                 if self.wakeResume.cameraStopped() {
                     Task { await self.start() }
                 }
@@ -405,10 +424,29 @@ struct AURAAmbientApp: App {
         }
     }
 
+    private func refreshPausedStatus() {
+        guard status.hasPrefix("Paused. Microphone") else { return }
+        switch (microphoneStopping, cameraStopping) {
+        case (true, true): status = "Paused. Microphone and camera are stopping."
+        case (true, false): status = "Paused. Microphone is stopping; camera is off."
+        case (false, true): status = "Paused. Microphone is off; camera is stopping."
+        case (false, false): status = "Paused. Microphone and camera are off."
+        }
+    }
+
     func forgetPairing() {
         _ = pairingGeneration.issue()
         isPairing = false; isCheckingPairing = false; canRetrySavedPairing = false
-        stop(); cookie = nil; Keychain.delete(); isPaired = false; status = "Session pairing cleared."
+        isClearingPairing = true
+        stop(); cookie = nil; isPaired = false; status = "Clearing saved pairing…"
+        Task { [weak self] in
+            let removed = await Keychain.delete()
+            guard let self else { return }
+            self.isClearingPairing = false
+            self.status = removed
+                ? "Session pairing cleared."
+                : "AURA could not confirm removal from Keychain. Remove AURA Companion from Keychain Access before pairing again."
+        }
     }
 
     var permissionSettingsURL: URL? {
@@ -536,6 +574,61 @@ private enum CaptureError: LocalizedError {
     var errorDescription: String? { switch self { case .startFailed: "The camera session did not start. Check camera access and other camera apps."; case .noCamera: "No camera was found."; case .noMicrophone: "No microphone was found."; case .inputConfiguration: "macOS could not add the camera input. Check camera access and close apps using the camera."; case .outputConfiguration: "macOS could not add the local video classifier." } }
 }
 
+// Keep AVAudioEngine setup, start, tap removal, and stop off the main actor.
+// Device reconfiguration can stall audio startup; the UI and its watchdog must
+// remain responsive so Pause can invalidate that startup generation safely.
+private final class LocalAudioCapture: @unchecked Sendable {
+    private let queue = DispatchQueue(label: "aura.ambient.audio")
+    private let engine = AVAudioEngine()
+    private var hasTap = false
+
+    func start(transcriber: LocalSpeechPipeline?) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            queue.async {
+                do {
+                    let input = self.engine.inputNode
+                    let format = input.outputFormat(forBus: 0)
+                    guard format.channelCount > 0 else { throw CaptureError.noMicrophone }
+                    guard !self.hasTap else { throw CaptureError.startFailed }
+                    input.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
+                        transcriber?.consume(buffer)
+                    }
+                    self.hasTap = true
+                    self.engine.prepare()
+                    try self.engine.start()
+                    continuation.resume()
+                } catch {
+                    if self.hasTap {
+                        self.engine.inputNode.removeTap(onBus: 0)
+                        self.hasTap = false
+                    }
+                    self.engine.stop()
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func stop(completion: @escaping @Sendable () -> Void = {}) {
+        queue.async {
+            if self.hasTap {
+                self.engine.inputNode.removeTap(onBus: 0)
+                self.hasTap = false
+            }
+            self.engine.stop()
+            completion()
+        }
+    }
+
+    func observeConfigurationChanges(_ action: @escaping @Sendable () -> Void) -> NSObjectProtocol {
+        NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: nil
+        ) { _ in action() }
+    }
+}
+
 private final class LocalSpeechPipeline: @unchecked Sendable {
     private let queue = DispatchQueue(label: "aura.local.speech")
     private let recognizer: SFSpeechRecognizer
@@ -653,7 +746,7 @@ private struct MenuView: View {
             HStack { Text("✳ AURA").font(.system(size: 22, weight: .medium)); Spacer(); Text(monitor.isActive ? "LIVE" : "PAUSED").font(.caption2).tracking(2).foregroundStyle(monitor.isActive ? .green : .secondary) }
             Text("Ambient companion").font(.headline)
             Text("AURA checks speech and the room on this Mac. Raw audio and frames are never saved or sent. Speech recognition runs on-device; only direct requests and explicit support phrases reach your AURA companion.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 8) { Label(monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
+            HStack(spacing: 8) { Label(monitor.microphoneStopping ? "Microphone stopping" : monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn || monitor.microphoneStopping ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
             if !monitor.isPaired {
                 if monitor.canRetrySavedPairing {
                     Button(monitor.isCheckingPairing ? "Checking saved pairing…" : "Retry saved pairing") {
@@ -663,9 +756,9 @@ private struct MenuView: View {
                 }
                 SecureField("Session code from AURA terminal", text: $monitor.code)
                 Button(monitor.isPairing ? "Pairing securely…" : "Pair with AURA") { Task { await monitor.pair() } }
-                    .disabled(monitor.code.isEmpty || monitor.isPairing)
+                    .disabled(monitor.code.isEmpty || monitor.isPairing || monitor.isClearingPairing)
             } else {
-                Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: []).disabled(monitor.cameraStopping)
+                Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: []).disabled(monitor.cameraStopping || monitor.microphoneStopping)
                 if !monitor.recentResponse.isEmpty { Divider(); Text("AURA").font(.caption).foregroundStyle(.secondary); Text(monitor.recentResponse).font(.system(size: 12)).textSelection(.enabled) }
                 if !monitor.scene.isEmpty { Text("Local camera: \(monitor.scene)").font(.caption).foregroundStyle(.secondary) }
                 Button("Clear pairing") { monitor.forgetPairing() }.font(.caption).foregroundStyle(.secondary)
@@ -682,28 +775,83 @@ private struct MenuView: View {
 
 private enum Keychain {
     private static let account = "aura-companion-cookie"
-    static func read() -> String? {
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching([kSecClass: kSecClassGenericPassword, kSecAttrService: "AURA Companion", kSecAttrAccount: account, kSecReturnData: true] as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+    private static let queue = DispatchQueue(label: "aura.keychain.serial")
+    private static let timeout: TimeInterval = 8
+
+    static func read() async -> (value: String?, timedOut: Bool) {
+        await withCheckedContinuation { continuation in
+            let gate = KeychainCompletionGate<(value: String?, timedOut: Bool)>()
+            queue.async {
+                guard !gate.isCompleted else { return }
+                var result: CFTypeRef?
+                let status = SecItemCopyMatching([kSecClass: kSecClassGenericPassword, kSecAttrService: "AURA Companion", kSecAttrAccount: account, kSecReturnData: true] as CFDictionary, &result)
+                let value = status == errSecSuccess ? (result as? Data).flatMap { String(data: $0, encoding: .utf8) } : nil
+                gate.resolve((value, false), continuation)
+            }
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + timeout) {
+                gate.resolve((nil, true), continuation)
+            }
+        }
     }
-    static func save(_ value: String) -> Bool {
-        let identity: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "AURA Companion",
-            kSecAttrAccount as String: account
-        ]
-        let attributes: [String: Any] = [
-            kSecValueData as String: Data(value.utf8),
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
-        ]
-        var item = identity
-        attributes.forEach { item[$0.key] = $0.value }
-        return KeychainPersistence.save(
-            update: { SecItemUpdate(identity as CFDictionary, attributes as CFDictionary) },
-            add: { SecItemAdd(item as CFDictionary, nil) }
-        )
+
+    static func save(_ value: String) async -> (saved: Bool, timedOut: Bool) {
+        await withCheckedContinuation { continuation in
+            let gate = KeychainCompletionGate<(saved: Bool, timedOut: Bool)>()
+            queue.async {
+                guard !gate.isCompleted else { return }
+                let identity: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: "AURA Companion",
+                    kSecAttrAccount as String: account
+                ]
+                let attributes: [String: Any] = [
+                    kSecValueData as String: Data(value.utf8),
+                    kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+                ]
+                var item = identity
+                attributes.forEach { item[$0.key] = $0.value }
+                let saved = KeychainPersistence.save(
+                    update: { SecItemUpdate(identity as CFDictionary, attributes as CFDictionary) },
+                    add: { SecItemAdd(item as CFDictionary, nil) }
+                )
+                gate.resolve((saved, false), continuation)
+            }
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + timeout) {
+                gate.resolve((false, true), continuation)
+            }
+        }
     }
-    static func delete() { SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: "AURA Companion", kSecAttrAccount: account] as CFDictionary) }
+
+    static func delete() async -> Bool {
+        await withCheckedContinuation { continuation in
+            let gate = KeychainCompletionGate<Bool>()
+            queue.async {
+                guard !gate.isCompleted else { return }
+                let status = SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: "AURA Companion", kSecAttrAccount: account] as CFDictionary)
+                gate.resolve(status == errSecSuccess || status == errSecItemNotFound, continuation)
+            }
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + timeout) {
+                gate.resolve(false, continuation)
+            }
+        }
+    }
+}
+
+private final class KeychainCompletionGate<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var completed = false
+
+    var isCompleted: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return completed
+    }
+
+    func resolve(_ value: Value, _ continuation: CheckedContinuation<Value, Never>) {
+        lock.lock()
+        guard !completed else { lock.unlock(); return }
+        completed = true
+        lock.unlock()
+        continuation.resume(returning: value)
+    }
 }
