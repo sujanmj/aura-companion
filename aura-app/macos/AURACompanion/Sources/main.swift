@@ -326,6 +326,7 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
     private var inSpeech = false
     private var quietBuffers = 0
     private var stopped = false
+    private var requestGeneration = RecognitionGeneration()
 
     init(recognizer: SFSpeechRecognizer, onFinal: @escaping @Sendable (String) -> Void) {
         self.recognizer = recognizer
@@ -374,6 +375,7 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
     }
 
     private func beginRequest() {
+        let generation = requestGeneration.issue()
         let current = SFSpeechAudioBufferRecognitionRequest()
         current.shouldReportPartialResults = true
         current.requiresOnDeviceRecognition = true
@@ -385,7 +387,11 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
                 self.onFinal(text)
             }
             if error != nil {
-                self.queue.async { self.request = nil; self.task = nil; self.inSpeech = false; self.quietBuffers = 0 }
+                self.queue.async {
+                    guard self.requestGeneration.isCurrent(generation) else { return }
+                    self.requestGeneration.invalidate()
+                    self.request = nil; self.task = nil; self.inSpeech = false; self.quietBuffers = 0
+                }
             }
         }
     }
@@ -393,6 +399,7 @@ private final class LocalSpeechPipeline: @unchecked Sendable {
     func stop() {
         queue.async {
             self.stopped = true
+            self.requestGeneration.invalidate()
             self.request?.endAudio()
             self.task?.cancel()
             self.request = nil

@@ -26,3 +26,22 @@ struct AmbientLifecycle {
         phase = .paused
     }
 }
+
+// Recognition callbacks can arrive after a newer utterance has begun. Tokens
+// let the pipeline ignore stale errors without dropping a valid late transcript.
+struct RecognitionGeneration {
+    private(set) var value: UInt64 = 0
+
+    mutating func issue() -> UInt64 {
+        value &+= 1
+        return value
+    }
+
+    func isCurrent(_ token: UInt64) -> Bool {
+        value == token
+    }
+
+    mutating func invalidate() {
+        value &+= 1
+    }
+}

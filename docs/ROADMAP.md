@@ -32,6 +32,9 @@ Status: in progress; this is the current phase.
   1,000 cancel/restart cycles. This is automated evidence, not a hardware test.
 - Implemented: authenticated Setup/readiness diagnostics distinguish missing
   configuration, local fallback and configured-but-unverified providers.
+- Fixed: copy audio tap buffers before asynchronous recognition and isolate
+  delayed errors with per-utterance generations, so a stale callback cannot
+  reset a newer phrase. Native tests cover stale callbacks.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing

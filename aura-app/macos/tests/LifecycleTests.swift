@@ -28,6 +28,15 @@ struct LifecycleTests {
             precondition(!state.contains(token))
             state.pause()
         }
-        print("PASS: duplicate start, startup cancellation, late callbacks, restart isolation, repeated pause, and 1000 sleep/wake-style cycles")
+
+        var recognition = RecognitionGeneration()
+        let oldUtterance = recognition.issue()
+        let currentUtterance = recognition.issue()
+        precondition(!recognition.isCurrent(oldUtterance), "A stale recognition error must not reset a newer utterance")
+        precondition(recognition.isCurrent(currentUtterance))
+        recognition.invalidate()
+        precondition(!recognition.isCurrent(currentUtterance), "Stopping recognition must invalidate queued callbacks")
+
+        print("PASS: capture lifecycle, 1000 sleep/wake-style cycles, and stale recognition callback isolation")
     }
 }
