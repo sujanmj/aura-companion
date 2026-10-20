@@ -129,7 +129,9 @@ Before declaring the single-device companion ready, record these live results:
    that the response is labeled with the intended provider, not local fallback.
 2. Opt into voice; check recognition, draft review, spoken output and Stop.
 3. Pair the native helper and explicitly start ambient mode. Check permission
-   denial, Cancel startup, Pause during a pending reply, restart and sleep/wake.
+   denial, use **Open Privacy Settings** to review denied Speech Recognition,
+   microphone or camera access, Cancel startup, Pause during a pending reply,
+   restart and sleep/wake.
 4. Confirm camera/microphone indicators stop after Pause, and no old reply speaks.
 5. If actions are needed, configure a trusted MCP server and a harmless test tool.
    Verify Deny, approval expiry, Cancel and a separately approved successful call.

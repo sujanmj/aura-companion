@@ -274,6 +274,16 @@ struct AURAAmbientApp: App {
     }
 
     func forgetPairing() { stop(); cookie = nil; Keychain.delete(); isPaired = false; status = "Session pairing cleared." }
+
+    var permissionSettingsURL: URL? {
+        guard let target = PermissionSettings.target(for: status) else { return nil }
+        return URL(string: "x-apple.systempreferences:com.apple.preference.security?\(target)")
+    }
+
+    func openPermissionSettings() {
+        guard let url = permissionSettingsURL else { return }
+        NSWorkspace.shared.open(url)
+    }
 }
 
 // All camera configuration, start/stop and frames belong to one serial queue.
@@ -455,6 +465,10 @@ private struct MenuView: View {
                 Button("Clear pairing") { monitor.forgetPairing() }.font(.caption).foregroundStyle(.secondary)
             }
             Text(monitor.status).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if monitor.permissionSettingsURL != nil {
+                Button("Open Privacy Settings") { monitor.openPermissionSettings() }
+                    .buttonStyle(.bordered)
+            }
             Divider(); Text("Close camera covers to pause vision. Press Pause before leaving your Mac.").font(.system(size: 10)).foregroundStyle(.tertiary)
         }.padding(18).frame(width: 350)
     }

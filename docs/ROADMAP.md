@@ -34,6 +34,8 @@ Status: in progress; this is the current phase.
   1,000 cancel/restart cycles. This is automated evidence, not a hardware test.
 - Implemented: authenticated Setup/readiness diagnostics distinguish missing
   configuration, local fallback and configured-but-unverified providers.
+- Implemented: denied macOS Speech Recognition, microphone, and camera
+  permissions offer a direct Privacy Settings button for recovery.
 - Fixed: copy audio tap buffers before asynchronous recognition and isolate
   delayed errors with per-utterance generations, so a stale callback cannot
   reset a newer phrase. Native tests cover stale callbacks.

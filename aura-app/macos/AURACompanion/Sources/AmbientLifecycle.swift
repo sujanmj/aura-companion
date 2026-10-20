@@ -80,3 +80,18 @@ struct WakeResumeState {
         return true
     }
 }
+
+enum PermissionSettings {
+    static func target(for status: String) -> String? {
+        if status.hasPrefix("Allow Speech Recognition") {
+            return "Privacy_SpeechRecognition"
+        }
+        if status.hasPrefix("Microphone access is off") {
+            return "Privacy_Microphone"
+        }
+        if status.hasPrefix("Camera access is off") {
+            return "Privacy_Camera"
+        }
+        return nil
+    }
+}

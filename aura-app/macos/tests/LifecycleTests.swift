@@ -57,6 +57,23 @@ struct LifecycleTests {
         wake.cancel()
         precondition(!wake.didWake(cameraReady: true), "Manual Pause cancels automatic wake resume")
 
-        print("PASS: capture lifecycle, 1000 restart cycles, stop callback isolation, and sleep/wake ordering")
+        precondition(
+            PermissionSettings.target(for: "Allow Speech Recognition in System Settings") == "Privacy_SpeechRecognition",
+            "Speech permission denial must link to its privacy pane"
+        )
+        precondition(
+            PermissionSettings.target(for: "Microphone access is off. Allow it in System Settings.") == "Privacy_Microphone",
+            "Microphone denial must link to its privacy pane"
+        )
+        precondition(
+            PermissionSettings.target(for: "Camera access is off. Allow it in System Settings.") == "Privacy_Camera",
+            "Camera denial must link to its privacy pane"
+        )
+        precondition(
+            PermissionSettings.target(for: "Listening locally") == nil,
+            "Normal status must not offer a misleading permission shortcut"
+        )
+
+        print("PASS: capture lifecycle, 1000 restart cycles, stop isolation, sleep/wake ordering, and privacy settings recovery")
     }
 }
