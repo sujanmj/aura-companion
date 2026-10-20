@@ -90,19 +90,20 @@ Status: in progress; this is the current phase.
   completed: the helper visibly reached LIVE with microphone and camera on and
   a local Vision classification. Pause returned it to PAUSED with both sensors
   off. No ambient phrase/reply or acoustic speaker output was tested. The test
-  pairing, temporary service, and database were cleared. Sleep/wake,
-  Speech Recognition/microphone denial recovery, and acoustic feedback remain
-  unverified.
-- Permission recovery check (2026-10-20): disabled AURA's camera permission in
-  System Settings, relaunched the helper, and confirmed Start reported
-  "Camera access is off" with an Open Privacy Settings action. Restored camera
-  permission, relaunched, confirmed LIVE with both sensors on, then paused and
-  verified both off. The temporary pairing, service, and database were cleared.
-  This covers camera denial only; Speech Recognition and microphone denial
-  recovery still need live checks.
+  pairing, temporary service, and database were cleared. Sleep/wake and
+  acoustic feedback remain unverified.
+- Permission recovery check (2026-10-20): separately disabled AURA's camera,
+  microphone, and Speech Recognition permissions in System Settings. Start
+  reported the matching denied permission in each case and showed the direct
+  Open Privacy Settings action. Restored all permissions, relaunched, confirmed
+  LIVE with microphone and camera on, then paused and verified both off. The
+  temporary pairing, service, and database were cleared. This verifies denied
+  permission recovery for all three macOS access types; phrase recognition and
+  acoustic reply are not established by this check.
 - Remaining: repeat and record camera startup/shutdown/restart, permission
-  recovery for Speech Recognition and microphone access, sleep/wake, startup
-  failure recovery and acoustic feedback on Mac.
+  recovery on a clean install, sleep/wake, startup timeout recovery and acoustic
+  feedback on Mac. Live phrase recognition and reply also need an explicit
+  hardware acceptance.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.
