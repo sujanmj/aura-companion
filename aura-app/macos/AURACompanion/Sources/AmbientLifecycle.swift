@@ -1,5 +1,23 @@
 import Security
 
+enum StartupWatchdog {
+    @MainActor
+    static func schedule(
+        afterNanoseconds nanoseconds: UInt64,
+        onTimeout: @escaping @MainActor () -> Void
+    ) -> Task<Void, Never> {
+        Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: nanoseconds)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            onTimeout()
+        }
+    }
+}
+
 // Pure session state, shared by the native helper and its hardware-free tests.
 struct AmbientLifecycle {
     enum Phase { case paused, starting, active }

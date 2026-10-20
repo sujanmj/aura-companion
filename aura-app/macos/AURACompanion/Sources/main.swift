@@ -75,6 +75,7 @@ struct AURAAmbientApp: App {
     private var lifecycle = AmbientLifecycle()
     private var pairingGeneration = PairingGeneration()
     private var replyTask: Task<Void, Never>?
+    private var startupTimeoutTask: Task<Void, Never>?
     private var hasAudioTap = false
     private let engine = AVAudioEngine()
     private let synthesizer = AVSpeechSynthesizer()
@@ -189,8 +190,17 @@ struct AURAAmbientApp: App {
         guard !cameraStopping else { status = "The camera is still stopping. Try again in a moment."; return }
         guard let generation = lifecycle.begin() else { return }
         isStarting = true
+        status = "Checking Speech Recognition permission…"
+        startupTimeoutTask?.cancel()
+        startupTimeoutTask = StartupWatchdog.schedule(afterNanoseconds: 60_000_000_000) { [weak self] in
+            guard let self, self.lifecycle.contains(generation), self.isStarting else { return }
+            self.stop()
+            self.status = "Ambient startup timed out. Check permission prompts and connected devices, then try again."
+        }
         defer {
             if lifecycle.contains(generation) {
+                startupTimeoutTask?.cancel()
+                startupTimeoutTask = nil
                 isStarting = false
                 if !isActive { lifecycle.pause() }
             }
@@ -201,12 +211,15 @@ struct AURAAmbientApp: App {
             }
             guard lifecycle.contains(generation) else { return }
             guard authorized else { status = "Allow Speech Recognition in System Settings to use local listening."; return }
+            status = "Checking microphone access…"
             let mic = await AVCaptureDevice.requestAccess(for: .audio)
             guard lifecycle.contains(generation) else { return }
             guard mic else { status = "Microphone access is off. Allow it in System Settings."; return }
+            status = "Checking camera access…"
             let cameraAllowed = await AVCaptureDevice.requestAccess(for: .video)
             guard lifecycle.contains(generation) else { return }
             guard cameraAllowed else { status = "Camera access is off. Allow it in System Settings."; return }
+            status = "Checking on-device English speech support…"
             guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US")), recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else {
                 status = "On-device English speech recognition isn’t available on this Mac. AURA won’t send ambient audio to a server."; return
             }
@@ -233,8 +246,10 @@ struct AURAAmbientApp: App {
                 }
             )
             self.camera = camera
+            status = "Starting local camera classification…"
             try await camera.start()
             guard lifecycle.contains(generation) else { camera.stop(); return }
+            status = "Starting local microphone recognition…"
             try startAudio()
             guard lifecycle.activate(generation) else { return }
             observeAudioConfigurationChange(generation: generation)
@@ -345,6 +360,8 @@ struct AURAAmbientApp: App {
     }
 
     func stop(preservingWakeResume: Bool = false) {
+        startupTimeoutTask?.cancel()
+        startupTimeoutTask = nil
         speechOutputSuppression.cancel()
         if !cameraStopping { lifecycle.pause() }
         let stoppedGeneration = lifecycle.generation

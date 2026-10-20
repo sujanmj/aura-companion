@@ -74,20 +74,24 @@ Status: in progress; this is the current phase.
 - Fixed: an AVAudioEngine input/output configuration change now pauses the
   complete ambient session. The notification is handled asynchronously, and
   generation checks discard events from previous sessions.
+- Fixed: ambient startup now names each permission/device setup stage and has a
+  60-second watchdog. If a macOS permission or capture callback stalls, AURA
+  safely pauses instead of leaving the user on an indefinite startup state;
+  manual Cancel remains available and late callbacks are rejected by the
+  session generation. Native tests cover watchdog expiry and cancellation.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing
   the live mic/camera indicators. The app invoked its speech output path; this
   check did not measure acoustic playback. Temporary pairing and test database
   were cleared.
-- Latest unlocked-Mac check (2026-10-20): paired the rebuilt helper to a new
-  disposable SQLite database. macOS already showed AURA microphone and camera
-  permissions enabled. Starting ambient mode caused the native window to become
-  unavailable to UI inspection, so active capture, indicators, shutdown/restart,
-  permission-denial recovery, sleep/wake and acoustic feedback could not be
-  verified in this pass. The helper and temporary server were stopped and the
-  test database was removed. This is a failed/incomplete acceptance attempt,
-  not a pass.
+- Latest unlocked-Mac check (2026-10-20): paired the rebuilt helper to an
+  isolated temporary SQLite database. Startup first appeared stalled, then
+  completed: the helper visibly reached LIVE with microphone and camera on and
+  a local Vision classification. Pause returned it to PAUSED with both sensors
+  off. No ambient phrase/reply or acoustic speaker output was tested. The test
+  pairing, temporary service, and database were cleared. Sleep/wake, permission
+  denial recovery, and acoustic feedback remain unverified.
 - Remaining: repeat and record camera startup/shutdown/restart, permission
   recovery, sleep/wake, startup failure recovery and acoustic feedback on Mac.
 

@@ -2,7 +2,8 @@ import Security
 
 @main
 struct LifecycleTests {
-    static func main() {
+    @MainActor
+    static func main() async {
         var state = AmbientLifecycle()
         precondition(state.phase == .paused)
         let first = state.begin()!
@@ -128,6 +129,21 @@ struct LifecycleTests {
             "Normal status must not show permission recovery directions"
         )
 
-        print("PASS: capture lifecycle, pairing and audio/camera callback generations, 1000 restart cycles, speech output echo suppression, Keychain save failures, sleep/wake ordering, and privacy settings recovery")
+        var timeoutFired = false
+        _ = StartupWatchdog.schedule(afterNanoseconds: 1_000_000) {
+            timeoutFired = true
+        }
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        precondition(timeoutFired, "A stalled permission callback must reach its startup deadline")
+
+        var cancelledTimeoutFired = false
+        let cancelledWatchdog = StartupWatchdog.schedule(afterNanoseconds: 20_000_000) {
+            cancelledTimeoutFired = true
+        }
+        cancelledWatchdog.cancel()
+        try? await Task.sleep(nanoseconds: 30_000_000)
+        precondition(!cancelledTimeoutFired, "A completed or cancelled startup must not run its timeout")
+
+        print("PASS: capture lifecycle, pairing and audio/camera callback generations, 1000 restart cycles, speech output echo suppression, Keychain save failures, startup timeout/cancellation, sleep/wake ordering, and privacy settings recovery")
     }
 }
