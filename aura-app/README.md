@@ -149,3 +149,8 @@ conversations, facts, observations and other records stored for your account as 
 JSON file. The export is generated locally, requires the current session, and is
 not sent to a cloud service. The Memory view also shows saved routines and recent
 observations, including any room labels attached to ambient requests.
+
+Check-ins are separate from voice listening. They are off unless you opt in under
+**Setup**, wait for the selected idle interval, respect quiet hours in the AURA
+device's local time, and appear only while the web companion is open. They use a
+short local message and do not start Claude, MCP tools, camera, or microphone.

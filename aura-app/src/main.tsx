@@ -26,10 +26,18 @@ type Status = {
     source: string;
     created_at: string;
   }[];
+  preferences: CheckinPreferences;
   conversations: Message[];
   actions: boolean;
   stt: boolean;
   tts: boolean;
+};
+type CheckinPreferences = {
+  checkins_enabled: boolean;
+  quiet_start: string;
+  quiet_end: string;
+  checkin_interval_hours: number;
+  last_checkin_at: string | null;
 };
 type Readiness = {
   brain: { provider: string; state: string; model: string; missing: string[] };
@@ -77,6 +85,8 @@ function App() {
     ),
     [taskInput, setTaskInput] = useState(""),
     [readiness, setReadiness] = useState<Readiness | null>(null),
+    [checkinPreferences, setCheckinPreferences] =
+      useState<CheckinPreferences | null>(null),
     [editingFact, setEditingFact] = useState<number | null>(null),
     [factDraft, setFactDraft] = useState("");
   const stopListen = useRef<(() => void) | null>(null),
@@ -104,6 +114,42 @@ function App() {
       silence();
     };
   }, []);
+  useEffect(() => {
+    if (!status?.preferences.checkins_enabled || tab !== "conversation")
+      return;
+    let pending = false;
+    const checkIn = async () => {
+      if (pending || document.visibilityState !== "visible") return;
+      pending = true;
+      try {
+        const result = await api<{ due: boolean; response?: string }>(
+          "checkin",
+          {},
+        );
+        if (result.due) {
+          await refresh();
+          setError("AURA checked in. Reply whenever you feel like it.");
+        }
+      } catch {
+        // Check-ins are optional; transient errors do not interrupt conversation.
+      } finally {
+        pending = false;
+      }
+    };
+    void checkIn();
+    const timer = window.setInterval(() => void checkIn(), 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", checkIn);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", checkIn);
+    };
+  }, [status?.preferences.checkins_enabled, tab]);
+  useEffect(() => {
+    if (!status || tab !== "setup") return;
+    api<CheckinPreferences>("preferences")
+      .then(setCheckinPreferences)
+      .catch((e) => setError(String(e)));
+  }, [!!status, tab]);
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
@@ -580,6 +626,90 @@ function App() {
                       </p>
                     </article>
                   </>
+                )}
+                {checkinPreferences && (
+                  <article className="fact checkin-settings">
+                    <h3>Companion check-ins</h3>
+                    <p>
+                      Optional and off by default. AURA checks in only while
+                      this app is open, after your chosen idle interval, and
+                      outside quiet hours. Check-ins stay in local memory.
+                    </p>
+                    <form
+                      onSubmit={async (event) => {
+                        event.preventDefault();
+                        try {
+                          const saved = await api<CheckinPreferences>(
+                            "preferences",
+                            checkinPreferences,
+                          );
+                          setCheckinPreferences(saved);
+                          setStatus((current) =>
+                            current ? { ...current, preferences: saved } : current,
+                          );
+                          setError("Check-in preferences saved.");
+                        } catch (e) {
+                          setError(String(e));
+                        }
+                      }}
+                    >
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={checkinPreferences.checkins_enabled}
+                          onChange={(event) =>
+                            setCheckinPreferences({
+                              ...checkinPreferences,
+                              checkins_enabled: event.target.checked,
+                            })
+                          }
+                        />
+                        Allow AURA to check in
+                      </label>
+                      <label>
+                        Quiet hours start
+                        <input
+                          type="time"
+                          value={checkinPreferences.quiet_start}
+                          onChange={(event) =>
+                            setCheckinPreferences({
+                              ...checkinPreferences,
+                              quiet_start: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Quiet hours end
+                        <input
+                          type="time"
+                          value={checkinPreferences.quiet_end}
+                          onChange={(event) =>
+                            setCheckinPreferences({
+                              ...checkinPreferences,
+                              quiet_end: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Check in after this many idle hours
+                        <input
+                          type="number"
+                          min={4}
+                          max={168}
+                          value={checkinPreferences.checkin_interval_hours}
+                          onChange={(event) =>
+                            setCheckinPreferences({
+                              ...checkinPreferences,
+                              checkin_interval_hours: Number(event.target.value),
+                            })
+                          }
+                        />
+                      </label>
+                      <button className="primary">Save check-in preferences</button>
+                    </form>
+                  </article>
                 )}
               </div>
             ) : tab === "memory" ? (

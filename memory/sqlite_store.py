@@ -4,7 +4,8 @@ import json
 import sqlite3
 from pathlib import Path
 from typing import Any
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
+import re
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -61,6 +62,7 @@ class AuraMemoryStore:
             raise ValueError("User not found")
 
         tables = (
+            "companion_preferences",
             "conversation_logs",
             "memory_facts",
             "forgotten_memory_facts",
@@ -105,6 +107,115 @@ class AuraMemoryStore:
             "user": dict(user),
             "records": records,
         }
+
+    def get_companion_preferences(self, user_id: int) -> dict[str, Any]:
+        self.conn.execute(
+            "INSERT OR IGNORE INTO companion_preferences (user_id) VALUES (?)",
+            (user_id,),
+        )
+        self.conn.commit()
+        row = self.conn.execute(
+            """SELECT checkins_enabled, quiet_start, quiet_end,
+                      checkin_interval_hours, last_checkin_at
+               FROM companion_preferences WHERE user_id = ?""",
+            (user_id,),
+        ).fetchone()
+        result = dict(row)
+        result["checkins_enabled"] = bool(result["checkins_enabled"])
+        return result
+
+    def update_companion_preferences(
+        self,
+        user_id: int,
+        checkins_enabled: bool,
+        quiet_start: str,
+        quiet_end: str,
+        checkin_interval_hours: int,
+    ) -> dict[str, Any]:
+        if not isinstance(checkins_enabled, bool):
+            raise ValueError("checkins_enabled must be a boolean")
+        if not isinstance(quiet_start, str) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", quiet_start):
+            raise ValueError("Invalid quiet start time")
+        if not isinstance(quiet_end, str) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", quiet_end):
+            raise ValueError("Invalid quiet end time")
+        if (
+            not isinstance(checkin_interval_hours, int)
+            or isinstance(checkin_interval_hours, bool)
+            or not 4 <= checkin_interval_hours <= 168
+        ):
+            raise ValueError("Check-in interval must be between 4 and 168 hours")
+        self.conn.execute(
+            "INSERT OR IGNORE INTO companion_preferences (user_id) VALUES (?)",
+            (user_id,),
+        )
+        self.conn.execute(
+            """UPDATE companion_preferences
+               SET checkins_enabled = ?, quiet_start = ?, quiet_end = ?,
+                   checkin_interval_hours = ?
+               WHERE user_id = ?""",
+            (int(checkins_enabled), quiet_start, quiet_end, checkin_interval_hours, user_id),
+        )
+        self.conn.commit()
+        return self.get_companion_preferences(user_id)
+
+    def create_checkin_if_due(
+        self, user_id: int, now: datetime | None = None
+    ) -> dict[str, Any] | None:
+        now = now or datetime.now().astimezone()
+        if now.tzinfo is None:
+            raise ValueError("Check-in time must include a timezone")
+        preferences = self.get_companion_preferences(user_id)
+        if not preferences["checkins_enabled"]:
+            return None
+
+        current = now.timetz().replace(tzinfo=None)
+        quiet_start = time.fromisoformat(preferences["quiet_start"])
+        quiet_end = time.fromisoformat(preferences["quiet_end"])
+        if quiet_start != quiet_end:
+            is_quiet = (
+                quiet_start <= current < quiet_end
+                if quiet_start < quiet_end
+                else current >= quiet_start or current < quiet_end
+            )
+            if is_quiet:
+                return None
+
+        last_user = self.conn.execute(
+            """SELECT created_at FROM conversation_logs
+               WHERE user_id = ? AND role = 'user' ORDER BY id DESC LIMIT 1""",
+            (user_id,),
+        ).fetchone()
+        if not last_user:
+            return None
+        last_activity = datetime.fromisoformat(last_user["created_at"]).replace(
+            tzinfo=timezone.utc
+        )
+        if preferences["last_checkin_at"]:
+            last_checkin = datetime.fromisoformat(preferences["last_checkin_at"])
+            if last_checkin.tzinfo is None:
+                last_checkin = last_checkin.replace(tzinfo=timezone.utc)
+            last_activity = max(last_activity, last_checkin.astimezone(timezone.utc))
+        interval = preferences["checkin_interval_hours"]
+        if now.astimezone(timezone.utc) - last_activity < timedelta(hours=interval):
+            return None
+
+        profile = self.conn.execute(
+            "SELECT name, preferred_name FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        name = (profile["preferred_name"] or "").strip()
+        greeting = f"{name}, just checking in. How are you doing today? No need to reply unless you feel like it." if name else "Just checking in. How are you doing today? No need to reply unless you feel like it."
+        now_utc = now.astimezone(timezone.utc).isoformat()
+        with self.conn:
+            cur = self.conn.execute(
+                """INSERT INTO conversation_logs (user_id, role, message, emotion_tag)
+                   VALUES (?, 'assistant', ?, 'check_in')""",
+                (user_id, greeting),
+            )
+            self.conn.execute(
+                "UPDATE companion_preferences SET last_checkin_at = ? WHERE user_id = ?",
+                (now_utc, user_id),
+            )
+        return {"id": int(cur.lastrowid), "response": greeting, "provider": "local", "check_in": True}
 
     def add_conversation(
         self,

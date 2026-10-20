@@ -189,6 +189,13 @@ const server = http.createServer(async (req, res) => {
           });
         }
       }
+      if (req.method === "GET" && url.pathname === "/api/preferences") {
+        try {
+          return json(res, 200, await memory("preferences"));
+        } catch {
+          return json(res, 503, { error: "Preferences are unavailable." });
+        }
+      }
       if (req.method === "GET" && url.pathname === "/api/status")
         return json(res, 200, {
           ...(await memory("status")),
@@ -202,6 +209,30 @@ const server = http.createServer(async (req, res) => {
       if (["/api/stt", "/api/tts"].includes(url.pathname))
         return await voice(req, res, url.pathname.slice(5));
       const data = JSON.parse((await body(req)).toString());
+      if (url.pathname === "/api/preferences") {
+        if (
+          typeof data.checkins_enabled !== "boolean" ||
+          typeof data.quiet_start !== "string" ||
+          typeof data.quiet_end !== "string" ||
+          !Number.isSafeInteger(data.checkin_interval_hours) ||
+          data.checkin_interval_hours < 4 ||
+          data.checkin_interval_hours > 168
+        )
+          return json(res, 400, { error: "Check-in preferences are invalid." });
+        try {
+          const saved = await memory("update_preferences", data);
+          return json(res, 200, saved);
+        } catch {
+          return json(res, 400, { error: "Check-in preferences are invalid." });
+        }
+      }
+      if (url.pathname === "/api/checkin") {
+        try {
+          return json(res, 200, await memory("checkin"));
+        } catch {
+          return json(res, 503, { error: "AURA could not check in right now." });
+        }
+      }
       if (url.pathname === "/api/approve")
         return json(res, gate.resolve(data.id, data.approved) ? 200 : 404, {
           ok: true,

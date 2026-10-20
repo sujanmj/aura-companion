@@ -41,6 +41,16 @@ CREATE TABLE IF NOT EXISTS forgotten_memory_facts (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS companion_preferences (
+    user_id INTEGER PRIMARY KEY,
+    checkins_enabled INTEGER NOT NULL DEFAULT 0 CHECK (checkins_enabled IN (0, 1)),
+    quiet_start TEXT NOT NULL DEFAULT '22:00',
+    quiet_end TEXT NOT NULL DEFAULT '08:00',
+    checkin_interval_hours INTEGER NOT NULL DEFAULT 24 CHECK (checkin_interval_hours BETWEEN 4 AND 168),
+    last_checkin_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS observations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

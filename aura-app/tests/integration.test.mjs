@@ -112,6 +112,25 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     const data = await reply.json();
     assert.equal(typeof data.response, "string");
     assert.equal(data.provider, "local");
+    const defaultPreferences = await (
+      await fetch(base + "/api/preferences", { headers: { Cookie: cookie } })
+    ).json();
+    assert.equal(defaultPreferences.checkins_enabled, false);
+    assert.equal(defaultPreferences.quiet_start, "22:00");
+    assert.equal(
+      (
+        await post(
+          "preferences",
+          { checkins_enabled: true, quiet_start: "22:00", quiet_end: "08:00", checkin_interval_hours: 24 },
+          cookie,
+        )
+      ).status,
+      200,
+    );
+    const checkin = await post("checkin", {}, cookie);
+    assert.equal(checkin.status, 200);
+    assert.equal((await checkin.json()).due, false);
+    assert.equal((await post("checkin", {}, "invalid-session")).status, 401);
     assert.equal(
       (await post("feedback", { response_id: data.id, rating: "good" }, cookie))
         .status,

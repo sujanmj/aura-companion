@@ -101,6 +101,22 @@ test("setup distinguishes local availability from live verification", async ({
   await expect(
     page.getByText("Available in this local session."),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Companion check-ins" }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel("Allow AURA to check in"),
+  ).not.toBeChecked();
+  await expect(page.getByLabel("Quiet hours start")).toHaveValue("22:00");
+  await expect(page.getByLabel("Quiet hours end")).toHaveValue("08:00");
+  await page.getByLabel("Allow AURA to check in").check();
+  await page.getByRole("button", { name: "Save check-in preferences" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Check-in preferences saved",
+  );
+  await page.reload();
+  await page.getByRole("button", { name: "Setup 04" }).click();
+  await expect(page.getByLabel("Allow AURA to check in")).toBeChecked();
 });
 
 test("saved facts can be corrected and forgetting requires confirmation", async ({

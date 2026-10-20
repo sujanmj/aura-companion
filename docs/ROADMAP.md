@@ -68,7 +68,9 @@ Status: foundations exist in the original reaction/memory engines.
   tested; the download stays on the local AURA service.
 - Implemented: Memory view now reviews saved routines and the latest 20
   observations alongside correctable/forgettable facts.
-- Consent-based check-ins with quiet hours and clear pause controls.
+- Implemented: consent-based local check-ins default off, wait for a saved idle
+  interval, honor quiet hours, and only appear while the web companion is open.
+- Remaining: broader native controls and lifecycle acceptance.
 - Handle interruptions, uncertainty and emotional cues without claiming mind-reading.
 
 Exit: behavior and privacy tests pass; preferences and consent persist correctly.

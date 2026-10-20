@@ -53,7 +53,24 @@ def main():
                               'facts': store.get_memory_facts(user),
                               'conversations': list(reversed(store.get_recent_conversations(user, limit=30))),
                               'observations': list(reversed(store.get_latest_observations(user, limit=20))),
-                              'routines': store.get_routine_memory(user)}
+                              'routines': store.get_routine_memory(user),
+                              'preferences': store.get_companion_preferences(user)}
+                elif op == 'preferences':
+                    result = store.get_companion_preferences(user)
+                elif op == 'update_preferences':
+                    result = store.update_companion_preferences(
+                        user,
+                        req.get('checkins_enabled'),
+                        req.get('quiet_start'),
+                        req.get('quiet_end'),
+                        req.get('checkin_interval_hours'),
+                    )
+                elif op == 'checkin':
+                    result = store.create_checkin_if_due(user)
+                    if result is None:
+                        result = {'due': False}
+                    else:
+                        result['due'] = True
                 elif op == 'export':
                     result = store.export_user_memory(user)
                 elif op == 'update_fact':
