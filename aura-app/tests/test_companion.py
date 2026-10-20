@@ -1,17 +1,26 @@
 """Verify the existing Claude boundary without spending API credit or using real memory."""
 import json
 import os
+from contextlib import redirect_stdout
+import io
+import sqlite3
 from pathlib import Path
 import sys
 import tempfile
+import threading
+import urllib.error
+import urllib.request
 import unittest
 from unittest.mock import patch
 from datetime import datetime, timezone
+from http.server import HTTPServer
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from memory.sqlite_store import AuraMemoryStore
 from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
 from brain.llm_provider import ClaudeProvider
+from api.sensor_api_server import AuraSensorAPIHandler, get_sensor_api_token, is_request_authorized
+from scripts import pi_node_simulator
 
 class CompanionTest(unittest.TestCase):
     def test_checkins_default_off_and_honor_idle_interval_and_quiet_hours(self):
@@ -127,6 +136,109 @@ class CompanionTest(unittest.TestCase):
                 'private camera note',
             )
             store.close()
+
+    def test_sensor_node_api_fails_closed_without_a_strong_token(self):
+        handler = type('FakeHandler', (), {'headers': {}})()
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(get_sensor_api_token())
+            self.assertFalse(is_request_authorized(handler))
+        with patch.dict(os.environ, {'AURA_SENSOR_API_TOKEN': 'short'}, clear=True):
+            self.assertIsNone(get_sensor_api_token())
+            self.assertFalse(is_request_authorized(handler))
+        token = 'x' * 32
+        with patch.dict(os.environ, {'AURA_SENSOR_API_TOKEN': token}, clear=True):
+            self.assertEqual(get_sensor_api_token(), token)
+            self.assertFalse(is_request_authorized(handler))
+            handler.headers = {'X-AURA-API-Token': token + 'wrong'}
+            self.assertFalse(is_request_authorized(handler))
+            handler.headers = {'X-AURA-API-Token': token}
+            self.assertTrue(is_request_authorized(handler))
+
+    def test_sensor_node_http_routes_reject_unauthenticated_events(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'sensor.db')
+            store.apply_schema()
+            store.conn.close()
+            store.conn = sqlite3.connect(Path(folder) / 'sensor.db', check_same_thread=False)
+            store.conn.row_factory = sqlite3.Row
+            store.conn.execute('PRAGMA foreign_keys=ON;')
+            server = HTTPServer(('127.0.0.1', 0), AuraSensorAPIHandler)
+            server.aura_store = store
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            base = f'http://127.0.0.1:{server.server_port}'
+            try:
+                with (
+                    patch.dict(os.environ, {}, clear=True),
+                    patch('api.sensor_api_server.beat_sensor_api_heartbeat'),
+                ):
+                    with urllib.request.urlopen(base + '/health', timeout=2) as response:
+                        self.assertEqual(response.status, 200)
+                        self.assertEqual(json.loads(response.read())['version'], '0.3')
+
+                    for request in (
+                        urllib.request.Request(base + '/events/latest'),
+                        urllib.request.Request(
+                            base + '/events',
+                            data=json.dumps({
+                                'event_type': 'test',
+                                'event_summary': 'must not be stored',
+                            }).encode(),
+                            headers={'Content-Type': 'application/json'},
+                            method='POST',
+                        ),
+                    ):
+                        with self.assertRaises(urllib.error.HTTPError) as error:
+                            urllib.request.urlopen(request, timeout=2)
+                        self.assertEqual(error.exception.code, 401)
+                        error.exception.close()
+
+                    token = 't' * 32
+                    with patch.dict(os.environ, {'AURA_SENSOR_API_TOKEN': token}, clear=True):
+                        request = urllib.request.Request(
+                            base + '/events/latest',
+                            headers={'X-AURA-API-Token': token},
+                        )
+                        with urllib.request.urlopen(request, timeout=2) as response:
+                            self.assertEqual(response.status, 200)
+
+                event_count = store.conn.execute('SELECT COUNT(*) FROM device_events').fetchone()[0]
+                self.assertEqual(event_count, 0)
+            finally:
+                server.shutdown()
+                thread.join(timeout=2)
+                server.server_close()
+                store.close()
+
+    def test_pi_simulator_never_logs_token_and_requires_configuration(self):
+        token = 's' * 32
+        output = io.StringIO()
+        with (
+            patch.object(pi_node_simulator, 'load_env_file'),
+            patch.object(pi_node_simulator, 'post_event', return_value={'ok': True}),
+            patch.dict(os.environ, {'AURA_SENSOR_API_TOKEN': token}, clear=True),
+            redirect_stdout(output),
+        ):
+            self.assertEqual(
+                pi_node_simulator.send_simulated_event('bedroom', 'fall_detected'),
+                0,
+            )
+        self.assertNotIn(token, output.getvalue())
+        self.assertNotIn(token[:8], output.getvalue())
+        self.assertIn('AURA_PI_NODE_AUTH_CONFIGURED', output.getvalue())
+
+        output = io.StringIO()
+        with (
+            patch.object(pi_node_simulator, 'load_env_file'),
+            patch.object(pi_node_simulator, 'post_event') as post_event,
+            patch.dict(os.environ, {}, clear=True),
+            redirect_stdout(output),
+        ):
+            self.assertEqual(
+                pi_node_simulator.send_simulated_event('bedroom', 'fall_detected'),
+                1,
+            )
+        post_event.assert_not_called()
 
     def test_old_emotion_and_quiet_camera_context_do_not_label_current_mood(self):
         with tempfile.TemporaryDirectory() as folder:

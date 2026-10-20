@@ -55,7 +55,7 @@ Secrets live in `config/keys.env`. That file is ignored by git.
 ### Local config example (do not commit)
 
 ```env
-AURA_SENSOR_API_TOKEN=change_this_local_token
+AURA_SENSOR_API_TOKEN=replace_with_a_generated_token_of_at_least_32_characters
 AURA_ENABLE_VOICE_ACTIONS=0
 ```
 
@@ -145,7 +145,7 @@ python scripts/test_full_safety_action_flow.py
 
 Sensor Node API v0.1 exposes a local HTTP API so Raspberry Pi, camera, and sensor nodes can send events over Wi-Fi. Uses built-in `http.server` — no FastAPI yet. See [docs/sensor_node_api.md](docs/sensor_node_api.md) for endpoint details and example payloads.
 
-Sensor API Token Auth v0.2 adds optional shared-token protection for `GET /events/latest` and `POST /events`. `GET /health` stays open. If `AURA_SENSOR_API_TOKEN` is not set, the API remains open with a runtime warning. Keep the API on a trusted local network only.
+Sensor API v0.3 requires a shared token of at least 32 characters for protected event and dashboard routes. Missing or weak configuration denies access; `GET /health` and static dashboard files remain public. The simulator refuses to send without a configured token and never prints token contents. Keep the API on a trusted local network only. See [docs/sensor_node_api.md](docs/sensor_node_api.md).
 
 ```powershell
 python scripts/generate_sensor_api_token.py

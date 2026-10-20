@@ -17,14 +17,16 @@ python scripts/show_dashboard_status.py
 
 ## Authentication
 
-Dashboard routes use the same token as the Sensor API when `AURA_SENSOR_API_TOKEN` is configured in `config/keys.env`:
+Dashboard JSON routes require the same shared token as the Sensor API. Configure a token of at least 32 characters in `config/keys.env`:
 
 ```http
 X-AURA-API-Token: <token>
 ```
 
 - `GET /health` — always open
-- All `/dashboard/*` routes — require token when configured
+- All `/dashboard/*` JSON routes — require the token
+
+Missing or short tokens deny protected requests. The dashboard HTML and static assets remain public; they contain no user records.
 
 ## Routes
 

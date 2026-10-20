@@ -104,10 +104,16 @@ Exit: behavior and privacy tests pass; preferences and consent persist correctly
 
 ## Phase 5 — Raspberry Pi and multi-room presence
 
-Status: kiosk UI, event API and simulators exist; real node integration remains.
+Status: security hardening is progressing; kiosk UI, event API and simulators exist; real node integration remains.
 
 - Pi node runtime and local speech options with resource limits.
-- Authenticated device enrollment, reconnect/offline behavior and node health.
+- Implemented: sensor and dashboard data routes fail closed unless a shared
+  token of at least 32 characters is configured. Token checks use constant-time
+  comparison, unauthenticated requests cannot update the service heartbeat, and
+  the Pi simulator refuses to send without a valid configured token or print it.
+  Automated API tests cover missing, weak, incorrect and valid tokens and ensure
+  unauthenticated event data is not stored. Device-specific enrollment,
+  reconnect/offline behavior and node health remain.
 - Conversation handoff without duplicate replies or accidental cross-user memory.
 - Real camera/microphone and GPIO sensor acceptance on target hardware.
 

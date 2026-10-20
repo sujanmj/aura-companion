@@ -217,9 +217,14 @@ def send_simulated_event(
     token = os.environ.get("AURA_SENSOR_API_TOKEN")
 
     if token:
-        print(f"AURA_PI_NODE_TOKEN_PREFIX={token[:8]}")
+        token = token.strip()
+        if len(token) < 32:
+            print("AURA_PI_NODE_SIMULATOR_ERROR: API token must be at least 32 characters")
+            return 1
+        print("AURA_PI_NODE_AUTH_CONFIGURED")
     else:
-        print("AURA_PI_NODE_AUTH_WARNING: no AURA_SENSOR_API_TOKEN configured")
+        print("AURA_PI_NODE_SIMULATOR_ERROR: set AURA_SENSOR_API_TOKEN in config/keys.env")
+        return 1
 
     if node not in NODE_PRESETS:
         print(f"AURA_PI_NODE_SIMULATOR_ERROR: unknown node '{node}'")

@@ -4,7 +4,7 @@ Simulates future Raspberry Pi, camera, and sensor nodes sending events to the AU
 
 ## Prerequisites
 
-1. Set `AURA_SENSOR_API_TOKEN` in `config/keys.env` (generate with `python scripts/generate_sensor_api_token.py`).
+1. Set a token of at least 32 characters in `config/keys.env` (generate with `python scripts/generate_sensor_api_token.py`).
 2. Start the AURA hub API:
 
 ```powershell
@@ -88,4 +88,4 @@ python scripts/list_action_logs.py
 - This simulates future Raspberry Pi nodes — **no real sensors are required**.
 - **No real emergency calls, SMS, siren, or water pump** actions happen.
 - Keep the API on a **trusted LAN only**.
-- Token must be in `config/keys.env` as `AURA_SENSOR_API_TOKEN` when auth is enabled.
+- Token must be in `config/keys.env` as `AURA_SENSOR_API_TOKEN`; the simulator refuses to send without it and never prints token contents.

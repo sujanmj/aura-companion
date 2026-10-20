@@ -2,7 +2,7 @@
 
 Local HTTP API for Raspberry Pi, camera, and sensor nodes to send events to the AURA hub over Wi-Fi.
 
-Current version: **v0.2** (shared token auth)
+Current version: **v0.3** (required shared token auth)
 
 ## Start the AURA hub API
 
@@ -27,9 +27,12 @@ python scripts/test_sensor_api_client.py
 python scripts/test_sensor_api_auth.py
 ```
 
-## Authentication (v0.2)
+## Authentication (v0.3)
 
-Protected routes require a shared token when `AURA_SENSOR_API_TOKEN` is set in `config/keys.env`.
+Protected routes always require a shared token of at least 32 characters in
+`AURA_SENSOR_API_TOKEN` in `config/keys.env`. Missing or short tokens deny access;
+the API never falls back to open event ingestion. `/health` remains public and
+contains no user or device data.
 
 Generate a token:
 
@@ -46,10 +49,11 @@ X-AURA-API-Token: <token>
 ```
 
 - `GET /health` — always open (no token required)
-- `GET /events/latest` — requires token when configured
-- `POST /events` — requires token when configured
+- `GET /events/latest` — requires the token
+- `POST /events` — requires the token
 
-If `AURA_SENSOR_API_TOKEN` is not set, the API allows all requests but prints a warning at runtime.
+If the token is missing or shorter than 32 characters, protected routes return
+`401 unauthorized`.
 
 ### PowerShell example
 
@@ -78,7 +82,7 @@ import json
 import urllib.request
 
 url = "http://<hub-ip>:8787/events"
-token = "your_token"
+token = "<copy the generated token from the hub's private config>"
 payload = {
     "event_type": "fall_detected",
     "event_summary": "Possible fall detected in bedroom.",
@@ -104,7 +108,10 @@ with urllib.request.urlopen(request, timeout=10) as response:
     print(response.read().decode("utf-8"))
 ```
 
-v0.2 supports simple shared token auth. Keep the API on a **trusted LAN only**. Do not expose it directly to the internet.
+v0.3 requires a strong shared token for all data and event routes. Keep the API on
+a **trusted LAN only**; do not expose it directly to the internet. Device-specific
+credentials and enrollment are still future work; this token currently authorizes
+all configured sensor nodes.
 
 ## Endpoints
 
@@ -116,7 +123,7 @@ Returns service status.
 {
   "ok": true,
   "service": "aura-sensor-api",
-  "version": "0.2"
+  "version": "0.3"
 }
 ```
 
@@ -247,6 +254,6 @@ Content-Type: application/json
 
 ## Safety notes
 
-- v0.2 supports simple shared token auth when `AURA_SENSOR_API_TOKEN` is configured.
+- v0.3 requires `AURA_SENSOR_API_TOKEN` for protected routes and denies access by default.
 - Keep the API on a trusted local network only. Do not expose directly to the internet.
 - **No real emergency calls** happen in v0.1/v0.2 — police, ambulance, SMS, Telegram, siren, and water pump actions are simulated and logged only.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -22,9 +23,8 @@ from cloud.supabase_sync import sync_sensor_event
 
 DEFAULT_USER_NAME = "Sujan M J"
 DEFAULT_PREFERRED_NAME = "Sujan"
-API_VERSION = "0.2"
+API_VERSION = "0.3"
 AUTH_HEADER = "X-AURA-API-Token"
-_auth_warning_printed = False
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_STATIC_FILES = {
     "/dashboard": (PROJECT_ROOT / "web" / "dashboard.html", "text/html; charset=utf-8"),
@@ -52,25 +52,17 @@ def get_sensor_api_token() -> str | None:
     token = os.environ.get("AURA_SENSOR_API_TOKEN")
     if token:
         stripped = token.strip()
-        return stripped or None
+        return stripped if len(stripped) >= 32 else None
     return None
 
 
 def is_request_authorized(handler: BaseHTTPRequestHandler) -> bool:
-    global _auth_warning_printed
-
     token = get_sensor_api_token()
     if not token:
-        if not _auth_warning_printed:
-            print(
-                "AURA_SENSOR_API_AUTH_WARNING: AURA_SENSOR_API_TOKEN not set; "
-                "API is open on local host/network."
-            )
-            _auth_warning_printed = True
-        return True
+        return False
 
     provided = handler.headers.get(AUTH_HEADER)
-    return provided == token
+    return bool(provided) and secrets.compare_digest(provided, token)
 
 
 def _serialize_event_row(event: dict[str, Any]) -> dict[str, Any]:
@@ -216,7 +208,7 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
 
 
 class AuraSensorAPIHandler(BaseHTTPRequestHandler):
-    server_version = "AuraSensorAPI/0.2"
+    server_version = "AuraSensorAPI/0.3"
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"[sensor-api] {self.address_string()} - {format % args}")
@@ -295,15 +287,19 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
         return max(1, min(value, maximum))
 
     def do_GET(self) -> None:
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        query = parse_qs(parsed_url.query)
+
+        if path != "/health" and path not in WEB_STATIC_FILES:
+            if not self._require_auth():
+                return
+
         store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
         beat_sensor_api_heartbeat(
             store,
             metadata={"path": self.path, "method": "GET"},
         )
-
-        parsed_url = urlparse(self.path)
-        path = parsed_url.path
-        query = parse_qs(parsed_url.query)
 
         try:
             if path == "/health":
@@ -447,6 +443,9 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"ok": False, "error": "internal_server_error"})
 
     def do_POST(self) -> None:
+        if not self._require_auth():
+            return
+
         store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
         beat_sensor_api_heartbeat(
             store,
@@ -543,6 +542,11 @@ def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
     print(f"AURA_SENSOR_API_STARTING")
     print(f"host={host}")
     print(f"port={port}")
+    if not get_sensor_api_token():
+        print(
+            "AURA_SENSOR_API_AUTH_REQUIRED: protected routes reject requests until "
+            "a 32-character AURA_SENSOR_API_TOKEN is configured."
+        )
 
     try:
         server.serve_forever()
