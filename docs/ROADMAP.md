@@ -131,6 +131,12 @@ Status: in progress; this is the current phase.
   Speech Recognition privacy pane; automated tests and a local app build pass,
   but the permission prompt path still needs investigation and successful
   clean-install recovery is not verified.
+- Restored-access follow-up (2026-10-20): opened the linked Speech Recognition
+  pane, confirmed AURA Companion was enabled, then relaunched the helper. It
+  passed Speech Recognition, microphone, and camera checks and reached LIVE;
+  Pause turned both sensors off. The temporary pairing, service, and database
+  were cleared. This verifies settings-based permission restoration and a
+  successful restart, but not an automatic fresh-install Allow dialog.
 - Remaining: sleep/wake, successful clean-install permission recovery, long-run
   stability, and acoustic loudness/feedback measurement on Mac. Live Claude
   behavior also needs acceptance when credentials are configured.
