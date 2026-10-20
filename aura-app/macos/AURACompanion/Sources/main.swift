@@ -178,14 +178,14 @@ struct AURAAmbientApp: App {
             let camera = LocalCamera(
                 onScene: { [weak self] labels, present in
                     Task { @MainActor in
-                        guard let self, self.lifecycle.contains(generation), self.isActive else { return }
+                        guard let self, self.lifecycle.acceptsCameraEvent(generation) else { return }
                         self.contextLabels = labels; self.scene = labels.joined(separator: ", ")
                         self.isPersonPresent = present
                     }
                 },
                 onFailure: { [weak self] message in
                     Task { @MainActor in
-                        guard let self, self.lifecycle.contains(generation), self.isActive else { return }
+                        guard let self, self.lifecycle.acceptsCameraEvent(generation) else { return }
                         self.stop()
                         self.status = message
                     }
