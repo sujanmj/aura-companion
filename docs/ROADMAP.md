@@ -236,9 +236,13 @@ Status: in progress; this is the current phase.
   permission as undetermined; its permission request produced no prompt and
   did not return before the 60-second startup watchdog. No capture began. The
   timeout now identifies the stalled prompt and links to Microphone settings.
-  This is a verified blocker, not a successful hardware acceptance. The app
-  currently uses an ad-hoc signature without a Team ID, so stable TCC identity
-  and a clean-install Allow prompt still need testing with a Developer ID build.
+  The packaged app now includes Apple's audio-input and camera entitlements and
+  Hardened Runtime; its build checks the signed entitlement values. On the
+  rebuilt Mac app, TCC logs showed the previous microphone code requirement did
+  not match the new ad-hoc signature and a prompt was initiated, but no prompt
+  was exposed to the UI automation session and the request again timed out.
+  AURA remained paused and did not capture. Stable TCC identity and an observed
+  Allow flow still need testing with a Developer ID build.
 - Remaining: hardware sleep/wake, automatic clean-install permission prompt
   recovery, multi-hour stability of the rebuilt audio-queue version, and
   calibrated acoustic loudness/feedback testing on Mac. Live Claude behavior
