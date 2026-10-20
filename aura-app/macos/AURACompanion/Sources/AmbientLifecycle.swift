@@ -49,3 +49,34 @@ struct RecognitionGeneration {
         value &+= 1
     }
 }
+
+// Preserve an active ambient session across sleep, regardless of whether the
+// camera's serialized stop callback runs before or after the wake notification.
+struct WakeResumeState {
+    private(set) var shouldResume = false
+    private(set) var isSleeping = false
+
+    mutating func willSleep(wasActive: Bool) {
+        isSleeping = true
+        shouldResume = wasActive
+    }
+
+    mutating func didWake(cameraReady: Bool) -> Bool {
+        isSleeping = false
+        return takeResumeIfReady(cameraReady: cameraReady)
+    }
+
+    mutating func cameraStopped() -> Bool {
+        takeResumeIfReady(cameraReady: true)
+    }
+
+    mutating func cancel() {
+        shouldResume = false
+    }
+
+    private mutating func takeResumeIfReady(cameraReady: Bool) -> Bool {
+        guard shouldResume, !isSleeping, cameraReady else { return false }
+        shouldResume = false
+        return true
+    }
+}

@@ -43,6 +43,20 @@ struct LifecycleTests {
         recognition.invalidate()
         precondition(!recognition.isCurrent(currentUtterance), "Stopping recognition must invalidate queued callbacks")
 
-        print("PASS: capture lifecycle, 1000 sleep/wake-style cycles, and stale camera/speech callback isolation")
+        var wake = WakeResumeState()
+        wake.willSleep(wasActive: true)
+        precondition(!wake.cameraStopped(), "Do not restart while the Mac is still asleep")
+        precondition(wake.didWake(cameraReady: true), "Wake restarts when camera teardown already finished")
+        precondition(!wake.shouldResume)
+        wake.willSleep(wasActive: true)
+        precondition(!wake.didWake(cameraReady: false), "Wake must wait for camera teardown")
+        precondition(wake.cameraStopped(), "A late stop callback resumes a session after wake")
+        wake.willSleep(wasActive: false)
+        precondition(!wake.didWake(cameraReady: true), "Paused sessions stay paused after sleep")
+        wake.willSleep(wasActive: true)
+        wake.cancel()
+        precondition(!wake.didWake(cameraReady: true), "Manual Pause cancels automatic wake resume")
+
+        print("PASS: capture lifecycle, 1000 restart cycles, stop callback isolation, and sleep/wake ordering")
     }
 }

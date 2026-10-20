@@ -60,7 +60,7 @@ struct AURAAmbientApp: App {
     private var transcriber: LocalSpeechPipeline?
     private var cookie: String?
     private var contextLabels: [String] = []
-    private var resumeAfterWake = false
+    private var wakeResume = WakeResumeState()
 
     override init() {
         cookie = Keychain.read()
@@ -69,11 +69,18 @@ struct AURAAmbientApp: App {
         let center = NSWorkspace.shared.notificationCenter
         center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
-            Task { @MainActor in let resume = self.isActive; self.stop(); self.resumeAfterWake = resume }
+            Task { @MainActor in
+                self.wakeResume.willSleep(wasActive: self.isActive)
+                self.stop(preservingWakeResume: true)
+            }
         }
         center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
-            Task { @MainActor in if self.resumeAfterWake { self.resumeAfterWake = false; await self.start() } }
+            Task { @MainActor in
+                if self.wakeResume.didWake(cameraReady: !self.cameraStopping) {
+                    await self.start()
+                }
+            }
         }
     }
 
@@ -234,10 +241,10 @@ struct AURAAmbientApp: App {
         }
     }
 
-    func stop() {
+    func stop(preservingWakeResume: Bool = false) {
         if !cameraStopping { lifecycle.pause() }
         let stoppedGeneration = lifecycle.generation
-        resumeAfterWake = false
+        if !preservingWakeResume { wakeResume.cancel() }
         isStarting = false; isActive = false; microphoneOn = false; cameraOn = false
         replyTask?.cancel(); replyTask = nil
         if hasAudioTap { engine.inputNode.removeTap(onBus: 0); hasAudioTap = false }
@@ -258,6 +265,9 @@ struct AURAAmbientApp: App {
                 self.cameraStopping = false
                 if self.status == "Paused. Microphone is off; camera is stopping." {
                     self.status = "Paused. Microphone and camera are off."
+                }
+                if self.wakeResume.cameraStopped() {
+                    Task { await self.start() }
                 }
             }
         }

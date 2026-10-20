@@ -38,6 +38,10 @@ Status: in progress; this is the current phase.
 - Fixed: Pause distinguishes camera shutdown from camera-off state, waits for
   the serialized session stop callback, and blocks restart until teardown ends.
   Stop completion is generation-guarded so it cannot overwrite a newer session.
+- Fixed: sleep/wake resume now handles both notification orders; it waits for
+  camera teardown if wake arrives first and never restarts while still asleep.
+  Manual Pause cancels a pending automatic resume. Hardware sleep/wake remains
+  unverified.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing
