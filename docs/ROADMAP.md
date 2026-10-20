@@ -80,6 +80,8 @@ Status: foundations exist in the original reaction/memory engines.
   records across conversations, saved and forgotten facts, feedback, observations,
   routines, device/safety records and related timelines. Cross-user scoping is
   tested; the download stays on the local AURA service.
+- Implemented: users can confirm deletion of their conversation messages and
+  replies while retaining their saved facts, routines, and observations.
 - Implemented: Memory view now reviews saved routines and the latest 20
   observations alongside correctable/forgettable facts.
 - Implemented: routines can be corrected or explicitly forgotten; a forgotten

@@ -191,6 +191,18 @@ const server = http.createServer(async (req, res) => {
           });
         }
       }
+      if (
+        req.method === "POST" &&
+        url.pathname === "/api/conversations/clear"
+      ) {
+        try {
+          return json(res, 200, await memory("clear_conversations"));
+        } catch {
+          return json(res, 503, {
+            error: "Conversation history could not be cleared.",
+          });
+        }
+      }
       if (req.method === "GET" && url.pathname === "/api/preferences") {
         try {
           return json(res, 200, await memory("preferences"));

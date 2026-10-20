@@ -376,6 +376,23 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     ).json();
     assert.equal(restored.conversations.length, 8);
     assert.equal(restored.routines.length, 0);
+    assert.equal((await post("conversations/clear", {})).status, 401);
+    assert.equal(
+      (
+        await fetch(base + "/api/conversations/clear", {
+          headers: { Cookie: cookie },
+        })
+      ).status,
+      404,
+    );
+    const clearResponse = await post("conversations/clear", {}, cookie);
+    assert.equal(clearResponse.status, 200);
+    assert.equal((await clearResponse.json()).deleted, 8);
+    const cleared = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.equal(cleared.conversations.length, 0);
+    assert.ok(cleared.facts.length > 0);
     assert.ok(
       (await readdir(path.join(dir, "backups"))).some((f) => f.endsWith(".db")),
     );

@@ -73,6 +73,8 @@ def main():
                         result['due'] = True
                 elif op == 'export':
                     result = store.export_user_memory(user)
+                elif op == 'clear_conversations':
+                    result = {'deleted': store.clear_conversation_history(user)}
                 elif op == 'update_fact':
                     fact_id = req.get('fact_id')
                     value = req.get('value')

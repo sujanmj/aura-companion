@@ -238,6 +238,14 @@ class AuraMemoryStore:
         self.conn.commit()
         return int(cur.lastrowid)
 
+    def clear_conversation_history(self, user_id: int) -> int:
+        cur = self.conn.execute(
+            "DELETE FROM conversation_logs WHERE user_id = ?",
+            (user_id,),
+        )
+        self.conn.commit()
+        return cur.rowcount
+
     def remember_fact(
         self,
         user_id: int,

@@ -250,6 +250,59 @@ test("camera context observations can be deleted from saved memory", async ({
   ).toHaveCount(0);
 });
 
+test("conversation history can be cleared while saved memory remains", async ({
+  page,
+}) => {
+  await connect(page);
+  await page
+    .getByLabel("Your message")
+    .fill("I am nervous about my presentation");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  const clearButton = page.getByRole("button", {
+    name: "Clear conversation history",
+  });
+  const beforeDismiss = await page.evaluate(async () =>
+    await (await fetch("/api/status")).json(),
+  );
+  expect(beforeDismiss.conversations.length).toBeGreaterThan(0);
+  expect(beforeDismiss.facts.length).toBeGreaterThan(0);
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain(
+      "Saved facts, routines, and observations will remain",
+    );
+    void dialog.dismiss();
+  });
+  await clearButton.click();
+  const afterDismiss = await page.evaluate(async () =>
+    (await (await fetch("/api/status")).json()).conversations,
+  );
+  expect(afterDismiss).toHaveLength(beforeDismiss.conversations.length);
+  page.once("dialog", (dialog) => void dialog.accept());
+  await clearButton.click();
+  await expect(page.getByRole("status")).toContainText(
+    "Conversation history cleared",
+  );
+  await expect
+    .poll(async () =>
+      page.evaluate(async () =>
+        (await (await fetch("/api/status")).json()).conversations.length,
+      ),
+    )
+    .toBe(0);
+  const afterClear = await page.evaluate(async () =>
+    await (await fetch("/api/status")).json(),
+  );
+  expect(afterClear.facts).toEqual(beforeDismiss.facts);
+  await page.getByRole("button", { name: "Conversation 01" }).click();
+  await expect(
+    page
+      .locator(".message.user")
+      .filter({ hasText: "nervous about my presentation" }),
+  ).toHaveCount(0);
+});
+
 test("memory export downloads the current authenticated account data", async ({
   page,
 }) => {

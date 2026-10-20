@@ -149,8 +149,10 @@ history and may still inform recent replies; this feature removes a saved summar
 not the source messages. **Download all my AURA data** exports your profile,
 conversations, facts, observations and other records stored for your account as a
 JSON file. The export is generated locally, requires the current session, and is
-not sent to a cloud service. The Memory view also shows saved routines and recent
-observations, including any room labels attached to ambient requests.
+not sent to a cloud service. You can also clear conversation messages and replies
+for the current account; this keeps saved facts, routines and observations. AURA
+asks for confirmation before deletion. The Memory view also shows saved routines
+and recent observations, including any room labels attached to ambient requests.
 
 Check-ins are separate from voice listening. They are off unless you opt in under
 **Setup**, wait for the selected idle interval, respect quiet hours in the AURA

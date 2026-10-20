@@ -731,6 +731,31 @@ function App() {
                 <a className="memory-export" href="/api/memory/export" download>
                   Download all my AURA data (JSON)
                 </a>
+                <button
+                  className="memory-export"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        "Clear all saved conversation messages and replies? Saved facts, routines, and observations will remain. This cannot be undone.",
+                      )
+                    )
+                      return;
+                    try {
+                      const result = await api<{ deleted: number }>(
+                        "conversations/clear",
+                        {},
+                      );
+                      await refresh();
+                      setError(
+                        `Conversation history cleared (${result.deleted} messages).`,
+                      );
+                    } catch (e) {
+                      setError(String(e));
+                    }
+                  }}
+                >
+                  Clear conversation history
+                </button>
                 {status.facts.length === 0 ? (
                   <p>No facts yet. Start a conversation.</p>
                 ) : (

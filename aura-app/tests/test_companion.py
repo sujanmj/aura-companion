@@ -102,6 +102,32 @@ class CompanionTest(unittest.TestCase):
             self.assertEqual(store.get_latest_observations(owner), [])
             store.close()
 
+    def test_conversation_history_clear_is_scoped_and_preserves_companion_memory(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            other = store.get_or_create_user('Other')
+            store.add_conversation(owner, 'user', 'private owner message')
+            store.add_conversation(other, 'user', 'private other message')
+            store.remember_fact(owner, 'favorite_drink', 'tea')
+            store.remember_routine(owner, 'fitness_interest', 'swimming')
+            store.add_observation(owner, 'ambient_context', 'private camera note')
+
+            self.assertEqual(store.clear_conversation_history(owner), 1)
+            self.assertEqual(store.get_recent_conversations(owner), [])
+            self.assertEqual(
+                store.get_recent_conversations(other)[0]['message'],
+                'private other message',
+            )
+            self.assertEqual(store.get_memory_facts(owner)[0]['fact_value'], 'tea')
+            self.assertEqual(store.get_routine_memory(owner)[0]['routine_value'], 'swimming')
+            self.assertEqual(
+                store.get_latest_observations(owner)[0]['event_summary'],
+                'private camera note',
+            )
+            store.close()
+
     def test_old_emotion_and_quiet_camera_context_do_not_label_current_mood(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')
