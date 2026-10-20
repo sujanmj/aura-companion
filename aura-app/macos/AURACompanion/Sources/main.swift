@@ -194,13 +194,14 @@ struct AURAAmbientApp: App {
         startupTimeoutTask?.cancel()
         startupTimeoutTask = StartupWatchdog.schedule(afterNanoseconds: 60_000_000_000) { [weak self] in
             guard let self else { return }
+            let timedOutStage = self.status
             _ = StartupWatchdog.expire(
                 token: generation,
                 lifecycle: self.lifecycle,
                 isStarting: self.isStarting
             ) {
                 self.stop()
-                self.status = "Ambient startup timed out. Check permission prompts and connected devices, then try again."
+                self.status = StartupWatchdog.timeoutMessage(for: timedOutStage)
             }
         }
         defer {

@@ -84,6 +84,9 @@ Status: in progress; this is the current phase.
   lifecycle returns to Paused, then release the late callback and verify it
   cannot reactivate capture. This validates the timeout recovery logic without
   claiming a real macOS permission prompt was stalled.
+- Improved: watchdog timeouts now identify whether Speech Recognition,
+  microphone, camera, or a later startup stage stalled. Permission-stage
+  timeouts offer a direct link to the matching Privacy & Security pane.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing
@@ -119,10 +122,18 @@ Status: in progress; this is the current phase.
   to PAUSED with both off. The temporary pairing, service, and database were
   cleared. This complements the 1,000-cycle hardware-free lifecycle test; it is
   not a long-run or sleep/wake test.
-- Remaining: sleep/wake, startup-timeout recovery under a real stalled callback,
-  clean-install permission recovery, long-run stability, and acoustic
-  loudness/feedback measurement on Mac. Live Claude behavior also needs
-  acceptance when credentials are configured.
+- Permission-prompt stall check (2026-10-20): after resetting only AURA's
+  Speech Recognition permission, the rebuilt app remained at "Checking Speech
+  Recognition permission…" without showing a macOS prompt or adding AURA to
+  that System Settings list. The 60-second watchdog safely returned it to
+  PAUSED with microphone and camera off. Pairing and isolated test data were
+  cleared. A follow-up improves the timeout message and adds a link to the
+  Speech Recognition privacy pane; automated tests and a local app build pass,
+  but the permission prompt path still needs investigation and successful
+  clean-install recovery is not verified.
+- Remaining: sleep/wake, successful clean-install permission recovery, long-run
+  stability, and acoustic loudness/feedback measurement on Mac. Live Claude
+  behavior also needs acceptance when credentials are configured.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.

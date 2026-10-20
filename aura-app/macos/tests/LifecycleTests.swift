@@ -109,6 +109,19 @@ struct LifecycleTests {
             "Speech permission denial must link to its privacy pane"
         )
         precondition(
+            StartupWatchdog.timeoutMessage(for: "Checking Speech Recognition permission…").hasPrefix("Speech Recognition permission check timed out") &&
+                PermissionSettings.target(for: StartupWatchdog.timeoutMessage(for: "Checking Speech Recognition permission…")) == "Privacy_SpeechRecognition",
+            "A stalled Speech Recognition permission request must identify the stage and offer its privacy pane"
+        )
+        precondition(
+            PermissionSettings.target(for: StartupWatchdog.timeoutMessage(for: "Checking microphone access…")) == "Privacy_Microphone",
+            "A stalled microphone permission request must link to its privacy pane"
+        )
+        precondition(
+            PermissionSettings.target(for: StartupWatchdog.timeoutMessage(for: "Checking camera access…")) == "Privacy_Camera",
+            "A stalled camera permission request must link to its privacy pane"
+        )
+        precondition(
             PermissionSettings.target(for: "Microphone access is off. Allow it in System Settings.") == "Privacy_Microphone",
             "Microphone denial must link to its privacy pane"
         )

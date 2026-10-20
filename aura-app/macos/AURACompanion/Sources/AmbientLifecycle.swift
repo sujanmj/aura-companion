@@ -1,6 +1,19 @@
 import Security
 
 enum StartupWatchdog {
+    static func timeoutMessage(for stage: String) -> String {
+        switch stage {
+        case "Checking Speech Recognition permission…":
+            "Speech Recognition permission check timed out. Open Privacy Settings and allow AURA Companion."
+        case "Checking microphone access…":
+            "Microphone permission check timed out. Open Privacy Settings and allow AURA Companion."
+        case "Checking camera access…":
+            "Camera permission check timed out. Open Privacy Settings and allow AURA Companion."
+        default:
+            "Ambient startup timed out while \(stage.lowercased()). Check permission prompts and connected devices, then try again."
+        }
+    }
+
     @MainActor
     static func schedule(
         afterNanoseconds nanoseconds: UInt64,
@@ -188,13 +201,13 @@ struct WakeResumeState {
 
 enum PermissionSettings {
     static func target(for status: String) -> String? {
-        if status.hasPrefix("Allow Speech Recognition") {
+        if status.hasPrefix("Allow Speech Recognition") || status.hasPrefix("Speech Recognition permission check timed out") {
             return "Privacy_SpeechRecognition"
         }
-        if status.hasPrefix("Microphone access is off") {
+        if status.hasPrefix("Microphone access is off") || status.hasPrefix("Microphone permission check timed out") {
             return "Privacy_Microphone"
         }
-        if status.hasPrefix("Camera access is off") {
+        if status.hasPrefix("Camera access is off") || status.hasPrefix("Camera permission check timed out") {
             return "Privacy_Camera"
         }
         return nil
