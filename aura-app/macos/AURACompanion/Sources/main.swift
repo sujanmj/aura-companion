@@ -232,10 +232,12 @@ struct AURAAmbientApp: App {
             let response = try JSONDecoder().decode(CompanionResponse.self, from: data)
             await MainActor.run {
                 guard lifecycle.contains(generation), isActive, !Task.isCancelled else { return }
-                recentResponse = response.response; status = "AURA replied. Still listening locally."
+                recentResponse = response.response
                 let utterance = AVSpeechUtterance(string: response.response); utterance.voice = AVSpeechSynthesisVoice(language: "en-US"); utterance.rate = 0.48
                 let outputGeneration = speechOutputSuppression.begin()
+                let sessionGeneration = lifecycle.generation
                 transcriber?.setOutputSuppressed(true)
+                status = "AURA is speaking locally. Microphone transcription pauses during playback."
                 synthesizer.speak(utterance)
                 Task { [weak self] in
                     guard let self else { return }
@@ -246,6 +248,8 @@ struct AURAAmbientApp: App {
                     try? await Task.sleep(nanoseconds: 800_000_000)
                     guard speechOutputSuppression.finish(outputGeneration) else { return }
                     transcriber?.setOutputSuppressed(false)
+                    guard lifecycle.contains(sessionGeneration) else { return }
+                    status = "AURA finished speaking. Listening locally."
                 }
             }
         } catch {
