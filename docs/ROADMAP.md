@@ -218,6 +218,11 @@ Status: in progress; this is the current phase.
   System Settings listed AURA as allowed, and no Allow prompt appeared. The new
   on-device speech-to-reply path and stable signed permission identity remain
   unverified; the earlier live voice-loop result applies to the older path.
+- On-device analyzer smoke test (2026-10-20): a locally generated speech clip
+  fed through Apple's SpeechAnalyzer, SpeechTranscriber, and AURA's audio
+  converter produced finalized English transcription segments before the input
+  stream closed. Temporary clip and harness were removed. This verifies the
+  on-device model and analyzer path, not AVAudioEngine delivery or an AURA reply.
 - Remaining: hardware sleep/wake, automatic clean-install permission prompt
   recovery, multi-hour stability of the rebuilt audio-queue version, and
   calibrated acoustic loudness/feedback testing on Mac. Live Claude behavior
