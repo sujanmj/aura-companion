@@ -75,6 +75,7 @@ struct AURAAmbientApp: App {
     private let engine = AVAudioEngine()
     private let synthesizer = AVSpeechSynthesizer()
     private var speechOutputSuppression = SpeechOutputSuppression()
+    private var audioConfigurationObserver: NSObjectProtocol?
     private var transcriber: LocalSpeechPipeline?
     private var cookie: String?
     private var contextLabels: [String] = []
@@ -178,14 +179,14 @@ struct AURAAmbientApp: App {
             let camera = LocalCamera(
                 onScene: { [weak self] labels, present in
                     Task { @MainActor in
-                        guard let self, self.lifecycle.acceptsCameraEvent(generation) else { return }
+                        guard let self, self.lifecycle.acceptsCaptureEvent(generation) else { return }
                         self.contextLabels = labels; self.scene = labels.joined(separator: ", ")
                         self.isPersonPresent = present
                     }
                 },
                 onFailure: { [weak self] message in
                     Task { @MainActor in
-                        guard let self, self.lifecycle.acceptsCameraEvent(generation) else { return }
+                        guard let self, self.lifecycle.acceptsCaptureEvent(generation) else { return }
                         self.stop()
                         self.status = message
                     }
@@ -196,6 +197,7 @@ struct AURAAmbientApp: App {
             guard lifecycle.contains(generation) else { camera.stop(); return }
             try startAudio()
             guard lifecycle.activate(generation) else { return }
+            observeAudioConfigurationChange(generation: generation)
             isActive = true; microphoneOn = true; cameraOn = true; cameraStopping = false
             status = "Listening locally. Only Hey AURA, direct requests, or explicit support phrases get a reply."
         } catch {
@@ -214,6 +216,20 @@ struct AURAAmbientApp: App {
         }
         hasAudioTap = true
         engine.prepare(); try engine.start()
+    }
+
+    private func observeAudioConfigurationChange(generation: UInt64) {
+        audioConfigurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: nil
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.lifecycle.acceptsCaptureEvent(generation) else { return }
+                self.stop()
+                self.status = "The Mac audio configuration changed. AURA paused ambient mode; check connected audio devices, then start it again."
+            }
+        }
     }
 
     private func handle(_ transcript: String) {
@@ -295,6 +311,10 @@ struct AURAAmbientApp: App {
         if !preservingWakeResume { wakeResume.cancel() }
         isStarting = false; isActive = false; microphoneOn = false; cameraOn = false
         replyTask?.cancel(); replyTask = nil
+        if let audioConfigurationObserver {
+            NotificationCenter.default.removeObserver(audioConfigurationObserver)
+            self.audioConfigurationObserver = nil
+        }
         if hasAudioTap { engine.inputNode.removeTap(onBus: 0); hasAudioTap = false }
         engine.stop()
         transcriber?.stop(); transcriber = nil

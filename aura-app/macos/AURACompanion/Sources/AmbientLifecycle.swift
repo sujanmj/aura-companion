@@ -21,7 +21,7 @@ struct AmbientLifecycle {
         generation == token && phase == .paused
     }
 
-    func acceptsCameraEvent(_ token: UInt64) -> Bool {
+    func acceptsCaptureEvent(_ token: UInt64) -> Bool {
         generation == token && phase == .active
     }
 

@@ -13,16 +13,16 @@ struct LifecycleTests {
         let second = state.begin()!
         precondition(second != first)
         precondition(!state.contains(first), "Old callbacks must not affect a restarted session")
-        precondition(!state.acceptsCameraEvent(second), "Camera events before capture activates must be ignored")
+        precondition(!state.acceptsCaptureEvent(second), "Capture events before activation must be ignored")
         precondition(state.activate(second))
-        precondition(state.acceptsCameraEvent(second), "The active capture generation may process camera events")
+        precondition(state.acceptsCaptureEvent(second), "The active capture generation may process audio and camera events")
         precondition(state.phase == .active)
         precondition(!state.activate(second), "Activation must only happen once")
         precondition(state.begin() == nil)
         state.pause()
         state.pause()
         precondition(!state.contains(second), "Repeated Pause must remain safe")
-        precondition(!state.acceptsCameraEvent(second), "Camera events after Pause must not affect the stopped session")
+        precondition(!state.acceptsCaptureEvent(second), "Audio and camera events after Pause must be ignored")
         let stopGeneration = state.generation
         precondition(state.canCompleteStop(stopGeneration), "A stopped camera may report completion while paused")
         let restarted = state.begin()!
@@ -118,6 +118,6 @@ struct LifecycleTests {
             "Normal status must not show permission recovery directions"
         )
 
-        print("PASS: capture lifecycle, camera callback generations, 1000 restart cycles, speech output echo suppression, Keychain save failures, sleep/wake ordering, and privacy settings recovery")
+        print("PASS: capture lifecycle, audio/camera callback generations, 1000 restart cycles, speech output echo suppression, Keychain save failures, sleep/wake ordering, and privacy settings recovery")
     }
 }

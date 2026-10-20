@@ -67,6 +67,9 @@ Status: in progress; this is the current phase.
 - Fixed: camera interruption and runtime-error notifications now pause the
   complete ambient session and report recovery guidance instead of leaving a
   stale active indicator while microphone capture continues.
+- Fixed: an AVAudioEngine input/output configuration change now pauses the
+  complete ambient session. The notification is handled asynchronously, and
+  generation checks discard events from previous sessions.
 - Mac hardware acceptance (2026-10-20): paired the rebuilt app to an isolated,
   temporary SQLite database; confirmed local camera classification, on-device
   recognition through the Mac microphone, an ambient reply, and Pause clearing
