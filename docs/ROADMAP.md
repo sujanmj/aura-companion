@@ -112,8 +112,12 @@ Status: security hardening is progressing; kiosk UI, event API and simulators ex
   comparison, unauthenticated requests cannot update the service heartbeat, and
   the Pi simulator refuses to send without a valid configured token or print it.
   Automated API tests cover missing, weak, incorrect and valid tokens and ensure
-  unauthenticated event data is not stored. Device-specific enrollment,
-  reconnect/offline behavior and node health remain.
+  unauthenticated event data is not stored.
+- Implemented: sensor events accept a client UUID, and the database enforces
+  uniqueness by user, source and UUID. The Pi simulator retries transient network
+  and server errors using the same UUID; duplicate requests return the original
+  event without repeating observations or safety processing. Device-specific
+  enrollment, offline node health and room-to-room conversation handoff remain.
 - Conversation handoff without duplicate replies or accidental cross-user memory.
 - Real camera/microphone and GPIO sensor acceptance on target hardware.
 

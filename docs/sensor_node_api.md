@@ -150,11 +150,17 @@ Required fields:
 Optional fields:
 
 - `source` (default: `sensor_api`)
+- `event_uuid` (client-generated identifier, recommended for retries; max 128 characters)
 - `room`
 - `severity` (default: `low`)
 - `confidence` (default: `0.5`)
 - `requires_action` (default: `false`)
 - `metadata` (object)
+
+When an `event_uuid` is supplied, AURA stores at most one event for that identifier
+and source. Repeating the request returns the original event with `duplicate: true`
+and does not repeat observations, safety evaluation, or escalation processing.
+Clients should reuse the same `event_uuid` for every retry of one event.
 
 Send from another device on your network:
 

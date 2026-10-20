@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS device_events (
     requires_action INTEGER DEFAULT 0,
     action_status TEXT DEFAULT 'none',
     metadata_json TEXT,
+    external_event_id TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );

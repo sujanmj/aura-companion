@@ -112,8 +112,20 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
         confidence=float(payload.get("confidence", 0.5)),
         requires_action=bool(payload.get("requires_action", False)),
         metadata=payload.get("metadata"),
+        external_event_id=payload.get("event_uuid"),
     )
     published["room"] = payload.get("room")
+    if published.get("duplicate"):
+        return {
+            "ok": True,
+            "event": published,
+            "safety": None,
+            "escalation": None,
+            "confirmation": None,
+            "dispatch_results": [],
+            "incident": None,
+        }
+
     threading.Thread(
         target=sync_sensor_event,
         args=(published,),

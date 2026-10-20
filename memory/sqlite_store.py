@@ -24,6 +24,16 @@ class AuraMemoryStore:
     def apply_schema(self) -> None:
         schema = SCHEMA_PATH.read_text(encoding="utf-8")
         self.conn.executescript(schema)
+        device_event_columns = {
+            row["name"]
+            for row in self.conn.execute("PRAGMA table_info(device_events)").fetchall()
+        }
+        if "external_event_id" not in device_event_columns:
+            self.conn.execute("ALTER TABLE device_events ADD COLUMN external_event_id TEXT")
+        self.conn.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS idx_device_events_external_id
+               ON device_events(user_id, source, external_event_id)"""
+        )
         self.conn.commit()
 
     def create_user(
@@ -542,6 +552,70 @@ class AuraMemoryStore:
         )
         self.conn.commit()
         return int(cur.lastrowid)
+
+    def add_device_event_once(
+        self,
+        user_id: int,
+        event_type: str,
+        event_summary: str,
+        source: str,
+        external_event_id: str,
+        room: str | None = None,
+        severity: str = "low",
+        confidence: float = 0.5,
+        requires_action: bool = False,
+        metadata: dict | None = None,
+    ) -> tuple[int, bool]:
+        allowed_severities = {"low", "medium", "high", "critical"}
+        if severity not in allowed_severities:
+            raise ValueError(f"severity must be one of: {', '.join(sorted(allowed_severities))}")
+        event_key = external_event_id.strip()
+        if not event_key or len(event_key) > 128:
+            raise ValueError("external_event_id must contain 1–128 characters")
+
+        metadata_json = json.dumps(metadata) if metadata is not None else None
+        cur = self.conn.execute(
+            """INSERT INTO device_events (
+                   user_id, event_type, event_summary, source, room, severity,
+                   confidence, requires_action, metadata_json, external_event_id
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(user_id, source, external_event_id) DO NOTHING""",
+            (
+                user_id,
+                event_type,
+                event_summary,
+                source,
+                room,
+                severity,
+                confidence,
+                int(requires_action),
+                metadata_json,
+                event_key,
+            ),
+        )
+        inserted = cur.rowcount == 1
+        if inserted:
+            event_id = int(cur.lastrowid)
+        else:
+            row = self.conn.execute(
+                """SELECT id FROM device_events
+                   WHERE user_id = ? AND source = ? AND external_event_id = ?""",
+                (user_id, source, event_key),
+            ).fetchone()
+            if row is None:
+                raise RuntimeError("Idempotent event insert did not return an event")
+            event_id = int(row["id"])
+        self.conn.commit()
+        return event_id, inserted
+
+    def get_device_event(self, event_id: int) -> dict[str, Any] | None:
+        row = self.conn.execute(
+            """SELECT id, event_type, event_summary, source, room, severity,
+                      confidence, requires_action, action_status, metadata_json, created_at
+               FROM device_events WHERE id = ?""",
+            (event_id,),
+        ).fetchone()
+        return dict(row) if row else None
 
     def get_recent_device_events(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
         cur = self.conn.execute(

@@ -18,18 +18,49 @@ class DeviceEventBus:
         confidence: float = 0.5,
         requires_action: bool = False,
         metadata: dict | None = None,
+        external_event_id: str | None = None,
     ) -> dict:
-        event_id = self.store.add_device_event(
-            user_id,
-            event_type=event_type,
-            event_summary=event_summary,
-            source=source,
-            room=room,
-            severity=severity,
-            confidence=confidence,
-            requires_action=requires_action,
-            metadata=metadata,
-        )
+        duplicate = False
+        if external_event_id:
+            event_id, inserted = self.store.add_device_event_once(
+                user_id,
+                event_type=event_type,
+                event_summary=event_summary,
+                source=source,
+                room=room,
+                severity=severity,
+                confidence=confidence,
+                requires_action=requires_action,
+                metadata=metadata,
+                external_event_id=external_event_id,
+            )
+            duplicate = not inserted
+        else:
+            event_id = self.store.add_device_event(
+                user_id,
+                event_type=event_type,
+                event_summary=event_summary,
+                source=source,
+                room=room,
+                severity=severity,
+                confidence=confidence,
+                requires_action=requires_action,
+                metadata=metadata,
+            )
+
+        if duplicate:
+            existing = self.store.get_device_event(event_id)
+            if existing is None:
+                raise RuntimeError("Previously stored event is missing")
+            return {
+                "event_id": event_id,
+                "event_type": existing["event_type"],
+                "event_summary": existing["event_summary"],
+                "severity": existing["severity"],
+                "requires_action": bool(existing["requires_action"]),
+                "room": existing["room"],
+                "duplicate": True,
+            }
 
         self.store.add_observation(
             user_id,
@@ -46,6 +77,7 @@ class DeviceEventBus:
             "severity": severity,
             "requires_action": requires_action,
             "room": room,
+            "duplicate": False,
         }
 
     def get_pending_events(self, user_id: int, limit: int = 20) -> list[dict]:

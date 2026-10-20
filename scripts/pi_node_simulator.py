@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import time
+import uuid
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -168,6 +169,7 @@ def build_payload(
         "severity": severity,
         "confidence": event_confidence,
         "requires_action": requires_action,
+        "event_uuid": str(uuid.uuid4()),
         "metadata": {
             "simulator": True,
             "node": node,
@@ -185,23 +187,28 @@ def post_event(hub_url: str, payload: dict[str, Any], token: str | None) -> dict
         headers[AUTH_HEADER] = token
 
     data = json.dumps(payload).encode("utf-8")
-    request = urllib.request.Request(
-        f"{hub_url}/events",
-        data=data,
-        headers=headers,
-        method="POST",
-    )
+    for attempt in range(3):
+        request = urllib.request.Request(
+            f"{hub_url}/events",
+            data=data,
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                body = response.read().decode("utf-8")
+                return json.loads(body) if body else {}
+        except urllib.error.HTTPError as exc:
+            if exc.code == 401:
+                raise PermissionError("unauthorized") from exc
+            if exc.code < 500 or attempt == 2:
+                raise
+        except urllib.error.URLError as exc:
+            if attempt == 2:
+                raise ConnectionError("server not running") from exc
+        time.sleep(0.5 * (2**attempt))
 
-    try:
-        with urllib.request.urlopen(request, timeout=15) as response:
-            body = response.read().decode("utf-8")
-            return json.loads(body) if body else {}
-    except urllib.error.HTTPError as exc:
-        if exc.code == 401:
-            raise PermissionError("unauthorized") from exc
-        raise
-    except urllib.error.URLError as exc:
-        raise ConnectionError("server not running") from exc
+    raise ConnectionError("sensor event could not be delivered")
 
 
 def send_simulated_event(

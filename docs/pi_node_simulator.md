@@ -89,3 +89,4 @@ python scripts/list_action_logs.py
 - **No real emergency calls, SMS, siren, or water pump** actions happen.
 - Keep the API on a **trusted LAN only**.
 - Token must be in `config/keys.env` as `AURA_SENSOR_API_TOKEN`; the simulator refuses to send without it and never prints token contents.
+- Each simulated event includes a stable UUID and retries transient connection or server errors up to three times. AURA deduplicates those retries, so event observations and safety handling run once.

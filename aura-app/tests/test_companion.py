@@ -21,6 +21,7 @@ from companion.reaction_engine import CompanionReactionEngine
 from brain.llm_provider import ClaudeProvider
 from api.sensor_api_server import AuraSensorAPIHandler, get_sensor_api_token, is_request_authorized
 from scripts import pi_node_simulator
+from devices.event_bus import DeviceEventBus
 
 class CompanionTest(unittest.TestCase):
     def test_checkins_default_off_and_honor_idle_interval_and_quiet_hours(self):
@@ -171,6 +172,7 @@ class CompanionTest(unittest.TestCase):
                 with (
                     patch.dict(os.environ, {}, clear=True),
                     patch('api.sensor_api_server.beat_sensor_api_heartbeat'),
+                    patch('api.sensor_api_server.sync_sensor_event'),
                 ):
                     with urllib.request.urlopen(base + '/health', timeout=2) as response:
                         self.assertEqual(response.status, 200)
@@ -195,20 +197,121 @@ class CompanionTest(unittest.TestCase):
 
                     token = 't' * 32
                     with patch.dict(os.environ, {'AURA_SENSOR_API_TOKEN': token}, clear=True):
-                        request = urllib.request.Request(
-                            base + '/events/latest',
-                            headers={'X-AURA-API-Token': token},
-                        )
+                        request = urllib.request.Request(base + '/events/latest', headers={'X-AURA-API-Token': token})
                         with urllib.request.urlopen(request, timeout=2) as response:
                             self.assertEqual(response.status, 200)
 
+                        event = {
+                            'event_type': 'retry_test',
+                            'event_summary': 'one event despite retry',
+                            'source': 'test_node',
+                            'room': 'lab',
+                            'severity': 'low',
+                            'confidence': 0.5,
+                            'requires_action': False,
+                            'event_uuid': '8a5e0f4e-76ea-44fc-969e-7a412d152ca4',
+                        }
+                        responses = []
+                        for _ in range(2):
+                            request = urllib.request.Request(
+                                base + '/events',
+                                data=json.dumps(event).encode(),
+                                headers={
+                                    'Content-Type': 'application/json',
+                                    'X-AURA-API-Token': token,
+                                },
+                                method='POST',
+                            )
+                            with urllib.request.urlopen(request, timeout=2) as response:
+                                responses.append(json.loads(response.read()))
+                        self.assertFalse(responses[0]['event']['duplicate'])
+                        self.assertTrue(responses[1]['event']['duplicate'])
+                        self.assertEqual(responses[0]['event']['event_id'], responses[1]['event']['event_id'])
+
                 event_count = store.conn.execute('SELECT COUNT(*) FROM device_events').fetchone()[0]
-                self.assertEqual(event_count, 0)
+                self.assertEqual(event_count, 1)
+                observation_count = store.conn.execute('SELECT COUNT(*) FROM observations').fetchone()[0]
+                self.assertEqual(observation_count, 1)
             finally:
                 server.shutdown()
                 thread.join(timeout=2)
                 server.server_close()
                 store.close()
+
+    def test_device_event_bus_deduplicates_client_event_ids(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'events.db')
+            store.apply_schema()
+            user = store.get_or_create_user('Owner')
+            bus = DeviceEventBus(store)
+            first = bus.publish_event(
+                user, 'movement', 'Movement detected', source='bedroom_node',
+                external_event_id='sensor-event-123',
+            )
+            duplicate = bus.publish_event(
+                user, 'movement', 'Retry must not replace original', source='bedroom_node',
+                external_event_id='sensor-event-123',
+            )
+            self.assertEqual(first['event_id'], duplicate['event_id'])
+            self.assertFalse(first['duplicate'])
+            self.assertTrue(duplicate['duplicate'])
+            self.assertEqual(store.conn.execute('SELECT COUNT(*) FROM device_events').fetchone()[0], 1)
+            self.assertEqual(store.conn.execute('SELECT COUNT(*) FROM observations').fetchone()[0], 1)
+            store.close()
+
+    def test_schema_migration_adds_event_deduplication_to_existing_databases(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'legacy.db'
+            connection = sqlite3.connect(path)
+            connection.executescript('''
+                CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);
+                CREATE TABLE device_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    event_type TEXT NOT NULL,
+                    event_summary TEXT NOT NULL,
+                    source TEXT DEFAULT 'unknown',
+                    room TEXT,
+                    severity TEXT DEFAULT 'low',
+                    confidence REAL DEFAULT 0.5,
+                    requires_action INTEGER DEFAULT 0,
+                    action_status TEXT DEFAULT 'none',
+                    metadata_json TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+            ''')
+            connection.close()
+            store = AuraMemoryStore(path)
+            store.apply_schema()
+            columns = {row['name'] for row in store.conn.execute('PRAGMA table_info(device_events)')}
+            indexes = {row['name'] for row in store.conn.execute('PRAGMA index_list(device_events)')}
+            self.assertIn('external_event_id', columns)
+            self.assertIn('idx_device_events_external_id', indexes)
+            store.close()
+
+    def test_pi_simulator_retries_with_the_same_idempotency_key(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self):
+                return b'{"ok": true}'
+
+        payload = pi_node_simulator.build_payload('bedroom', 'movement_absent')
+        with (
+            patch.object(pi_node_simulator.urllib.request, 'urlopen', side_effect=[
+                urllib.error.URLError('temporary disconnect'), Response()
+            ]) as urlopen,
+            patch.object(pi_node_simulator.time, 'sleep'),
+        ):
+            self.assertEqual(pi_node_simulator.post_event('http://127.0.0.1:8787', payload, 't' * 32), {'ok': True})
+        self.assertEqual(urlopen.call_count, 2)
+        requests = [call.args[0] for call in urlopen.call_args_list]
+        self.assertEqual(json.loads(requests[0].data)['event_uuid'], payload['event_uuid'])
+        self.assertEqual(json.loads(requests[1].data)['event_uuid'], payload['event_uuid'])
 
     def test_pi_simulator_never_logs_token_and_requires_configuration(self):
         token = 's' * 32
