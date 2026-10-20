@@ -226,10 +226,13 @@ def flush_pending(limit: int = 25, now: float | None = None) -> int:
                                 SET attempts=?, next_attempt_at=? WHERE id=?""",
                             (attempts, current_time + delay, item["id"]),
                         )
+                    # Release SQLite's write lock before the next network call.
+                    conn.commit()
                     continue
                 record = _load_record(conn, item["record_type"], int(item["local_id"]))
                 if record is None:
                     conn.execute(f"DELETE FROM {OUTBOX_TABLE} WHERE id=?", (item["id"],))
+                    conn.commit()
                     continue
                 table, conflict, payload = record
                 if _upsert(table, conflict, payload, device_id=item["device_id"]):
@@ -243,7 +246,8 @@ def flush_pending(limit: int = 25, now: float | None = None) -> int:
                             SET attempts=?, next_attempt_at=? WHERE id=?""",
                         (attempts, current_time + delay, item["id"]),
                     )
-            conn.commit()
+                # Network I/O for later rows must not hold a local write lock.
+                conn.commit()
             return completed
         finally:
             conn.close()

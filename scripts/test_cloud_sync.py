@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -166,6 +167,50 @@ class CloudSyncTests(unittest.TestCase):
             self.assertEqual(payload["room"], "bedroom")
             self.assertEqual(payload["event_summary"], event["event_summary"])
             self.assertEqual(store.conn.execute("SELECT COUNT(*) FROM cloud_sync_outbox").fetchone()[0], 0)
+            store.close()
+
+    def test_retry_batch_releases_database_write_lock_between_network_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            db = Path(folder) / "memory.db"
+            store = AuraMemoryStore(db)
+            store.apply_schema()
+            user = store.get_or_create_user("Owner")
+            row_ids = [
+                store.add_conversation(user, "user", f"message-{index}")
+                for index in range(2)
+            ]
+            settings = self._settings(db)
+            with patch.dict(os.environ, settings, clear=True), patch(
+                "cloud.supabase_sync.urllib.request.urlopen", side_effect=OSError("offline")
+            ):
+                for row_id in row_ids:
+                    self.assertFalse(sync_conversation(row_id, "user", "placeholder", ""))
+
+            requests = []
+
+            def write_local_memory_during_second_request(_request, timeout):
+                requests.append(_request)
+                if len(requests) == 2:
+                    concurrent = sqlite3.connect(db, timeout=0.05)
+                    try:
+                        concurrent.execute(
+                            "INSERT INTO conversation_logs(user_id, role, message) VALUES (?, 'user', 'concurrent write')",
+                            (user,),
+                        )
+                        concurrent.commit()
+                    finally:
+                        concurrent.close()
+                return FakeResponse()
+
+            with patch.dict(os.environ, settings, clear=True), patch(
+                "cloud.supabase_sync.urllib.request.urlopen", side_effect=write_local_memory_during_second_request
+            ):
+                self.assertEqual(flush_pending(now=1_000), 2)
+            self.assertEqual(len(requests), 2)
+            self.assertEqual(
+                store.conn.execute("SELECT COUNT(*) FROM conversation_logs WHERE message='concurrent write'").fetchone()[0],
+                1,
+            )
             store.close()
 
     def test_rejects_non_https_cloud_endpoint(self) -> None:

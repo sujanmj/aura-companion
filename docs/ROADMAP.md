@@ -362,7 +362,9 @@ Status: security hardening is progressing; kiosk UI, event API and simulators ex
 - Implemented: optional Supabase sync now has a durable SQLite retry outbox for
   conversation and sensor-event rows. The outbox stores source-row references,
   device IDs and retry metadata rather than duplicating message/event text;
-  capped backoff avoids rapid repeat requests. A cleared local conversation
+  capped backoff avoids rapid repeat requests, and each item releases SQLite's
+  write lock before the next network request so local memory writes can proceed.
+  A cleared local conversation
   cancels pending uploads and queues an idempotent remote delete for any already
   synced row. Offline tests cover queue/retry, backoff, source-row deletion and
   remote cleanup. This does not sync profile facts/routines or verify a live
