@@ -2,7 +2,7 @@
 // No inherited tools, settings, global MCP discovery, or bypass mode.
 import { mkdir } from "node:fs/promises";
 import { query } from "@anthropic-ai/claude-agent-sdk";
-export async function runAgent(prompt, config, gate, cwd, signal) {
+export async function runAgent(prompt, config, gate, cwd, signal, queryRunner = query) {
   signal.throwIfAborted();
   await mkdir(cwd, { recursive: true });
   signal.throwIfAborted();
@@ -14,7 +14,7 @@ export async function runAgent(prompt, config, gate, cwd, signal) {
   };
   signal.addEventListener("abort", abort, { once: true });
   try {
-    for await (const message of query({
+    for await (const message of queryRunner({
       prompt,
       options: {
         cwd,
@@ -65,6 +65,7 @@ export async function runAgent(prompt, config, gate, cwd, signal) {
         if ("result" in message) response = message.result;
       }
     }
+    signal.throwIfAborted();
     return response || "The task finished without a text response.";
   } finally {
     signal.removeEventListener("abort", abort);

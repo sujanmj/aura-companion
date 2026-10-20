@@ -167,6 +167,11 @@ Status: partial components exist; acceptance not complete.
   exception text, prompts, and credentials are no longer logged. Tests cover
   HTTP and unexpected failures for both adapters; live provider acceptance
   still requires configured credentials.
+- Strengthened: tests now exercise the actual Claude SDK PreToolUse hook through
+  the agent bridge. Only the exact allowlisted invocation approved in AURA is
+  allowed; default SDK tools remain empty, and cancellation denies a pending
+  call and discards a late response. This verifies local bridge wiring, not a
+  live Claude or MCP server session.
 - Implemented: Setup includes a guided first-device acceptance checklist for
   conversation/provider, reviewed voice input, spoken output/Stop, memory
   continuity, Mac ambient mode and optional MCP approvals. Checklist marks are
