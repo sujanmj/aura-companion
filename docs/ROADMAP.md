@@ -137,9 +137,17 @@ Status: in progress; this is the current phase.
   Pause turned both sensors off. The temporary pairing, service, and database
   were cleared. This verifies settings-based permission restoration and a
   successful restart, but not an automatic fresh-install Allow dialog.
-- Remaining: sleep/wake, successful clean-install permission recovery, long-run
-  stability, and acoustic loudness/feedback measurement on Mac. Live Claude
-  behavior also needs acceptance when credentials are configured.
+- Acoustic feedback spot check (2026-10-20): with an isolated database, actions
+  disabled, and local-only brain provider, played a synthetic direct request
+  through the Mac's built-in speakers while the helper was listening. AURA
+  recognized it, returned a local reply, finished native speech output, and
+  resumed listening; no echo-triggered reply was observed during this check.
+  Pause turned both sensors off and the temporary pairing, service, database,
+  and audio file were cleared. This does not measure calibrated loudness or
+  prove feedback behavior across rooms and volumes.
+- Remaining: sleep/wake, successful clean-install permission prompt recovery,
+  long-run stability, and calibrated acoustic loudness/feedback testing on Mac.
+  Live Claude behavior also needs acceptance when credentials are configured.
 
 Exit: automated failure-path tests and CI pass, with real-device acceptance recorded
 separately. Missing hardware access must remain an explicit unresolved gate.
