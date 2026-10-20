@@ -164,10 +164,16 @@ class OpenAIProvider(BaseLLMProvider):
                             return text.strip()
             return None
         except urllib.error.HTTPError as err:
+            try:
+                err.close()
+            except Exception:
+                pass
             print(f"OPENAI_PROVIDER_ERROR: HTTP {err.code}")
             return None
-        except Exception as exc:
-            print(f"OPENAI_PROVIDER_ERROR: {exc}")
+        except Exception:
+            # Provider exceptions may contain request details or response text.
+            # Keep logs useful for recovery without exposing prompts or secrets.
+            print("OPENAI_PROVIDER_ERROR: request failed or response was invalid")
             return None
 
 

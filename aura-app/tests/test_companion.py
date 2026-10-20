@@ -18,7 +18,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from memory.sqlite_store import AuraMemoryStore
 from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
-from brain.llm_provider import ClaudeProvider
+from brain.llm_provider import ClaudeProvider, OpenAIProvider
 from api.sensor_api_server import AuraSensorAPIHandler, get_sensor_api_token, is_request_authorized
 from scripts import pi_node_simulator
 from devices.event_bus import DeviceEventBus
@@ -578,4 +578,35 @@ class CompanionTest(unittest.TestCase):
         self.assertIn('request failed or response was invalid',output.getvalue())
         self.assertNotIn('private-runtime-sentinel',output.getvalue())
         self.assertNotIn('private-prompt-sentinel',output.getvalue())
+
+    def test_openai_failures_redact_provider_body_prompt_and_key(self):
+        api_key='private-openai-key-sentinel'
+        prompt='private-openai-prompt-sentinel'
+        body='private-openai-provider-body-sentinel'
+        failure=urllib.error.HTTPError(
+            'https://api.openai.com/v1/responses',
+            500,
+            'provider error',
+            None,
+            io.BytesIO(body.encode()),
+        )
+        with patch.dict(os.environ,{'OPENAI_API_KEY':api_key,'OPENAI_MODEL':'test-model'}):
+            with patch('urllib.request.urlopen',side_effect=failure):
+                output=io.StringIO()
+                with redirect_stdout(output):
+                    self.assertIsNone(OpenAIProvider().generate(prompt))
+        logged=output.getvalue()
+        self.assertIn('HTTP 500',logged)
+        for private_value in (api_key,prompt,body):
+            self.assertNotIn(private_value,logged)
+
+    def test_openai_unexpected_errors_are_redacted(self):
+        with patch.dict(os.environ,{'OPENAI_API_KEY':'test-openai-key','OPENAI_MODEL':'test-model'}):
+            with patch('urllib.request.urlopen',side_effect=RuntimeError('private-openai-runtime-sentinel')):
+                output=io.StringIO()
+                with redirect_stdout(output):
+                    self.assertIsNone(OpenAIProvider().generate('private-openai-prompt-sentinel'))
+        self.assertIn('request failed or response was invalid',output.getvalue())
+        self.assertNotIn('private-openai-runtime-sentinel',output.getvalue())
+        self.assertNotIn('private-openai-prompt-sentinel',output.getvalue())
 if __name__=='__main__':unittest.main()

@@ -127,6 +127,11 @@ separately. Missing hardware access must remain an explicit unresolved gate.
 Status: partial components exist; acceptance not complete.
 
 - Implemented: diagnose configuration and service readiness without exposing secrets.
+- Fixed: Anthropic and OpenAI provider failures log only a status code or a
+  generic transport/response error. Provider response bodies, arbitrary
+  exception text, prompts, and credentials are no longer logged. Tests cover
+  HTTP and unexpected failures for both adapters; live provider acceptance
+  still requires configured credentials.
 - Implemented: Setup includes a guided first-device acceptance checklist for
   conversation/provider, reviewed voice input, spoken output/Stop, memory
   continuity, Mac ambient mode and optional MCP approvals. Checklist marks are
