@@ -538,7 +538,44 @@ class CompanionTest(unittest.TestCase):
             with patch('urllib.request.urlopen') as request:
                 request.return_value.__enter__.return_value.read.return_value=b'{"content":[{"type":"text","text":"Hello Sujan"}]}'
                 self.assertEqual(ClaudeProvider().generate('Hello'),'Hello Sujan')
-                payload=json.loads(request.call_args.args[0].data)
+                sent=request.call_args.args[0]
+                self.assertEqual(sent.full_url,'https://api.anthropic.com/v1/messages')
+                self.assertEqual(sent.method,'POST')
+                self.assertEqual(sent.get_header('X-api-key'),'test-key')
+                self.assertEqual(sent.get_header('Anthropic-version'),'2023-06-01')
+                self.assertNotIn('test-key',sent.full_url)
+                payload=json.loads(sent.data)
                 self.assertEqual(payload['model'],'claude-sonnet-4-6')
                 self.assertIn('AURA',payload['system'])
+
+    def test_claude_failures_redact_provider_body_prompt_and_key(self):
+        api_key='private-api-key-sentinel'
+        prompt='private-prompt-sentinel'
+        body='private-provider-body-sentinel'
+        failure=urllib.error.HTTPError(
+            'https://api.anthropic.com/v1/messages',
+            500,
+            'provider error',
+            None,
+            io.BytesIO(body.encode()),
+        )
+        with patch.dict(os.environ,{'ANTHROPIC_API_KEY':api_key,'ANTHROPIC_MODEL':'test-model'}):
+            with patch('urllib.request.urlopen',side_effect=failure):
+                output=io.StringIO()
+                with redirect_stdout(output):
+                    self.assertIsNone(ClaudeProvider().generate(prompt))
+        logged=output.getvalue()
+        self.assertIn('HTTP 500',logged)
+        for private_value in (api_key,prompt,body):
+            self.assertNotIn(private_value,logged)
+
+    def test_claude_unexpected_errors_are_redacted(self):
+        with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'test-key','ANTHROPIC_MODEL':'test-model'}):
+            with patch('urllib.request.urlopen',side_effect=RuntimeError('private-runtime-sentinel')):
+                output=io.StringIO()
+                with redirect_stdout(output):
+                    self.assertIsNone(ClaudeProvider().generate('private-prompt-sentinel'))
+        self.assertIn('request failed or response was invalid',output.getvalue())
+        self.assertNotIn('private-runtime-sentinel',output.getvalue())
+        self.assertNotIn('private-prompt-sentinel',output.getvalue())
 if __name__=='__main__':unittest.main()

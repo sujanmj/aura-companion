@@ -102,11 +102,16 @@ class ClaudeProvider(BaseLLMProvider):
                             return text.strip()
             return None
         except urllib.error.HTTPError as err:
-            error_body = err.read().decode("utf-8", errors="replace")
-            print(f"CLAUDE_PROVIDER_ERROR: HTTP {err.code} {error_body}")
+            try:
+                err.close()
+            except Exception:
+                pass
+            print(f"CLAUDE_PROVIDER_ERROR: HTTP {err.code}")
             return None
-        except Exception as exc:
-            print(f"CLAUDE_PROVIDER_ERROR: {exc}")
+        except Exception:
+            # Provider exceptions may contain request details or response text.
+            # Keep logs useful for recovery without exposing prompts or secrets.
+            print("CLAUDE_PROVIDER_ERROR: request failed or response was invalid")
             return None
 
 
