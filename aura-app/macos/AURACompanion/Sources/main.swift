@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 13917)
+Total output lines: 1154
+
 import SwiftUI
 import AppKit
 @preconcurrency import AVFoundation
@@ -88,6 +91,9 @@ struct AURAAmbientApp: App {
     private var pendingSessionOnlyCookie: String?
     private var contextLabels: [String] = []
     private var wakeResume = WakeResumeState()
+    private var sceneObservationKey: String?
+    private var lastSceneObservationAttempt = Date.distantPast
+    private var sceneObservationInFlight = false
 
     override init() {
         super.init()
@@ -315,11 +321,17 @@ struct AURAAmbientApp: App {
                 status = "Camera access is off. Allow it in System Settings."; return
             }
             let camera = LocalCamera(
-                onScene: { [weak self] labels, present in
+                onScene: { [weak self] labels, confidence, present in
                     Task { @MainActor in
                         guard let self, self.lifecycle.acceptsCaptureEvent(generation) else { return }
                         self.contextLabels = labels; self.scene = labels.joined(separator: ", ")
                         self.isPersonPresent = present
+                        self.saveSceneSummaryIfNeeded(
+                            labels: labels,
+                            confidence: confidence,
+                            humanPresent: present,
+                            generation: generation
+                        )
                     }
                 },
                 onFailure: { [weak self] message in
@@ -386,6 +398,57 @@ struct AURAAmbientApp: App {
         }
     }
 
+    private func saveSceneSummaryIfNeeded(
+        labels: [String],
+        confidence: Float,
+        humanPresent: Bool,
+        generation: UInt64
+    ) {
+        guard lifecycle.acceptsCaptureEvent(generation), !sceneObservationInFlight,
+              let cookie, (!labels.isEmpty || humanPresent) else { return }
+        let key = labels.joined(separator: "|") + "|human=\(humanPresent)"
+        let now = Date()
+        guard key != sceneObservationKey,
+              now.timeIntervalSince(lastSceneObservationAttempt) >= 60 else { return }
+
+        sceneObservationKey = key
+        lastSceneObservationAttempt = now
+        sceneObservationInFlight = true
+        Task { [weak self] in
+            guard let self,
+                  self.lifecycle.acceptsCaptureEvent(generation),
+                  let url = URL(string: "http://127.0.0.1:8790/api/ambient/observation") else {
+                self?.sceneObservationInFlight = false
+                return
+            }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("http://127.0.0.1:8790", forHTTPHeaderField: "Origin")
+            request.setValue(cookie, forHTTPHeaderField: "Cookie")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: [
+                "labels": Array(labels.prefix(4)),
+                "human_present": humanPresent,
+                "confidence": min(1.0, max(0.0, Double(confidence))),
+            ])
+            request.timeoutInterval = 5
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                await MainActor.run {
+                    self.sceneObservationInFlight = false
+                    if (response as? HTTPURLResponse)?.statusCode != 200 {
+                        self.sceneObservationKey = nil
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.sceneObservationInFlight = false
+                    self.sceneObservationKey = nil
+                }
+            }
+        }
+    }
+
     private func handle(_ transcript: String) {
         guard isActive, replyTask == nil, !synthesizer.isSpeaking else { return }
         let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -424,166 +487,7 @@ struct AURAAmbientApp: App {
             let (data, httpResponse) = try await URLSession.shared.data(for: request)
             guard lifecycle.contains(generation), !Task.isCancelled else { return }
             guard let http = httpResponse as? HTTPURLResponse, http.statusCode == 200 else {
-                if (httpResponse as? HTTPURLResponse)?.statusCode == 401 {
-                    forgetPairing(); status = "AURA restarted. Pair with the current session code."
-                } else { status = "AURA could not complete this request. Check the conversation before retrying." }
-                return
-            }
-            let response = try JSONDecoder().decode(CompanionResponse.self, from: data)
-            await MainActor.run {
-                guard lifecycle.contains(generation), isActive, !Task.isCancelled else { return }
-                recentResponse = response.response
-                let utterance = AVSpeechUtterance(string: response.response); utterance.voice = AVSpeechSynthesisVoice(language: "en-US"); utterance.rate = 0.48
-                let outputGeneration = speechOutputSuppression.begin()
-                let sessionGeneration = lifecycle.generation
-                transcriber?.setOutputSuppressed(true)
-                status = "AURA is speaking locally. Microphone transcription pauses during playback."
-                synthesizer.speak(utterance)
-                Task { [weak self] in
-                    guard let self else { return }
-                    while speechOutputSuppression.contains(outputGeneration), synthesizer.isSpeaking {
-                        try? await Task.sleep(nanoseconds: 100_000_000)
-                    }
-                    guard speechOutputSuppression.contains(outputGeneration) else { return }
-                    try? await Task.sleep(nanoseconds: 800_000_000)
-                    guard speechOutputSuppression.finish(outputGeneration) else { return }
-                    transcriber?.setOutputSuppressed(false)
-                    guard lifecycle.contains(sessionGeneration) else { return }
-                    status = "AURA finished speaking. Listening locally."
-                }
-            }
-        } catch {
-            guard lifecycle.contains(generation), !Task.isCancelled else { return }
-            status = "AURA’s reply was interrupted. Check the conversation before retrying; it may already be saved."
-        }
-    }
-
-    func stop(preservingWakeResume: Bool = false) {
-        startupTimeoutTask?.cancel()
-        startupTimeoutTask = nil
-        speechOutputSuppression.cancel()
-        if !cameraStopping { lifecycle.pause() }
-        let stoppedGeneration = lifecycle.generation
-        if !preservingWakeResume { wakeResume.cancel() }
-        microphoneStopping = microphoneOn || microphoneStopping
-        isStarting = false; isActive = false; microphoneOn = false; cameraOn = false
-        replyTask?.cancel(); replyTask = nil
-        if let audioConfigurationObserver {
-            NotificationCenter.default.removeObserver(audioConfigurationObserver)
-            self.audioConfigurationObserver = nil
-        }
-        audioCapture.stop { [weak self] in
-            Task { @MainActor in
-                guard let self, self.lifecycle.canCompleteStop(stoppedGeneration) else { return }
-                self.microphoneStopping = false
-                self.refreshPausedStatus()
-            }
-        }
-        transcriber?.stop(); transcriber = nil
-        let cameraToStop = camera
-        camera = nil
-        cameraStopping = cameraToStop != nil || cameraStopping
-        contextLabels = []; scene = ""; isPersonPresent = false
-        synthesizer.stopSpeaking(at: .immediate)
-        status = cameraStopping
-            ? microphoneStopping ? "Paused. Microphone and camera are stopping."
-                : "Paused. Microphone is off; camera is stopping."
-            : microphoneStopping ? "Paused. Microphone is stopping; camera is off."
-                : "Paused. Microphone and camera are off."
-        cameraToStop?.stop { [weak self] in
-            Task { @MainActor in
-                guard let self, self.lifecycle.canCompleteStop(stoppedGeneration) else { return }
-                self.cameraOn = false
-                self.cameraStopping = false
-                self.refreshPausedStatus()
-                if self.wakeResume.cameraStopped() {
-                    Task { await self.start() }
-                }
-            }
-        }
-    }
-
-    private func refreshPausedStatus() {
-        guard status.hasPrefix("Paused. Microphone") else { return }
-        switch (microphoneStopping, cameraStopping) {
-        case (true, true): status = "Paused. Microphone and camera are stopping."
-        case (true, false): status = "Paused. Microphone is stopping; camera is off."
-        case (false, true): status = "Paused. Microphone is off; camera is stopping."
-        case (false, false): status = "Paused. Microphone and camera are off."
-        }
-    }
-
-    func forgetPairing() {
-        _ = pairingGeneration.issue()
-        isPairing = false; isCheckingPairing = false; canRetrySavedPairing = false
-        canUseSessionOnlyPairing = false; pendingSessionOnlyCookie = nil
-        isClearingPairing = true
-        stop(); cookie = nil; isPaired = false; status = "Clearing saved pairing…"
-        Task { [weak self] in
-            let removed = await Keychain.delete()
-            guard let self else { return }
-            self.isClearingPairing = false
-            self.status = removed
-                ? "Session pairing cleared."
-                : "AURA could not confirm removal from Keychain. Remove AURA Companion from Keychain Access before pairing again."
-        }
-    }
-
-    var permissionSettingsURL: URL? {
-        guard let target = PermissionSettings.target(for: status) else { return nil }
-        return URL(string: "x-apple.systempreferences:com.apple.preference.security?\(target)")
-    }
-
-    func openPermissionSettings() {
-        let permissionStatus = status
-        guard let url = permissionSettingsURL else { return }
-        if !NSWorkspace.shared.open(url),
-           let fallback = PermissionSettings.fallbackMessage(for: permissionStatus) {
-            status = fallback
-        }
-    }
-}
-
-// All camera configuration, start/stop and frames belong to one serial queue.
-// A new instance per ambient session prevents old callbacks stopping a new camera.
-private final class LocalCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
-    private let queue = DispatchQueue(label: "aura.ambient.capture")
-    private let session = AVCaptureSession()
-    private let output = AVCaptureVideoDataOutput()
-    private var lastVisionTime = Date.distantPast
-    private var stopped = false
-    private let onScene: @Sendable ([String], Bool) -> Void
-    private let onFailure: @Sendable (String) -> Void
-    private var failureObservers: [NSObjectProtocol] = []
-
-    init(
-        onScene: @escaping @Sendable ([String], Bool) -> Void,
-        onFailure: @escaping @Sendable (String) -> Void
-    ) {
-        self.onScene = onScene
-        self.onFailure = onFailure
-    }
-
-    func start() async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            queue.async {
-                do {
-                    guard !self.stopped else { throw CancellationError() }
-                    try self.configure()
-                    self.observeSessionFailures()
-                    self.session.startRunning()
-                    guard self.session.isRunning else { throw CaptureError.startFailed }
-                    continuation.resume()
-                } catch { continuation.resume(throwing: error) }
-            }
-        }
-    }
-
-    private func configure() throws {
-        session.beginConfiguration()
-        defer { session.commitConfiguration() }
-        session.sessionPreset = .low
-        guard let device = AVCaptureDevice.default(for: .video) else { throw CaptureError.noCamera }
+                if (httpRespo…1917 tokens truncated…ult(for: .video) else { throw CaptureError.noCamera }
         let input = try AVCaptureDeviceInput(device: device)
         guard session.canAddInput(input) else { throw CaptureError.inputConfiguration }
         session.addInput(input)
@@ -643,7 +547,12 @@ private final class LocalCamera: NSObject, AVCaptureVideoDataOutputSampleBufferD
         let humans = VNDetectHumanRectanglesRequest()
         do {
             try VNImageRequestHandler(cvPixelBuffer: image).perform([request, humans])
-            onScene(request.results?.prefix(4).map { $0.identifier } ?? [], !(humans.results?.isEmpty ?? true))
+            let results = request.results.map { Array($0.prefix(4)) } ?? []
+            onScene(
+                results.map { $0.identifier },
+                results.first?.confidence ?? 0,
+                !(humans.results?.isEmpty ?? true)
+            )
         } catch { }
     }
 }
@@ -969,7 +878,7 @@ private struct MenuView: View {
         VStack(alignment: .leading, spacing: 15) {
             HStack { Text("✳ AURA").font(.system(size: 22, weight: .medium)); Spacer(); Text(monitor.isActive ? "LIVE" : "PAUSED").font(.caption2).tracking(2).foregroundStyle(monitor.isActive ? .green : .secondary) }
             Text("Ambient companion").font(.headline)
-            Text("AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. Only direct requests and explicit support phrases reach your AURA companion.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text("AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. While ambient mode is on, changed scene summaries may be stored in local SQLite. Only direct requests and explicit support phrases reach your AURA companion.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) { Label(monitor.microphoneStopping ? "Microphone stopping" : monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn || monitor.microphoneStopping ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
             if !monitor.isPaired {
                 if monitor.canRetrySavedPairing {
@@ -992,6 +901,8 @@ private struct MenuView: View {
                 Button("Clear pairing") { monitor.forgetPairing() }.font(.caption).foregroundStyle(.secondary)
             }
             Text(monitor.status).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text("While ambient mode is live, AURA may save a short on-device scene summary locally when the view changes (at most once a minute). Photos and audio are not saved.")
+                .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             if monitor.permissionSettingsURL != nil {
                 Button("Open Privacy Settings") { monitor.openPermissionSettings() }
                     .buttonStyle(.bordered)

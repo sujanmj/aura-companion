@@ -20,6 +20,7 @@ STYLE_RULES = [
     "If user is low/sad, comfort first, advice second",
     "If user is anxious before work/presentation, give calm confidence",
     "Do not mention older memories, old conversations, or old observations unless they are clearly relevant to the CURRENT USER MESSAGE or latest observation.",
+    "Treat on-device scene estimates as uncertain clues, never proof of a person's identity, an activity, or an exact object's location.",
 ]
 
 
@@ -35,7 +36,8 @@ class PromptBuilder:
         feedback = self._load_feedback(user_id)
 
         current_message = self._latest_user_message(conversations)
-        latest_observation = observations[0].get("event_summary") if observations else None
+        latest_record = observations[0] if observations else None
+        latest_observation = latest_record.get("event_summary") if latest_record else None
         relevant_facts = self.relevance_filter.filter_facts(current_message, latest_observation, facts)
         previous_assistant = self._previous_assistant_message(conversations)
         relevant_device_events = self._load_relevant_device_events(user_id, current_message)
@@ -50,7 +52,18 @@ class PromptBuilder:
         sections.extend(["", "CURRENT USER MESSAGE:", current_message or "(none)"])
 
         if latest_observation:
-            sections.extend(["", "Latest observation:", f"- {latest_observation}"])
+            if latest_record.get("source") == "mac_local_vision":
+                confidence = float(latest_record.get("confidence", 0.0))
+                recorded = latest_record.get("created_at", "unknown time")
+                sections.extend(
+                    [
+                        "",
+                        "Recent on-device visual estimate (may be inaccurate or stale; not proof of identity, activity, or exact object location):",
+                        f"- {latest_observation} (confidence={confidence:.2f}, recorded={recorded})",
+                    ]
+                )
+            else:
+                sections.extend(["", "Latest observation:", f"- {latest_observation}"])
 
         if relevant_device_events:
             sections.extend(["", "Relevant device events:"])

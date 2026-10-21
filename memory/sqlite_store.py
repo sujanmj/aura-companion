@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 13477)
+Total output lines: 1501
+
 from __future__ import annotations
 
 import json
@@ -375,6 +378,69 @@ class AuraMemoryStore:
         self.conn.commit()
         return int(cur.lastrowid)
 
+    def add_ambient_scene_observation(
+        self,
+        user_id: int,
+        labels: list[str],
+        human_present: bool,
+        confidence: float,
+    ) -> dict[str, Any]:
+        """Save a rate-limited, derived scene summary; never save camera frames."""
+        if (
+            not isinstance(labels, list)
+            or len(labels) > 4
+            or any(
+                not isinstance(label, str)
+                or not label.strip()
+                or len(label.strip()) > 64
+                or not re.fullmatch(r"[A-Za-z0-9 _-]+", label.strip())
+                for label in labels
+            )
+        ):
+            raise ValueError("Invalid scene labels")
+        if not isinstance(human_present, bool):
+            raise ValueError("Invalid person-presence signal")
+        if (
+            not isinstance(confidence, (int, float))
+            or isinstance(confidence, bool)
+            or not 0.0 <= confidence <= 1.0
+        ):
+            raise ValueError("Invalid scene confidence")
+        clean_labels = [label.strip() for label in labels]
+        if not clean_labels and not human_present:
+            return {"saved": False, "reason": "no_scene_signal"}
+
+        latest = self.conn.execute(
+            """SELECT event_summary FROM observations
+               WHERE user_id=? AND source='mac_local_vision'
+               ORDER BY id DESC LIMIT 1""",
+            (user_id,),
+        ).fetchone()
+        summary = (
+            "On-device scene estimate: "
+            + (", ".join(clean_labels) if clean_labels else "no clear objects")
+            + f". Human-shaped figure detected: {'yes' if human_present else 'no'}."
+        )
+        if latest and latest["event_summary"] == summary:
+            return {"saved": False, "reason": "unchanged"}
+        recent = self.conn.execute(
+            """SELECT 1 FROM observations
+               WHERE user_id=? AND source='mac_local_vision'
+                 AND created_at >= datetime('now', '-60 seconds')
+               LIMIT 1""",
+            (user_id,),
+        ).fetchone()
+        if recent:
+            return {"saved": False, "reason": "rate_limited"}
+        observation_id = self.add_observation(
+            user_id,
+            event_type="ambient_visual_context",
+            event_summary=summary,
+            confidence=float(confidence),
+            source="mac_local_vision",
+        )
+        return {"saved": True, "observation_id": observation_id}
+
     def add_mood_log(
         self,
         user_id: int,
@@ -570,168 +636,7 @@ class AuraMemoryStore:
     def get_recent_response_feedback(self, user_id: int, limit: int = 10) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """
-            SELECT rating, feedback_text, response_text, situation, tone, created_at
-            FROM response_feedback
-            WHERE user_id = ?
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (user_id, limit),
-        )
-        return [dict(row) for row in cur.fetchall()]
-
-    def add_device_event(
-        self,
-        user_id: int,
-        event_type: str,
-        event_summary: str,
-        source: str = "unknown",
-        room: str | None = None,
-        severity: str = "low",
-        confidence: float = 0.5,
-        requires_action: bool = False,
-        metadata: dict | None = None,
-    ) -> int:
-        allowed_severities = {"low", "medium", "high", "critical"}
-        if severity not in allowed_severities:
-            raise ValueError(f"severity must be one of: {', '.join(sorted(allowed_severities))}")
-
-        metadata_json = json.dumps(metadata) if metadata is not None else None
-        cur = self.conn.execute(
-            """
-            INSERT INTO device_events (
-                user_id, event_type, event_summary, source, room, severity,
-                confidence, requires_action, metadata_json
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                user_id,
-                event_type,
-                event_summary,
-                source,
-                room,
-                severity,
-                confidence,
-                int(requires_action),
-                metadata_json,
-            ),
-        )
-        self.conn.commit()
-        return int(cur.lastrowid)
-
-    def add_device_event_once(
-        self,
-        user_id: int,
-        event_type: str,
-        event_summary: str,
-        source: str,
-        external_event_id: str,
-        room: str | None = None,
-        severity: str = "low",
-        confidence: float = 0.5,
-        requires_action: bool = False,
-        metadata: dict | None = None,
-    ) -> tuple[int, bool]:
-        allowed_severities = {"low", "medium", "high", "critical"}
-        if severity not in allowed_severities:
-            raise ValueError(f"severity must be one of: {', '.join(sorted(allowed_severities))}")
-        event_key = external_event_id.strip()
-        if not event_key or len(event_key) > 128:
-            raise ValueError("external_event_id must contain 1–128 characters")
-
-        metadata_json = json.dumps(metadata) if metadata is not None else None
-        cur = self.conn.execute(
-            """INSERT INTO device_events (
-                   user_id, event_type, event_summary, source, room, severity,
-                   confidence, requires_action, metadata_json, external_event_id
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-               ON CONFLICT(user_id, source, external_event_id) DO NOTHING""",
-            (
-                user_id,
-                event_type,
-                event_summary,
-                source,
-                room,
-                severity,
-                confidence,
-                int(requires_action),
-                metadata_json,
-                event_key,
-            ),
-        )
-        inserted = cur.rowcount == 1
-        if inserted:
-            event_id = int(cur.lastrowid)
-        else:
-            row = self.conn.execute(
-                """SELECT id FROM device_events
-                   WHERE user_id = ? AND source = ? AND external_event_id = ?""",
-                (user_id, source, event_key),
-            ).fetchone()
-            if row is None:
-                raise RuntimeError("Idempotent event insert did not return an event")
-            event_id = int(row["id"])
-        self.conn.commit()
-        return event_id, inserted
-
-    def get_device_event(self, event_id: int) -> dict[str, Any] | None:
-        row = self.conn.execute(
-            """SELECT id, event_type, event_summary, source, room, severity,
-                      confidence, requires_action, action_status, metadata_json, created_at
-               FROM device_events WHERE id = ?""",
-            (event_id,),
-        ).fetchone()
-        return dict(row) if row else None
-
-    def get_recent_device_events(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
-        cur = self.conn.execute(
-            """
-            SELECT id, event_type, event_summary, source, room, severity,
-                   confidence, requires_action, action_status, metadata_json, created_at
-            FROM device_events
-            WHERE user_id = ?
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            (user_id, limit),
-        )
-        return [self._parse_device_event_row(row) for row in cur.fetchall()]
-
-    @staticmethod
-    def _parse_device_event_row(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
-        event = dict(row)
-        if "requires_action" in event:
-            event["requires_action"] = bool(event["requires_action"])
-        metadata_json = event.pop("metadata_json", None)
-        if metadata_json:
-            try:
-                event["metadata"] = json.loads(metadata_json)
-            except json.JSONDecodeError:
-                event["metadata"] = metadata_json
-        return event
-
-    def get_pending_device_events(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
-        cur = self.conn.execute(
-            """
-            SELECT id, event_type, event_summary, source, room, severity,
-                   confidence, requires_action, action_status, metadata_json, created_at
-            FROM device_events
-            WHERE user_id = ? AND action_status = 'none'
-            ORDER BY id ASC
-            LIMIT ?
-            """,
-            (user_id, limit),
-        )
-        return [self._parse_device_event_row(row) for row in cur.fetchall()]
-
-    def update_device_event_action_status(self, event_id: int, action_status: str) -> None:
-        self.conn.execute(
-            """
-            UPDATE device_events
-            SET action_status = ?
-            WHERE id = ?
-            """,
+            SELECT rating, feedback_text, response_text, situation, tone, created…1477 tokens truncated… """,
             (action_status, event_id),
         )
         self.conn.commit()

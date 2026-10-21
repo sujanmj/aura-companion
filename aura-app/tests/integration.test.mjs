@@ -84,6 +84,64 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       403,
     );
     let cookie = await login();
+    assert.equal(
+      (await post("ambient/observation", { labels: ["room"], human_present: true, confidence: 0.8 })).status,
+      401,
+    );
+    assert.equal(
+      (
+        await post(
+          "ambient/observation",
+          { labels: ["room"], human_present: true, confidence: 0.8 },
+          cookie,
+          "https://evil.test",
+        )
+      ).status,
+      403,
+    );
+    assert.equal(
+      (
+        await post(
+          "ambient/observation",
+          { labels: ["<script>"], human_present: true, confidence: 0.8 },
+          cookie,
+        )
+      ).status,
+      400,
+    );
+    const sceneObservation = await post(
+      "ambient/observation",
+      {
+        labels: ["living room", "sofa"],
+        human_present: true,
+        confidence: 0.91,
+      },
+      cookie,
+    );
+    assert.equal(sceneObservation.status, 200);
+    assert.equal((await sceneObservation.json()).saved, true);
+    const unchangedScene = await post(
+      "ambient/observation",
+      {
+        labels: ["living room", "sofa"],
+        human_present: true,
+        confidence: 0.93,
+      },
+      cookie,
+    );
+    assert.deepEqual(await unchangedScene.json(), {
+      saved: false,
+      reason: "unchanged",
+    });
+    const rapidSceneChange = await post(
+      "ambient/observation",
+      { labels: ["kitchen"], human_present: false, confidence: 0.8 },
+      cookie,
+    );
+    assert.deepEqual(await rapidSceneChange.json(), {
+      saved: false,
+      reason: "rate_limited",
+    });
     const readiness = await (
       await fetch(base + "/api/readiness", { headers: { Cookie: cookie } })
     ).json();

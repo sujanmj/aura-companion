@@ -18,6 +18,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from memory.sqlite_store import AuraMemoryStore
 from companion.memory_extractor import MemoryExtractor
 from companion.reaction_engine import CompanionReactionEngine
+from brain.prompt_builder import PromptBuilder
 from brain.llm_provider import ClaudeProvider, OpenAIProvider
 from api.sensor_api_server import AuraSensorAPIHandler, get_sensor_api_token, is_request_authorized
 from scripts import pi_node_simulator
@@ -110,6 +111,24 @@ class CompanionTest(unittest.TestCase):
             self.assertFalse(store.delete_observation(other, observation_id))
             self.assertTrue(store.delete_observation(owner, observation_id))
             self.assertEqual(store.get_latest_observations(owner), [])
+            store.close()
+
+    def test_visual_memory_is_labeled_uncertain_and_time_scoped_in_prompts(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            store.add_conversation(owner, 'user', 'Where did I see my keys?')
+            store.add_ambient_scene_observation(
+                owner, ['living room', 'sofa'], True, 0.42
+            )
+            prompt = PromptBuilder(store).build_companion_prompt(
+                owner, {'situation': 'The user is looking for keys.'}
+            )
+            self.assertIn('may be inaccurate or stale', prompt)
+            self.assertIn('not proof of identity, activity, or exact object location', prompt)
+            self.assertIn('confidence=0.42', prompt)
+            self.assertIn('recorded=', prompt)
             store.close()
 
     def test_conversation_history_clear_is_scoped_and_preserves_companion_memory(self):

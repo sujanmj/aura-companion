@@ -60,6 +60,13 @@ Status: in progress; this is the current phase.
   configuration, local fallback and configured-but-unverified providers.
 - Implemented: denied macOS Speech Recognition, microphone, and camera
   permissions offer a direct Privacy Settings button for recovery.
+- Implemented: during an explicitly started Mac ambient session, Apple Vision
+  scene labels and a human-presence signal can be saved as derived summaries in
+  the existing SQLite observation memory. The authenticated loopback endpoint
+  accepts bounded labels only, stores no image/audio, and limits writes to one
+  changed summary per minute. The Memory view already supports review/deletion.
+  Unit and authenticated API tests pass, and the native helper builds. Hardware
+  acceptance of this new persistence path remains outstanding.
 - Fixed: copy audio tap buffers before asynchronous recognition and isolate
   delayed errors with per-utterance generations, so a stale callback cannot
   reset a newer phrase. Native tests cover stale callbacks.
@@ -447,8 +454,9 @@ not change the current status: Phase 2 is active.
 
 ### Phase 7 — Continuous, private perception
 
-- Build the real Pi sensor runtime with explicit camera/microphone indicators,
-  a physical or on-screen pause, resource limits, and reliable offline behavior.
+- Finish and validate continuous perception on Mac first, with explicit
+  camera/microphone indicators, a visible pause, resource limits, and reliable
+  offline behavior; port the validated runtime to Pi afterward.
 - Process live streams locally where supported; separate transient perception
   from information deliberately saved to SQLite. Raw audio/video retention stays
   off unless the user makes a specific, informed choice.

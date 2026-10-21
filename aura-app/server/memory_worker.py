@@ -133,6 +133,13 @@ def main():
                     if not store.delete_observation(user, observation_id):
                         raise ValueError('Observation not found')
                     result = {'ok': True}
+                elif op == 'ambient_scene':
+                    result = store.add_ambient_scene_observation(
+                        user,
+                        req.get('labels'),
+                        req.get('human_present'),
+                        req.get('confidence'),
+                    )
                 elif op == 'chat':
                     message = req['message']
                     if not isinstance(message, str) or not 0 < len(message.strip()) <= 8000:

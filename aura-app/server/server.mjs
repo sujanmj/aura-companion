@@ -234,6 +234,40 @@ const server = http.createServer(async (req, res) => {
       if (["/api/stt", "/api/tts"].includes(url.pathname))
         return await voice(req, res, url.pathname.slice(5));
       const data = JSON.parse((await body(req)).toString());
+      if (url.pathname === "/api/ambient/observation") {
+        if (
+          !Array.isArray(data.labels) ||
+          data.labels.length > 4 ||
+          data.labels.some(
+            (label) =>
+              typeof label !== "string" ||
+              label.trim().length < 1 ||
+              label.trim().length > 64 ||
+              !/^[A-Za-z0-9 _-]+$/.test(label.trim()),
+          ) ||
+          typeof data.human_present !== "boolean" ||
+          typeof data.confidence !== "number" ||
+          !Number.isFinite(data.confidence) ||
+          data.confidence < 0 ||
+          data.confidence > 1
+        )
+          return json(res, 400, { error: "Scene summary is invalid." });
+        try {
+          return json(
+            res,
+            200,
+            await memory("ambient_scene", {
+              labels: data.labels,
+              human_present: data.human_present,
+              confidence: data.confidence,
+            }),
+          );
+        } catch {
+          return json(res, 503, {
+            error: "AURA could not save the local scene summary.",
+          });
+        }
+      }
       if (url.pathname === "/api/preferences") {
         if (
           typeof data.checkins_enabled !== "boolean" ||
