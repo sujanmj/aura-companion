@@ -209,6 +209,8 @@ function App() {
     [factDraft, setFactDraft] = useState(""),
     [editingRoutine, setEditingRoutine] = useState<number | null>(null),
     [routineDraft, setRoutineDraft] = useState(""),
+    [editingObservation, setEditingObservation] = useState<number | null>(null),
+    [observationDraft, setObservationDraft] = useState(""),
     [personName, setPersonName] = useState(""),
     [personRelation, setPersonRelation] = useState(""),
     [personConsent, setPersonConsent] = useState(false),
@@ -1463,9 +1465,54 @@ function App() {
                           {observation.event_type.replaceAll("_", " ")} ·{" "}
                           {observation.source}
                         </small>
-                        <p>{observation.event_summary}</p>
+                        {editingObservation === observation.id ? (
+                          <form
+                            onSubmit={async (event) => {
+                              event.preventDefault();
+                              try {
+                                await api("observation/correct", {
+                                  observation_id: observation.id,
+                                  value: observationDraft,
+                                });
+                                setEditingObservation(null);
+                                await refresh();
+                                setError("Observation corrected and marked as your note.");
+                              } catch (e) {
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            <label>
+                              Correct this memory
+                              <textarea
+                                maxLength={500}
+                                value={observationDraft}
+                                onChange={(event) => setObservationDraft(event.target.value)}
+                                required
+                              />
+                            </label>
+                            <div className="fact-actions">
+                              <button type="submit">Save correction</button>
+                              <button type="button" onClick={() => setEditingObservation(null)}>
+                                Cancel
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <p>{observation.event_summary}</p>
+                        )}
                         <time>{observation.created_at}</time>
                         <div className="fact-actions">
+                          {editingObservation !== observation.id && (
+                            <button
+                              onClick={() => {
+                                setEditingObservation(observation.id);
+                                setObservationDraft(observation.event_summary);
+                              }}
+                            >
+                              Correct
+                            </button>
+                          )}
                           <button
                             onClick={async () => {
                               if (

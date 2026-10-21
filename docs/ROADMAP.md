@@ -80,6 +80,12 @@ Status: in progress; this is the current phase.
   estimates are labeled uncertain and cannot confirm identity, activity, or an
   exact object location. Automated memory/prompt tests and cross-platform CI
   pass; end-to-end camera acceptance remains outstanding.
+- Implemented: saved observations can be corrected or deleted from Memory.
+  Corrections replace the selected row in the existing SQLite database, are
+  marked `user_correction` with explicit user-authored wording, and can enter
+  replies only when relevant to the current message. API input is bounded and
+  edits remain scoped to the owning account. Local Python, API, and browser
+  checks cover this flow; CI verification is pending.
 - Fixed: copy audio tap buffers before asynchronous recognition and isolate
   delayed errors with per-utterance generations, so a stale callback cannot
   reset a newer phrase. Native tests cover stale callbacks.

@@ -165,6 +165,16 @@ def main():
                     if not store.delete_observation(user, observation_id):
                         raise ValueError('Observation not found')
                     result = {'ok': True}
+                elif op == 'correct_observation':
+                    observation_id = req.get('observation_id')
+                    value = req.get('value')
+                    if not isinstance(observation_id, int) or isinstance(observation_id, bool) or observation_id <= 0:
+                        raise ValueError('Invalid observation')
+                    if not isinstance(value, str):
+                        raise ValueError('Invalid observation correction')
+                    if not store.correct_observation(user, observation_id, value):
+                        raise ValueError('Observation not found')
+                    result = {'ok': True}
                 elif op == 'create_person':
                     name = req.get('display_name')
                     relation = req.get('relation') or None

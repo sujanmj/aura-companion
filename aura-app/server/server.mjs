@@ -372,11 +372,13 @@ const server = http.createServer(async (req, res) => {
         url.pathname === "/api/fact/delete" ||
         url.pathname === "/api/routine/update" ||
         url.pathname === "/api/routine/delete" ||
+        url.pathname === "/api/observation/correct" ||
         url.pathname === "/api/observation/delete" ||
         url.pathname === "/api/person/delete"
       ) {
         const isRoutine = url.pathname.startsWith("/api/routine/");
-        const isObservation = url.pathname === "/api/observation/delete";
+        const isObservation = url.pathname.startsWith("/api/observation/");
+        const isObservationCorrection = url.pathname === "/api/observation/correct";
         const isPerson = url.pathname === "/api/person/delete";
         const idKey = isRoutine
           ? "routine_id"
@@ -395,17 +397,21 @@ const server = http.createServer(async (req, res) => {
         if (!Number.isSafeInteger(data[idKey]) || data[idKey] <= 0)
           return json(res, 400, { error: `Choose a valid ${label}.` });
         if (
-          url.pathname.endsWith("/update") &&
+          (url.pathname.endsWith("/update") || isObservationCorrection) &&
           (typeof data.value !== "string" ||
             !data.value.trim() ||
-            data.value.length > 2000)
+            data.value.length > (isObservationCorrection ? 500 : 2000))
         )
           return json(res, 400, {
-            error: "A correction must contain 1–2000 characters.",
+            error: isObservationCorrection
+              ? "An observation correction must contain 1–500 characters."
+              : "A correction must contain 1–2000 characters.",
           });
         try {
           const result = await memory(
-            isObservation
+            isObservationCorrection
+              ? "correct_observation"
+              : url.pathname === "/api/observation/delete"
               ? "delete_observation"
               : isPerson
                 ? "forget_person"

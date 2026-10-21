@@ -99,6 +99,25 @@ class MemoryControlsTest(unittest.TestCase):
         self.assertIsNotNone(self.store.create_due_routine_reminder(self.owner, first_day))
         next_day = first_day + timedelta(days=1)
         self.assertIsNotNone(self.store.create_due_routine_reminder(self.owner, next_day))
+
+    def test_observation_corrections_are_user_labeled_bounded_and_owner_scoped(self):
+        observation_id = self.store.add_ambient_scene_observation(
+            self.owner, ['sofa'], False, 0.8
+        )['observation_id']
+        self.assertFalse(
+            self.store.correct_observation(self.other, observation_id, 'The keys are on the table.')
+        )
+        for value in ('', 'x' * 501):
+            with self.assertRaises(ValueError):
+                self.store.correct_observation(self.owner, observation_id, value)
+        self.assertTrue(
+            self.store.correct_observation(self.owner, observation_id, 'The keys are on the blue sofa.')
+        )
+        corrected = self.store.get_latest_observations(self.owner, limit=1)[0]
+        self.assertEqual(corrected['source'], 'user_correction')
+        self.assertEqual(corrected['event_type'], 'user_corrected_observation')
+        self.assertEqual(corrected['confidence'], 1.0)
+        self.assertEqual(corrected['event_summary'], 'User correction: The keys are on the blue sofa.')
     def test_ambient_scene_saves_only_derived_summaries_and_rate_limits_changes(self):
         first = self.store.add_ambient_scene_observation(
             self.owner, ['living room', 'sofa'], True, 0.91

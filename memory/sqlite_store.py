@@ -713,6 +713,20 @@ class AuraMemoryStore:
         self.conn.commit()
         return cur.rowcount == 1
 
+    def correct_observation(self, user_id: int, observation_id: int, value: str) -> bool:
+        """Replace a saved observation with an explicit, user-authored correction."""
+        if not isinstance(value, str) or not value.strip() or len(value.strip()) > 500:
+            raise ValueError("Observation correction must contain 1–500 characters")
+        cur = self.conn.execute(
+            """UPDATE observations
+               SET event_type='user_corrected_observation', event_summary=?,
+                   confidence=1.0, source='user_correction', created_at=CURRENT_TIMESTAMP
+               WHERE id=? AND user_id=?""",
+            ("User correction: " + value.strip(), observation_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
     def get_routine_memory(self, user_id: int) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """SELECT id, routine_key, routine_value, confidence, last_seen_at, created_at

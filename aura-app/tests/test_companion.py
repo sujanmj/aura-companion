@@ -162,6 +162,25 @@ class CompanionTest(unittest.TestCase):
             'On-device scene estimate: sofa.'
         ])
 
+    def test_relevant_user_corrections_are_labeled_as_user_memory(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            observation_id = store.add_ambient_scene_observation(
+                owner, ['sofa'], False, 0.8
+            )['observation_id']
+            store.correct_observation(owner, observation_id, 'My keys are on the blue sofa.')
+            store.add_conversation(owner, 'user', 'Where did I leave my keys?')
+            prompt = PromptBuilder(store).build_companion_prompt(
+                owner, {'situation': 'The user is searching for keys.'}
+            )
+            self.assertIn('Relevant user-provided memory notes and corrections', prompt)
+            self.assertIn('User correction:', prompt)
+            self.assertIn('My keys are on the blue sofa.', prompt)
+            self.assertNotIn('Fresh on-device visual estimates', prompt)
+            store.close()
+
     def test_only_explicitly_consented_and_named_people_enter_prompt_context(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')

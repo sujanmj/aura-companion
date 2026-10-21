@@ -390,6 +390,41 @@ test("camera context observations can be deleted from saved memory", async ({
   ).toHaveCount(0);
 });
 
+test("saved scene observations can be corrected and become user-authored memory", async ({
+  page,
+}) => {
+  await connect(page);
+  const ambient = await page.evaluate(async () => {
+    const response = await fetch("/api/ambient", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Hey AURA, are you there?",
+        observation: "Local camera context: sofa, person present",
+      }),
+    });
+    return response.status;
+  });
+  expect(ambient).toBe(200);
+  await page.reload();
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  const observation = page
+    .locator(".fact")
+    .filter({ hasText: "Local camera context: sofa, person present" });
+  await expect(observation).toBeVisible();
+  await observation.getByRole("button", { name: "Correct" }).click();
+  await observation
+    .getByLabel("Correct this memory")
+    .fill("The blue keys are on the sofa.");
+  await page.getByRole("button", { name: "Save correction" }).click();
+  await expect(
+    page.locator(".fact").filter({ hasText: "User correction: The blue keys are on the sofa." }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("Observation corrected");
+  const status = await page.evaluate(async () => (await (await fetch("/api/status")).json()));
+  expect(status.observations[0].source).toBe("user_correction");
+});
+
 test("conversation history can be cleared while saved memory remains", async ({
   page,
 }) => {

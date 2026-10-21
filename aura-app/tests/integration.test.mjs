@@ -148,6 +148,41 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       saved: false,
       reason: "rate_limited",
     });
+    const observationBeforeCorrection = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    const visualMemory = observationBeforeCorrection.observations.find(
+      (item) => item.source === "mac_local_vision",
+    );
+    assert.ok(visualMemory);
+    assert.equal(
+      (
+        await post(
+          "observation/correct",
+          { observation_id: visualMemory.id, value: "My keys are on the blue sofa." },
+          cookie,
+        )
+      ).status,
+      200,
+    );
+    const correctedMemory = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    const correctedObservation = correctedMemory.observations.find(
+      (item) => item.id === visualMemory.id,
+    );
+    assert.equal(correctedObservation.source, "user_correction");
+    assert.match(correctedObservation.event_summary, /blue sofa/);
+    assert.equal(
+      (
+        await post(
+          "observation/correct",
+          { observation_id: visualMemory.id, value: "x".repeat(501) },
+          cookie,
+        )
+      ).status,
+      400,
+    );
     const readiness = await (
       await fetch(base + "/api/readiness", { headers: { Cookie: cookie } })
     ).json();
