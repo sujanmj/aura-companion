@@ -70,8 +70,8 @@ stores only a SHA-256 hash of each random node token. Enrolling the same ID agai
 rotates its credential. Revoke a node with an authenticated `POST /nodes/revoke`
 request containing `{"node_id":"pi_bedroom_node"}`. The hub's `GET /nodes/status`
 lists enrolled nodes and reports them online for 90 seconds after their last
-heartbeat or event. The node heartbeat command retries temporary network and
-server failures up to three times, but stops immediately when the hub rejects
+heartbeat or event. The node heartbeat command makes up to three attempts for
+temporary network and server failures and stops immediately when the hub rejects
 the enrolled credential.
 
 Node credentials are limited to event ingestion and their own heartbeat. A node
