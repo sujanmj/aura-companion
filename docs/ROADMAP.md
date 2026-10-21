@@ -256,6 +256,15 @@ Status: in progress; this is the current phase.
   database were cleared. The older local app copy has a different ad-hoc
   signature from the code hash in the prior TCC record, and this Mac has no
   installed code-signing identity. No new live-capture acceptance is claimed.
+- Fresh bundle identity permission attempt (2026-10-21): a
+  `security find-identity -v -p codesigning` check reported zero valid signing identities. A
+  temporary build with the same camera/microphone entitlements and a unique test
+  bundle ID still showed no Allow dialog; the microphone request stayed pending
+  until the 60-second watchdog returned AURA to PAUSED with both sensors off.
+  System Settings continued to show the existing AURA microphone toggle on.
+  The temporary app, pairing, isolated service and database were removed. This
+  confirms the current ad-hoc test identity cannot complete the clean permission
+  path on this Mac; a stable signing identity is still needed for acceptance.
 - Remaining: hardware sleep/wake, automatic clean-install permission prompt
   recovery, multi-hour stability of the rebuilt audio-queue version, and
   calibrated acoustic loudness/feedback testing on Mac. Live Claude behavior
