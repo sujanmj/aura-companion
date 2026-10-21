@@ -230,6 +230,10 @@ struct PersonPresenceNoticeTracker {
     }
 }
 
+enum AmbientPowerSettings {
+    static let keepAwakePreferenceKey = "auraKeepMacAwakeWhileAmbient"
+}
+
 enum PermissionSettings {
     static func target(for status: String) -> String? {
         if status.hasPrefix("Allow Speech Recognition") || status.hasPrefix("Speech Recognition permission check timed out") {

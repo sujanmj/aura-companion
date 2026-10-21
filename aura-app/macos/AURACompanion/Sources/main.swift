@@ -93,6 +93,8 @@ struct AURAAmbientApp: App {
     private var sceneObservationInFlight = false
     private var localCheckinTask: Task<Void, Never>?
     private var personPresenceNoticeTracker = PersonPresenceNoticeTracker()
+    private var keepMacAwake = UserDefaults.standard.bool(forKey: AmbientPowerSettings.keepAwakePreferenceKey)
+    private var sleepPreventionActivity: NSObjectProtocol?
 
     override init() {
         super.init()
@@ -364,6 +366,7 @@ struct AURAAmbientApp: App {
             guard lifecycle.activate(generation) else { return }
             observeAudioConfigurationChange(generation: generation)
             isActive = true; microphoneOn = true; microphoneStopping = false; cameraOn = true; cameraStopping = false
+            updateSleepPreventionActivity()
             status = "Listening locally. Direct replies are phrase-triggered; scheduled check-ins stay off until enabled in Setup."
         } catch {
             guard lifecycle.contains(generation) else { return }
@@ -617,6 +620,7 @@ struct AURAAmbientApp: App {
         if !preservingWakeResume { wakeResume.cancel() }
         microphoneStopping = microphoneOn || microphoneStopping
         isStarting = false; isActive = false; microphoneOn = false; cameraOn = false
+        updateSleepPreventionActivity()
         replyTask?.cancel(); replyTask = nil
         if let audioConfigurationObserver {
             NotificationCenter.default.removeObserver(audioConfigurationObserver)
@@ -652,6 +656,26 @@ struct AURAAmbientApp: App {
                 }
             }
         }
+    }
+
+    func setKeepMacAwake(_ enabled: Bool) {
+        keepMacAwake = enabled
+        updateSleepPreventionActivity()
+    }
+
+    private func updateSleepPreventionActivity() {
+        guard isActive, keepMacAwake else {
+            if let sleepPreventionActivity {
+                ProcessInfo.processInfo.endActivity(sleepPreventionActivity)
+                self.sleepPreventionActivity = nil
+            }
+            return
+        }
+        guard sleepPreventionActivity == nil else { return }
+        sleepPreventionActivity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiated, .idleSystemSleepDisabled, .idleDisplaySleepDisabled],
+            reason: "AURA ambient mode is using the Mac camera and microphone"
+        )
     }
 
     private func refreshPausedStatus() {
@@ -1132,6 +1156,7 @@ private struct MenuView: View {
     @AppStorage(SpeechOutputSettings.voicePreferenceKey) private var speechVoiceIdentifier = ""
     @AppStorage(SpeechOutputSettings.ratePreferenceKey) private var speechRate = 0.48
     @AppStorage(PersonPresenceNoticeTracker.preferenceKey) private var personPresenceNoticesEnabled = false
+    @AppStorage(AmbientPowerSettings.keepAwakePreferenceKey) private var keepMacAwake = false
 
     private var englishVoices: [AVSpeechSynthesisVoice] {
         AVSpeechSynthesisVoice.speechVoices()
@@ -1167,6 +1192,10 @@ private struct MenuView: View {
                 .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             Toggle("Speak when a person enters view", isOn: $personPresenceNoticesEnabled)
             Text("Off by default. AURA may also notice you; it cannot identify anyone or tell whether someone is a visitor. Detection stays on this Mac and only runs while ambient mode is on.")
+                .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Keep Mac and display awake while listening", isOn: $keepMacAwake)
+                .onChange(of: keepMacAwake) { enabled in monitor.setKeepMacAwake(enabled) }
+            Text("Off by default. Prevents idle system and display sleep only during live ambient mode; Pause releases it. This does not change password or automatic-lock settings and may use more energy.")
                 .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             if !monitor.isPaired {
                 if monitor.canRetrySavedPairing {

@@ -89,6 +89,11 @@ Status: in progress; this is the current phase.
   camera teardown if wake arrives first and never restarts while still asleep.
   Manual Pause cancels a pending automatic resume. Hardware sleep/wake remains
   unverified.
+- Implemented for Mac preview: an off-by-default setting can prevent idle
+  system and display sleep while ambient mode is live. Pause, stop, and quit
+  release the sleep assertion; password and automatic-lock settings are not
+  changed. Local build verification is pending; energy-use and sleep/wake
+  acceptance remain outstanding.
 - Fixed: AURA's spoken reply temporarily suppresses microphone transcription and
   cancels any in-flight recognition, then resumes after a quiet grace period.
   Stale speech-completion callbacks cannot reopen the microphone after a newer
