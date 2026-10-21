@@ -104,6 +104,23 @@ struct LifecycleTests {
         wake.cancel()
         precondition(!wake.didWake(cameraReady: true), "Manual Pause cancels automatic wake resume")
 
+        var personNotice = PersonPresenceNoticeTracker()
+        for _ in 0..<3 {
+            precondition(!personNotice.observe(isPresent: true, enabled: true), "Initial presence must not be announced as an arrival")
+        }
+        for _ in 0..<9 {
+            precondition(!personNotice.observe(isPresent: false, enabled: true), "A brief false negative must not re-arm an arrival notice")
+        }
+        precondition(!personNotice.observe(isPresent: false, enabled: true))
+        precondition(!personNotice.observe(isPresent: true, enabled: false), "Opt-out must suppress a stabilized arrival notice")
+        precondition(!personNotice.observe(isPresent: true, enabled: false))
+        precondition(!personNotice.observe(isPresent: true, enabled: false))
+        for _ in 0..<10 { _ = personNotice.observe(isPresent: false, enabled: false) }
+        precondition(!personNotice.observe(isPresent: true, enabled: true))
+        precondition(!personNotice.observe(isPresent: true, enabled: true))
+        precondition(personNotice.observe(isPresent: true, enabled: true), "Opted-in stable re-entry may trigger one notice")
+        precondition(!personNotice.observe(isPresent: true, enabled: true), "A continuously visible person must not trigger repeated notices")
+
         precondition(
             PermissionSettings.target(for: "Allow Speech Recognition in System Settings") == "Privacy_SpeechRecognition",
             "Speech permission denial must link to its privacy pane"

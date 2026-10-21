@@ -493,6 +493,12 @@ not change the current status: Phase 2 is active.
 
 ### Phase 7 — Continuous, private perception
 
+- Implemented for Mac preview: an optional, off-by-default spoken person-in-view
+  notice uses local human-presence detection, waits for stable absence and
+  re-entry, and says it cannot identify who is present. It does not claim a
+  visitor is unknown, stores no identity, and runs only during explicitly
+  started ambient mode. Native tests cover opt-out, debounce, re-arming, and
+  one notice per entry; CI and live false-positive acceptance are pending.
 - Finish and validate continuous perception on Mac first, with explicit
   camera/microphone indicators, a visible pause, resource limits, and reliable
   offline behavior; port the validated runtime to Pi afterward.

@@ -203,6 +203,33 @@ struct WakeResumeState {
     }
 }
 
+// Require a stable absence and entry before an optional person-presence notice.
+// This only reports presence; it never classifies identity or a visitor.
+struct PersonPresenceNoticeTracker {
+    static let preferenceKey = "auraPersonPresenceNoticesEnabled"
+    private(set) var isDetected = false
+    private var absenceSamples = 0
+    private var presenceSamples = 0
+    private var hasObservedAbsence = false
+
+    mutating func observe(isPresent: Bool, enabled: Bool) -> Bool {
+        if isPresent {
+            absenceSamples = 0
+            presenceSamples += 1
+            guard presenceSamples >= 3, !isDetected else { return false }
+            isDetected = true
+            return hasObservedAbsence && enabled
+        }
+
+        presenceSamples = 0
+        absenceSamples += 1
+        guard absenceSamples >= 10 else { return false }
+        hasObservedAbsence = true
+        isDetected = false
+        return false
+    }
+}
+
 enum PermissionSettings {
     static func target(for status: String) -> String? {
         if status.hasPrefix("Allow Speech Recognition") || status.hasPrefix("Speech Recognition permission check timed out") {

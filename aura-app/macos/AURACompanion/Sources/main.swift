@@ -92,6 +92,7 @@ struct AURAAmbientApp: App {
     private var lastSceneObservationAttempt = Date.distantPast
     private var sceneObservationInFlight = false
     private var localCheckinTask: Task<Void, Never>?
+    private var personPresenceNoticeTracker = PersonPresenceNoticeTracker()
 
     override init() {
         super.init()
@@ -328,6 +329,15 @@ struct AURAAmbientApp: App {
                         guard let self, self.lifecycle.acceptsCaptureEvent(generation) else { return }
                         self.contextLabels = labels; self.scene = labels.joined(separator: ", ")
                         self.isPersonPresent = present
+                        if self.personPresenceNoticeTracker.observe(
+                            isPresent: present,
+                            enabled: UserDefaults.standard.bool(forKey: PersonPresenceNoticeTracker.preferenceKey)
+                        ) {
+                            self.speakLocally(
+                                "I noticed a person in view. I can’t identify who it is.",
+                                generation: generation
+                            )
+                        }
                         self.saveSceneSummaryIfNeeded(
                             labels: labels,
                             confidence: confidence,
@@ -624,6 +634,7 @@ struct AURAAmbientApp: App {
         camera = nil
         cameraStopping = cameraToStop != nil || cameraStopping
         contextLabels = []; scene = ""; isPersonPresent = false
+        personPresenceNoticeTracker = PersonPresenceNoticeTracker()
         synthesizer.stopSpeaking(at: .immediate)
         status = cameraStopping
             ? microphoneStopping ? "Paused. Microphone and camera are stopping."
@@ -1120,6 +1131,7 @@ private struct MenuView: View {
     @ObservedObject var monitor: AmbientMonitor
     @AppStorage(SpeechOutputSettings.voicePreferenceKey) private var speechVoiceIdentifier = ""
     @AppStorage(SpeechOutputSettings.ratePreferenceKey) private var speechRate = 0.48
+    @AppStorage(PersonPresenceNoticeTracker.preferenceKey) private var personPresenceNoticesEnabled = false
 
     private var englishVoices: [AVSpeechSynthesisVoice] {
         AVSpeechSynthesisVoice.speechVoices()
@@ -1152,6 +1164,9 @@ private struct MenuView: View {
                 }.font(.caption2).foregroundStyle(.secondary)
             }
             Text("Voice and pace stay on this Mac and apply to AURA’s spoken replies and opted-in reminders.")
+                .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Speak when a person enters view", isOn: $personPresenceNoticesEnabled)
+            Text("Off by default. AURA may also notice you; it cannot identify anyone or tell whether someone is a visitor. Detection stays on this Mac and only runs while ambient mode is on.")
                 .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             if !monitor.isPaired {
                 if monitor.canRetrySavedPairing {
