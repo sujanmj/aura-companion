@@ -67,14 +67,13 @@ Status: in progress; this is the current phase.
   changed summary per minute. The Memory view already supports review/deletion.
   Unit and authenticated API tests pass, and the native helper builds. Hardware
   acceptance of this new persistence path remains outstanding.
-- Implemented: the Mac helper checks the existing local check-in endpoint every
-  five minutes while ambient mode is active. Existing Setup preferences remain
-  the gate: check-ins are off by default, and AURA's local service enforces the
-  user's quiet hours and minimum interval. Replies use local speech and do not
-  invoke Claude or MCP actions. Local native helper build, API, and Python
-  checks pass; cross-platform CI passed in run 39585169657.
-  Physical speaker delivery of a due scheduled check-in still needs live
-  acceptance.
+- Implemented: the paired Mac helper checks the existing local check-in endpoint
+  every five minutes while the AURA app is running, including when ambient
+  camera and microphone capture are paused. Explicit reminder enables and
+  check-in preferences remain the gates; quiet hours and daily delivery limits
+  are enforced by local SQLite. Replies use local speech and do not invoke
+  Claude or MCP actions. This update has local app-build, native-test, API, and
+  Python verification; cross-platform CI and live speaker acceptance are pending.
 - Implemented with CI: companion replies can use up to three relevant on-device
   scene summaries only when they are no more than ten minutes old. Visual
   estimates are labeled uncertain and cannot confirm identity, activity, or an
@@ -534,7 +533,9 @@ not change the current status: Phase 2 is active.
   explicit enable checkbox, are delivered at most once per local day, and can
   be dismissed for that day or deleted. AURA states it cannot confirm task or
   dose completion. Cross-platform tests cover scheduling, delivery, dismissal
-  and account scoping; live speaker delivery still needs Mac acceptance.
+  and account scoping. The native helper polls while paired and running,
+  including with ambient sensors paused; this expanded delivery path remains
+  pending CI and live speaker acceptance.
 - Add optional, user-controlled links to iPhone or wearable health data where
   supported, and show what is collected, where it is stored and how to remove it.
 - Summarize trends in sleep, activity and meals as non-diagnostic observations

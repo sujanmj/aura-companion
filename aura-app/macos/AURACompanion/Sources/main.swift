@@ -51,7 +51,7 @@ struct AURAAmbientApp: App {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        monitor.stop()
+        monitor.terminate()
     }
 }
 
@@ -91,7 +91,7 @@ struct AURAAmbientApp: App {
     private var sceneObservationKey: String?
     private var lastSceneObservationAttempt = Date.distantPast
     private var sceneObservationInFlight = false
-    private var checkinTask: Task<Void, Never>?
+    private var localCheckinTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -141,8 +141,10 @@ struct AURAAmbientApp: App {
             let statusCode = (response as? HTTPURLResponse)?.statusCode
             switch PairingValidationDecision.classify(statusCode: statusCode) {
             case .verified:
-                isPaired = true; status = "Paired securely with this AURA session."
+                isPaired = true
+                status = "Paired securely. Opted-in local reminders can run while this app is open; microphone and camera stay off until started."
                 canRetrySavedPairing = false
+                startLocalCheckins()
             case .expired:
                 _ = await Keychain.delete()
                 guard pairingGeneration.isCurrent(generation) else { return }
@@ -205,7 +207,8 @@ struct AURAAmbientApp: App {
             }
             cookie = value; isPaired = true; code = ""; canRetrySavedPairing = false
             canUseSessionOnlyPairing = false; pendingSessionOnlyCookie = nil
-            status = "Paired securely with this AURA session."
+            status = "Paired securely. Opted-in local reminders can run while this app is open; microphone and camera stay off until started."
+            startLocalCheckins()
         } catch {
             guard pairingGeneration.isCurrent(generation) else { return }
             status = "AURA is not reachable on this Mac yet."
@@ -217,6 +220,7 @@ struct AURAAmbientApp: App {
         cookie = value; isPaired = true; code = ""
         canUseSessionOnlyPairing = false; pendingSessionOnlyCookie = nil
         status = "Paired in memory for this run. Keychain may still contain the token; use Clear pairing and verify it in Keychain Access."
+        startLocalCheckins()
     }
 
     func start() async {
@@ -351,7 +355,6 @@ struct AURAAmbientApp: App {
             observeAudioConfigurationChange(generation: generation)
             isActive = true; microphoneOn = true; microphoneStopping = false; cameraOn = true; cameraStopping = false
             status = "Listening locally. Direct replies are phrase-triggered; scheduled check-ins stay off until enabled in Setup."
-            startAmbientCheckins(generation: generation)
         } catch {
             guard lifecycle.contains(generation) else { return }
             stop(); status = "Couldn’t start the local microphone and camera: \(error.localizedDescription)"
@@ -448,24 +451,28 @@ struct AURAAmbientApp: App {
         }
     }
 
-    private func startAmbientCheckins(generation: UInt64) {
-        checkinTask?.cancel()
-        checkinTask = Task { [weak self] in
+    private func startLocalCheckins() {
+        guard isPaired, localCheckinTask == nil else { return }
+        let generation = pairingGeneration.value
+        localCheckinTask = Task { [weak self] in
             guard let self else { return }
-            while !Task.isCancelled, self.lifecycle.acceptsCaptureEvent(generation) {
-                await self.checkForDueCheckin(generation: generation)
+            while !Task.isCancelled, self.isPaired,
+                  self.pairingGeneration.isCurrent(generation) {
+                await self.checkForDueCheckin(pairingGeneration: generation)
                 do {
                     try await Task.sleep(nanoseconds: 300_000_000_000)
                 } catch {
                     break
                 }
             }
-            if self.lifecycle.generation == generation { self.checkinTask = nil }
+            if self.pairingGeneration.isCurrent(generation) {
+                self.localCheckinTask = nil
+            }
         }
     }
 
-    private func checkForDueCheckin(generation: UInt64) async {
-        guard lifecycle.acceptsCaptureEvent(generation), !Task.isCancelled,
+    private func checkForDueCheckin(pairingGeneration generation: UInt64) async {
+        guard isPaired, pairingGeneration.isCurrent(generation), !Task.isCancelled,
               replyTask == nil, !synthesizer.isSpeaking,
               let cookie,
               let url = URL(string: "http://127.0.0.1:8790/api/checkin") else { return }
@@ -478,14 +485,44 @@ struct AURAAmbientApp: App {
         request.timeoutInterval = 5
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard lifecycle.acceptsCaptureEvent(generation), !Task.isCancelled,
-                  (response as? HTTPURLResponse)?.statusCode == 200 else { return }
+            guard isPaired, pairingGeneration.isCurrent(generation), !Task.isCancelled,
+                  let httpResponse = response as? HTTPURLResponse else { return }
+            if httpResponse.statusCode == 401 {
+                forgetPairing()
+                status = "AURA restarted. Pair with the current session code."
+                return
+            }
+            guard httpResponse.statusCode == 200 else { return }
             let checkin = try JSONDecoder().decode(CheckinResponse.self, from: data)
             guard checkin.due, let message = checkin.response, !message.isEmpty,
                   replyTask == nil, !synthesizer.isSpeaking else { return }
-            speakLocally(message, generation: generation)
+            speakLocalCheckin(message)
         } catch {
-            // Check-ins are optional; transient local-service errors do not stop capture.
+            // Local check-ins are optional; transient service errors do not affect capture.
+        }
+    }
+
+    private func speakLocalCheckin(_ text: String) {
+        guard !text.isEmpty, !synthesizer.isSpeaking else { return }
+        if isActive {
+            speakLocally(text, generation: lifecycle.generation)
+            return
+        }
+        recentResponse = text
+        status = "AURA is speaking an opted-in check-in or reminder. Microphone and camera are off."
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = 0.48
+        synthesizer.speak(utterance)
+        let generation = pairingGeneration.value
+        Task { [weak self] in
+            guard let self else { return }
+            while self.synthesizer.isSpeaking,
+                  self.pairingGeneration.isCurrent(generation) {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+            guard self.pairingGeneration.isCurrent(generation), !self.isActive else { return }
+            self.status = "Paired. Opted-in reminders are active; microphone and camera are off."
         }
     }
 
@@ -570,7 +607,6 @@ struct AURAAmbientApp: App {
         startupTimeoutTask?.cancel()
         startupTimeoutTask = nil
         speechOutputSuppression.cancel()
-        checkinTask?.cancel(); checkinTask = nil
         if !cameraStopping { lifecycle.pause() }
         let stoppedGeneration = lifecycle.generation
         if !preservingWakeResume { wakeResume.cancel() }
@@ -624,6 +660,7 @@ struct AURAAmbientApp: App {
 
     func forgetPairing() {
         _ = pairingGeneration.issue()
+        localCheckinTask?.cancel(); localCheckinTask = nil
         isPairing = false; isCheckingPairing = false; canRetrySavedPairing = false
         canUseSessionOnlyPairing = false; pendingSessionOnlyCookie = nil
         isClearingPairing = true
@@ -636,6 +673,12 @@ struct AURAAmbientApp: App {
                 ? "Session pairing cleared."
                 : "AURA could not confirm removal from Keychain. Remove AURA Companion from Keychain Access before pairing again."
         }
+    }
+
+    func terminate() {
+        _ = pairingGeneration.issue()
+        localCheckinTask?.cancel(); localCheckinTask = nil
+        stop()
     }
 
     var permissionSettingsURL: URL? {
@@ -1102,6 +1145,8 @@ private struct MenuView: View {
                 }
             } else {
                 Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: []).disabled(monitor.cameraStopping || monitor.microphoneStopping)
+                Text("Paired, opted-in reminders are checked every five minutes while AURA is running. They can speak while the microphone and camera are off; Pause controls capture.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if !monitor.recentResponse.isEmpty { Divider(); Text("AURA").font(.caption).foregroundStyle(.secondary); Text(monitor.recentResponse).font(.system(size: 12)).textSelection(.enabled) }
                 if !monitor.scene.isEmpty { Text("Local camera: \(monitor.scene)").font(.caption).foregroundStyle(.secondary) }
                 Button("Clear pairing") { monitor.forgetPairing() }.font(.caption).foregroundStyle(.secondary)
