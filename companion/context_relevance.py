@@ -6,6 +6,7 @@ import string
 STOPWORDS = {
     "the", "a", "an", "i", "you", "are", "is", "am", "how", "hello", "hi", "hey",
     "today", "now", "me", "my", "to", "for", "of", "in", "on", "and",
+    "where", "left", "put", "find", "location", "last", "seen",
 }
 
 GREETING_PHRASES = (

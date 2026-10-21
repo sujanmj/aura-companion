@@ -172,8 +172,9 @@ class PromptBuilder:
         """Return only fresh and relevant derived scene summaries, never raw media."""
         now = now or datetime.now(timezone.utc)
         message_words = self.relevance_filter.extract_keywords(current_message)
+        raw_message_words = set(self.relevance_filter.normalize_text(current_message).split())
         visual_intent = bool(
-            message_words
+            raw_message_words
             & {"see", "seeing", "look", "looking", "room", "around", "find", "where", "search", "searching"}
         )
         selected: list[dict[str, Any]] = []
