@@ -1456,6 +1456,31 @@ function App() {
                 </section>
                 <section className="memory-review">
                   <h3>Recent observations</h3>
+                  {status.observations.length > 0 && (
+                    <button
+                      className="memory-export"
+                      onClick={async () => {
+                        if (
+                          !window.confirm(
+                            "Delete all saved observations and explicit event notes? Facts, people, routines, reminders, and conversations will remain. This cannot be undone.",
+                          )
+                        )
+                          return;
+                        try {
+                          const result = await api<{ deleted: number }>(
+                            "observations/clear",
+                            {},
+                          );
+                          await refresh();
+                          setError(`Saved observations cleared (${result.deleted} items).`);
+                        } catch (e) {
+                          setError(String(e));
+                        }
+                      }}
+                    >
+                      Clear all observations
+                    </button>
+                  )}
                   {status.observations.length === 0 ? (
                     <p>No observations have been saved.</p>
                   ) : (

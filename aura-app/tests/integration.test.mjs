@@ -73,6 +73,7 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       (await post("reminder/create", { label: "Take medication", local_time: "20:00", enabled: true })).status,
       401,
     );
+    assert.equal((await post("observations/clear", {})).status, 401);
     assert.equal(
       (await post("login", { token }, "", "https://evil.test")).status,
       403,
@@ -480,6 +481,22 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       ),
       false,
     );
+    assert.equal(
+      (await post("observations/clear", {}, cookie, "https://evil.test")).status,
+      403,
+    );
+    assert.ok(afterObservationDelete.observations.length > 0);
+    const clearObservations = await post("observations/clear", {}, cookie);
+    assert.equal(clearObservations.status, 200);
+    assert.equal(
+      (await clearObservations.json()).deleted,
+      afterObservationDelete.observations.length,
+    );
+    const clearedObservationStatus = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.deepEqual(clearedObservationStatus.observations, []);
+    assert.ok(clearedObservationStatus.facts.length > 0);
     assert.ok(Array.isArray(withContext.routines));
     const page = await fetch(base);
     assert.equal(page.status, 200);

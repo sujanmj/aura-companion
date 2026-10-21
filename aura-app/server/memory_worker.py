@@ -124,6 +124,8 @@ def main():
                     discard_pending_conversations(pending_ids)
                     enqueue_conversation_deletions(pending_ids)
                     result = {'deleted': deleted}
+                elif op == 'clear_observations':
+                    result = {'deleted': store.clear_observations(user)}
                 elif op == 'update_fact':
                     fact_id = req.get('fact_id')
                     value = req.get('value')

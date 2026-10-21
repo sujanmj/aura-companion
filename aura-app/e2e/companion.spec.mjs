@@ -425,6 +425,36 @@ test("saved scene observations can be corrected and become user-authored memory"
   expect(status.observations[0].source).toBe("user_correction");
 });
 
+test("all observation notes can be cleared while other memories remain", async ({
+  page,
+}) => {
+  await connect(page);
+  await page.getByLabel("Your message").fill("I am nervous about my presentation");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await page
+    .getByLabel("Your message")
+    .fill("Hey AURA, remember that I left the keys by the sofa.");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.locator(".message.assistant").last()).toBeVisible();
+  const before = await page.evaluate(async () => (await (await fetch("/api/status")).json()));
+  expect(before.observations.length).toBeGreaterThan(0);
+  expect(before.facts.length).toBeGreaterThan(0);
+
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("Delete all saved observations and explicit event notes");
+    expect(dialog.message()).toContain("Facts, people, routines, reminders, and conversations will remain");
+    void dialog.accept();
+  });
+  await page.getByRole("button", { name: "Clear all observations" }).click();
+  await expect(page.getByRole("status")).toContainText("Saved observations cleared");
+  const after = await page.evaluate(async () => (await (await fetch("/api/status")).json()));
+  expect(after.observations).toEqual([]);
+  expect(after.facts).toEqual(before.facts);
+  expect(after.conversations.length).toBe(before.conversations.length);
+});
+
 test("conversation history can be cleared while saved memory remains", async ({
   page,
 }) => {

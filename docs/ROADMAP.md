@@ -382,6 +382,10 @@ Status: foundations exist in the original reaction/memory engines.
 - Implemented: ambient observations can be deleted individually from the
   authenticated Memory view; deletion is scoped to the current user's SQLite
   records and removes that observation from future exports.
+- Implemented: Memory can clear all saved observations and explicit event notes
+  for the signed-in account in one confirmed action. Other memory categories
+  remain intact. The operation is authenticated, CSRF-protected, owner-scoped,
+  and covered by storage, API, and browser tests; CI verification is pending.
 - Implemented and CI-verified in commit `eadd6a6`: saved observations can also
   be corrected in Memory. A correction replaces the selected SQLite row, is
   marked `user_correction` with explicit user-authored wording, and enters a

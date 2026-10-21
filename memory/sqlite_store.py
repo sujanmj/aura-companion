@@ -713,6 +713,14 @@ class AuraMemoryStore:
         self.conn.commit()
         return cur.rowcount == 1
 
+    def clear_observations(self, user_id: int) -> int:
+        """Forget all saved observation notes for one user, preserving other memory."""
+        cur = self.conn.execute(
+            "DELETE FROM observations WHERE user_id=?", (user_id,)
+        )
+        self.conn.commit()
+        return cur.rowcount
+
     def correct_observation(self, user_id: int, observation_id: int, value: str) -> bool:
         """Replace a saved observation with an explicit, user-authored correction."""
         if not isinstance(value, str) or not value.strip() or len(value.strip()) > 500:

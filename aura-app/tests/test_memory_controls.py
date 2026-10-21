@@ -118,6 +118,22 @@ class MemoryControlsTest(unittest.TestCase):
         self.assertEqual(corrected['event_type'], 'user_corrected_observation')
         self.assertEqual(corrected['confidence'], 1.0)
         self.assertEqual(corrected['event_summary'], 'User correction: The keys are on the blue sofa.')
+
+    def test_clear_observations_only_removes_the_selected_users_observation_memory(self):
+        self.store.add_observation(self.owner, 'user_explicit', 'Owner event note')
+        self.store.add_observation(self.owner, 'ambient_context', 'Owner scene note')
+        self.store.add_observation(self.other, 'user_explicit', 'Other event note')
+        self.store.remember_fact(self.owner, 'favorite_drink', 'tea')
+        self.store.add_routine_reminder(self.owner, 'Take medication', '20:00')
+
+        self.assertEqual(self.store.clear_observations(self.owner), 2)
+        self.assertEqual(self.store.get_latest_observations(self.owner), [])
+        self.assertEqual(
+            self.store.get_latest_observations(self.other)[0]['event_summary'],
+            'Other event note',
+        )
+        self.assertEqual(self.store.get_memory_facts(self.owner)[0]['fact_value'], 'tea')
+        self.assertEqual(self.store.get_routine_reminders(self.owner)[0]['label'], 'Take medication')
     def test_ambient_scene_saves_only_derived_summaries_and_rate_limits_changes(self):
         first = self.store.add_ambient_scene_observation(
             self.owner, ['living room', 'sofa'], True, 0.91
