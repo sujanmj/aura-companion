@@ -53,6 +53,20 @@ class PromptBuilder:
             (recent_visual[0].get("event_summary") if recent_visual else None)
         )
         relevant_facts = self.relevance_filter.filter_facts(current_message, latest_observation, facts)
+        routine_facts = [
+            {
+                "fact_key": item.get("routine_key", ""),
+                "fact_value": item.get("routine_value", ""),
+                "confidence": item.get("confidence", 0.5),
+                "last_seen_at": item.get("last_seen_at"),
+            }
+            for item in self.store.get_routine_memory(user_id)
+        ]
+        relevant_routines = self.relevance_filter.filter_facts(
+            current_message,
+            latest_observation,
+            routine_facts,
+        )
         previous_assistant = self._previous_assistant_message(conversations)
         relevant_device_events = self._load_relevant_device_events(user_id, current_message)
         relevant_people = self._load_relevant_people(user_id, current_message)
@@ -113,6 +127,20 @@ class PromptBuilder:
             sections.extend(["", "Relevant memory facts:"])
             for fact in relevant_facts:
                 sections.append(f"- {fact.get('fact_key')}: {fact.get('fact_value')}")
+
+        if relevant_routines:
+            sections.extend(
+                [
+                    "",
+                    "Relevant saved routine memories (may be incomplete; they are not a live schedule or proof of current behavior):",
+                ]
+            )
+            for routine in relevant_routines:
+                recorded = routine.get("last_seen_at")
+                recorded_suffix = f" (last updated {recorded})" if recorded else ""
+                sections.append(
+                    f"- {routine.get('fact_key')}: {routine.get('fact_value')}{recorded_suffix}"
+                )
 
         if relevant_people:
             sections.extend(

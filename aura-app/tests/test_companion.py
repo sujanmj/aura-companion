@@ -181,6 +181,31 @@ class CompanionTest(unittest.TestCase):
             self.assertNotIn('Fresh on-device visual estimates', prompt)
             store.close()
 
+    def test_relevant_saved_routines_enter_prompt_but_unrelated_ones_do_not(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            store.remember_routine(
+                owner, 'fitness_interest', 'User prefers swimming for exercise.',
+                confidence=1.0, source='user_correction',
+            )
+            store.remember_routine(
+                owner, 'evening_meal', 'User usually eats dinner around eight.',
+                confidence=0.8, source='user_correction',
+            )
+            store.add_conversation(owner, 'user', 'What exercise do I prefer?')
+
+            prompt = PromptBuilder(store).build_companion_prompt(
+                owner, {'situation': 'The user asks about exercise.'}
+            )
+
+            self.assertIn('Relevant saved routine memories', prompt)
+            self.assertIn('User prefers swimming for exercise.', prompt)
+            self.assertIn('not a live schedule or proof of current behavior', prompt)
+            self.assertNotIn('User usually eats dinner around eight.', prompt)
+            store.close()
+
     def test_only_explicitly_consented_and_named_people_enter_prompt_context(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')

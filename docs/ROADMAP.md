@@ -391,6 +391,10 @@ Status: foundations exist in the original reaction/memory engines.
 - Implemented: routines can be corrected or explicitly forgotten; a forgotten
   routine is suppressed from automatic conversation extraction until the user
   explicitly asks AURA to remember it again.
+- Implemented: Claude prompts now include saved routine memories only when the
+  current message has relevant terms. Routine context is labeled as potentially
+  incomplete and never treated as a live schedule or proof of current behavior.
+  Companion tests cover relevant inclusion and unrelated-routine exclusion.
 - Implemented: ambient observations can be deleted individually from the
   authenticated Memory view; deletion is scoped to the current user's SQLite
   records and removes that observation from future exports.
