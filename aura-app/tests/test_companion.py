@@ -263,6 +263,46 @@ class CompanionTest(unittest.TestCase):
             self.assertNotIn('Fresh on-device visual estimates', prompt)
             store.close()
 
+    def test_local_companion_answers_location_from_user_note_without_provider(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            MemoryExtractor(store).process_user_message(
+                owner, 'Remember that the spare key is by the blue sofa.'
+            )
+            store.add_conversation(owner, 'user', 'Where are my keys?')
+            engine = CompanionReactionEngine(store, use_llm=False)
+
+            with patch.object(engine.llm_provider, 'generate', side_effect=AssertionError('provider must not run')):
+                result = engine.generate_reaction(owner)
+
+            self.assertIn('spare key is by the blue sofa', result['response'])
+            self.assertIn('may be out of date', result['response'])
+            self.assertIn('locally', result['reasons'][0])
+            store.close()
+
+    def test_local_location_recall_ignores_visual_estimates_and_unrelated_notes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            store.add_observation(
+                owner, 'ambient_context', 'The key may be near the sofa.',
+                source='mac_local_vision', confidence=0.6,
+            )
+            MemoryExtractor(store).process_user_message(
+                owner, 'Remember that the blue mug is in the kitchen cabinet.'
+            )
+            store.add_conversation(owner, 'user', 'Where are my keys?')
+            engine = CompanionReactionEngine(store, use_llm=False)
+
+            result = engine.generate_reaction(owner)
+
+            self.assertNotIn('sofa', result['response'])
+            self.assertNotIn('kitchen cabinet', result['response'])
+            store.close()
+
     def test_conversation_history_clear_is_scoped_and_preserves_companion_memory(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')

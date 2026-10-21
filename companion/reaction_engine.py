@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from brain.llm_provider import LLMProvider
@@ -206,6 +207,21 @@ class CompanionReactionEngine:
         latest_user_message = self._latest_user_message(context.get("conversations", []))
         inference = self.infer_situation(context)
         style_context = self.style_policy.build_style_context(user_id)
+
+        remembered_location = self._remembered_location_reply(
+            latest_user_message,
+            context.get("observations", []),
+        )
+        if remembered_location:
+            return {
+                "situation": "The user asked about a previously noted item's location.",
+                "emotional_need": "practical_help",
+                "tone": "warm_practical",
+                "response": remembered_location,
+                "confidence": 0.95,
+                "reasons": ["Recalled a matching user-provided note locally."],
+            }
+
         raw_response = self._compose_response(inference, context, style_context)
         fallback_response = self.style_policy.polish_response(raw_response, style_context)
 
@@ -238,6 +254,40 @@ class CompanionReactionEngine:
             "confidence": inference["confidence"],
             "reasons": reasons,
         }
+
+    def _remembered_location_reply(
+        self,
+        message: str,
+        observations: list[dict[str, Any]],
+    ) -> str | None:
+        normalized = message.lower().replace("’", "'")
+        location_question = re.search(
+            r"\b(where|where's|wheres|where is|where are|where did|where have|where can)\b",
+            normalized,
+        )
+        if not location_question:
+            return None
+
+        message_keywords = self.relevance_filter.extract_keywords(message)
+        if not message_keywords:
+            return None
+
+        for item in observations:
+            if item.get("source") not in {"user_explicit", "user_correction"}:
+                continue
+            note = str(item.get("event_summary", "")).strip().rstrip(".!? ")
+            note_keywords = self.relevance_filter.extract_keywords(note)
+            if not (message_keywords & note_keywords):
+                continue
+
+            created_at = item.get("created_at")
+            if created_at:
+                age_context = f" It was saved {created_at} and may be out of date."
+            else:
+                age_context = " I don't know when it was saved, so it may be out of date."
+            return f"The last note I have says: {note}.{age_context}"
+
+        return None
 
     def _latest_user_message(self, conversations: list[dict[str, Any]]) -> str:
         for conv in conversations:

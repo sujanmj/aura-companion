@@ -532,6 +532,11 @@ not change the current status: Phase 2 is active.
   are labeled as potentially outdated. This does not infer an object's current
   location from camera imagery. Companion tests cover note retrieval and the
   uncertainty label; the Mac app build and full local test suite pass.
+- Implemented: local-only conversations can answer a matching “where is/are”
+  question directly from the user's own note without sending it to a provider.
+  Camera estimates and unrelated notes are excluded from this deterministic
+  answer path; the reply identifies the note and says it may be out of date.
+  Companion tests cover recall and both exclusions.
 
 ### Phase 9 — Proactive companion conversation
 
