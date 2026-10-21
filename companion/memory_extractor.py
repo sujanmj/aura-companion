@@ -83,9 +83,16 @@ class MemoryExtractor:
 
     @staticmethod
     def _explicit_remembered_note(message: str) -> str | None:
+        addressed_message = re.sub(
+            r"^\s*(?:hey\s+)?aura\b\s*[,.:]?\s*",
+            "",
+            message,
+            count=1,
+            flags=re.IGNORECASE,
+        )
         match = re.match(
             r"^\s*(?:please\s+)?remember(?:\s+(?:that|this))?\s*[:,-]?\s*(.+?)\s*[.!?]*\s*$",
-            message,
+            addressed_message,
             re.IGNORECASE,
         )
         if not match:

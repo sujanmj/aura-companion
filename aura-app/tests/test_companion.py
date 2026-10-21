@@ -187,7 +187,7 @@ class CompanionTest(unittest.TestCase):
             extractor = MemoryExtractor(store)
             actions = extractor.process_user_message(
                 owner,
-                'Remember that we left the spare key by the blue sofa yesterday.',
+                'Hey AURA, remember that we left the spare key by the blue sofa yesterday.',
             )
             self.assertIn('remembered explicit event note', actions)
             saved = store.get_latest_observations(owner, limit=1)[0]
