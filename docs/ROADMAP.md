@@ -72,9 +72,14 @@ Status: in progress; this is the current phase.
   the gate: check-ins are off by default, and AURA's local service enforces the
   user's quiet hours and minimum interval. Replies use local speech and do not
   invoke Claude or MCP actions. Local native helper build, API, and Python
-  checks pass; the next pushed commit's CI remains the cross-platform gate.
+  checks pass; cross-platform CI passed in run 39585169657.
   Physical speaker delivery of a due scheduled check-in still needs live
   acceptance.
+- Implemented with CI: companion replies can use up to three relevant on-device
+  scene summaries only when they are no more than ten minutes old. Visual
+  estimates are labeled uncertain and cannot confirm identity, activity, or an
+  exact object location. Automated memory/prompt tests and cross-platform CI
+  pass; end-to-end camera acceptance remains outstanding.
 - Fixed: copy audio tap buffers before asynchronous recognition and isolate
   delayed errors with per-utterance generations, so a stale callback cannot
   reset a newer phrase. Native tests cover stale callbacks.
