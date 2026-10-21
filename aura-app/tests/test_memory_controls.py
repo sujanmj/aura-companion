@@ -42,6 +42,27 @@ class MemoryControlsTest(unittest.TestCase):
     def test_missing_fact_is_safe(self):
         self.assertFalse(self.store.update_memory_fact(self.owner, 9999, 'new'))
         self.assertFalse(self.store.delete_memory_fact(self.owner, 9999))
+    def test_forgetting_a_person_removes_their_timeline_and_is_owner_scoped(self):
+        person_id = self.store.add_known_person(
+            self.owner, 'Alex', relation='friend', consent_to_remember=True
+        )
+        other_person_id = self.store.add_known_person(self.other, 'Taylor')
+        self.store.add_person_event(
+            self.owner, person_id, 'person_introduced', 'Alex was introduced.'
+        )
+        self.store.add_person_event(
+            self.other, other_person_id, 'person_introduced', 'Taylor was introduced.'
+        )
+        self.assertFalse(self.store.forget_known_person(self.other, person_id))
+        self.assertTrue(self.store.get_known_people(self.owner))
+        self.assertTrue(self.store.forget_known_person(self.owner, person_id))
+        self.assertEqual(self.store.get_known_people(self.owner), [])
+        self.assertEqual(self.store.get_recent_person_events(self.owner), [])
+        self.assertEqual(self.store.get_known_people(self.other)[0]['display_name'], 'Taylor')
+        self.assertEqual(
+            self.store.get_recent_person_events(self.other)[0]['event_summary'],
+            'Taylor was introduced.',
+        )
     def test_ambient_scene_saves_only_derived_summaries_and_rate_limits_changes(self):
         first = self.store.add_ambient_scene_observation(
             self.owner, ['living room', 'sofa'], True, 0.91

@@ -216,6 +216,9 @@ test("saved facts can be corrected and forgetting requires confirmation", async 
   await page.getByRole("button", { name: "Send ↗" }).click();
   await expect(page.locator(".message.assistant").last()).toBeVisible();
   await page.getByRole("button", { name: "Memory 02" }).click();
+  const people = page.getByRole("heading", { name: "People" }).locator("..");
+  await expect(people).toContainText("No people have been added to memory.");
+  await expect(people).toContainText("Face recognition is not enabled by this list.");
   const fact = page.locator(".fact").filter({ hasText: "recent anxiety" });
   await expect(fact).toBeVisible();
   await fact.getByRole("button", { name: "Correct" }).click();

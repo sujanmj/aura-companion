@@ -902,6 +902,25 @@ class AuraMemoryStore:
         )
         return [dict(row) for row in cur.fetchall()]
 
+    def forget_known_person(self, user_id: int, person_id: int) -> bool:
+        """Forget one person's profile and its related timeline, scoped to its owner."""
+        person = self.conn.execute(
+            "SELECT id FROM known_people WHERE id=? AND user_id=?",
+            (person_id, user_id),
+        ).fetchone()
+        if not person:
+            return False
+        with self.conn:
+            self.conn.execute(
+                "DELETE FROM person_events WHERE person_id=? AND user_id=?",
+                (person_id, user_id),
+            )
+            self.conn.execute(
+                "DELETE FROM known_people WHERE id=? AND user_id=?",
+                (person_id, user_id),
+            )
+        return True
+
     def find_known_person(self, user_id: int, display_name: str) -> dict[str, Any] | None:
         cur = self.conn.execute(
             """

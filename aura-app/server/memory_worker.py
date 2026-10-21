@@ -62,6 +62,14 @@ def main():
                               'conversations': list(reversed(store.get_recent_conversations(user, limit=30))),
                               'observations': list(reversed(store.get_latest_observations(user, limit=20))),
                               'routines': store.get_routine_memory(user),
+                              'people': [
+                                  {key: person.get(key) for key in (
+                                      'id', 'display_name', 'relation', 'trust_level',
+                                      'consent_to_remember', 'face_profile_status',
+                                      'last_seen_at',
+                                  )}
+                                  for person in store.get_known_people(user)
+                              ],
                               'preferences': store.get_companion_preferences(user)}
                 elif op == 'preferences':
                     result = store.get_companion_preferences(user)
@@ -132,6 +140,13 @@ def main():
                         raise ValueError('Invalid observation')
                     if not store.delete_observation(user, observation_id):
                         raise ValueError('Observation not found')
+                    result = {'ok': True}
+                elif op == 'forget_person':
+                    person_id = req.get('person_id')
+                    if not isinstance(person_id, int) or isinstance(person_id, bool) or person_id <= 0:
+                        raise ValueError('Invalid person')
+                    if not store.forget_known_person(user, person_id):
+                        raise ValueError('Person not found')
                     result = {'ok': True}
                 elif op == 'ambient_scene':
                     result = store.add_ambient_scene_observation(

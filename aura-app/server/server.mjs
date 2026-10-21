@@ -308,20 +308,26 @@ const server = http.createServer(async (req, res) => {
         url.pathname === "/api/fact/delete" ||
         url.pathname === "/api/routine/update" ||
         url.pathname === "/api/routine/delete" ||
-        url.pathname === "/api/observation/delete"
+        url.pathname === "/api/observation/delete" ||
+        url.pathname === "/api/person/delete"
       ) {
         const isRoutine = url.pathname.startsWith("/api/routine/");
         const isObservation = url.pathname === "/api/observation/delete";
+        const isPerson = url.pathname === "/api/person/delete";
         const idKey = isRoutine
           ? "routine_id"
           : isObservation
             ? "observation_id"
-            : "fact_id";
+            : isPerson
+              ? "person_id"
+              : "fact_id";
         const label = isRoutine
           ? "memory routine"
           : isObservation
             ? "observation"
-            : "memory fact";
+            : isPerson
+              ? "known person"
+              : "memory fact";
         if (!Number.isSafeInteger(data[idKey]) || data[idKey] <= 0)
           return json(res, 400, { error: `Choose a valid ${label}.` });
         if (
@@ -337,7 +343,9 @@ const server = http.createServer(async (req, res) => {
           const result = await memory(
             isObservation
               ? "delete_observation"
-              : `${url.pathname.endsWith("/update") ? "update" : "delete"}_${isRoutine ? "routine" : "fact"}`,
+              : isPerson
+                ? "forget_person"
+                : `${url.pathname.endsWith("/update") ? "update" : "delete"}_${isRoutine ? "routine" : "fact"}`,
             data,
           );
           return json(res, 200, result);

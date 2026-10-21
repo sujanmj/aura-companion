@@ -370,6 +370,10 @@ Status: foundations exist in the original reaction/memory engines.
   replies while retaining their saved facts, routines, and observations.
 - Implemented: Memory view now reviews saved routines and the latest 20
   observations alongside correctable/forgettable facts.
+- Implemented: Memory lists manually introduced people and their recorded
+  consent status without exposing private notes. Users can explicitly forget a
+  person and the associated timeline; the deletion is scoped to their SQLite
+  account. This does not enroll or recognize faces.
 - Implemented: routines can be corrected or explicitly forgotten; a forgotten
   routine is suppressed from automatic conversation extraction until the user
   explicitly asks AURA to remember it again.

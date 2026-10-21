@@ -27,6 +27,15 @@ type Status = {
     source: string;
     created_at: string;
   }[];
+  people: {
+    id: number;
+    display_name: string;
+    relation: string | null;
+    trust_level: string;
+    consent_to_remember: number;
+    face_profile_status: string;
+    last_seen_at: string | null;
+  }[];
   preferences: CheckinPreferences;
   conversations: Message[];
   actions: boolean;
@@ -1108,6 +1117,56 @@ function App() {
                     </article>
                   ))
                 )}
+                <section className="memory-review">
+                  <h3>People</h3>
+                  <p>
+                    Names here were added through AURA’s existing memory.
+                    Face recognition is not enabled by this list.
+                  </p>
+                  {status.people.length === 0 ? (
+                    <p>No people have been added to memory.</p>
+                  ) : (
+                    status.people.map((person) => (
+                      <article className="fact" key={person.id}>
+                        <small>
+                          {person.relation || person.trust_level} ·{" "}
+                          {person.consent_to_remember
+                            ? "consent recorded"
+                            : "no consent recorded"}
+                        </small>
+                        <p>{person.display_name}</p>
+                        <time>
+                          {person.last_seen_at
+                            ? `Last noted ${person.last_seen_at}`
+                            : "Not yet seen"}
+                        </time>
+                        <div className="fact-actions">
+                          <button
+                            onClick={async () => {
+                              if (
+                                !window.confirm(
+                                  `Forget ${person.display_name}? AURA will remove this person and their associated timeline from local memory. This cannot be undone.`,
+                                )
+                              )
+                                return;
+                              try {
+                                await api("person/delete", {
+                                  person_id: person.id,
+                                });
+                                await refresh();
+                                setError("Person forgotten.");
+                              } catch (e) {
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            Forget person
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </section>
                 <section className="memory-review">
                   <h3>Routines</h3>
                   {status.routines.length === 0 ? (

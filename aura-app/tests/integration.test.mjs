@@ -2,6 +2,7 @@ import test from "node:test";
 import http from "node:http";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { mkdtemp, rm, readdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -67,6 +68,7 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     await start(db);
     assert.equal((await fetch(base + "/api/status")).status, 401);
     assert.equal((await fetch(base + "/api/readiness")).status, 401);
+    assert.equal((await post("person/delete", { person_id: 1 })).status, 401);
     assert.equal(
       (await post("login", { token }, "", "https://evil.test")).status,
       403,
@@ -225,6 +227,7 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       await fetch(base + "/api/status", { headers: { Cookie: cookie } })
     ).json();
     assert.equal(status.conversations.length, 2);
+    assert.deepEqual(status.people, []);
     assert.ok(status.facts.some((f) => f.fact_key === "recent_anxiety"));
     const exportResponse = await fetch(base + "/api/memory/export", {
       headers: { Cookie: cookie },
@@ -301,6 +304,14 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     assert.equal(
       (await post("fact/delete", { fact_id: 0 }, cookie)).status,
       400,
+    );
+    assert.equal(
+      (await post("person/delete", { person_id: 0 }, cookie)).status,
+      400,
+    );
+    assert.equal(
+      (await post("person/delete", { person_id: 999999 }, cookie)).status,
+      404,
     );
     assert.equal(
       (
@@ -467,6 +478,69 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     assert.ok(
       (await readdir(path.join(dir, "backups"))).some((f) => f.endsWith(".db")),
     );
+  } finally {
+    await stop();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("people memory is private and forget removes its associated timeline", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "aura-people-test-"));
+  const db = path.join(dir, "memory.db");
+  const personId = Number(
+    execFileSync(
+      "python3",
+      [
+        "-c",
+        [
+          "import sys",
+          "from pathlib import Path",
+          `sys.path.insert(0, ${JSON.stringify(path.resolve(".."))})`,
+          "from memory.sqlite_store import AuraMemoryStore",
+          "store = AuraMemoryStore(Path(sys.argv[1]))",
+          "store.apply_schema()",
+          "user = store.get_or_create_user('Sujan M J', 'Sujan')",
+          "person = store.add_known_person(user, 'Alex', relation='friend', notes='private note', consent_to_remember=True)",
+          "store.add_person_event(user, person, 'person_introduced', 'Alex was introduced.')",
+          "print(person)",
+          "store.close()",
+        ].join("\n"),
+        db,
+      ],
+      { encoding: "utf8" },
+    ).trim(),
+  );
+  try {
+    await start(db);
+    const cookie = await login();
+    const before = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.deepEqual(before.people.map((person) => person.display_name), ["Alex"]);
+    assert.equal(before.people[0].consent_to_remember, 1);
+    assert.equal("notes" in before.people[0], false);
+    assert.equal(
+      (await post("person/delete", { person_id: personId }, cookie)).status,
+      200,
+    );
+    const after = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.deepEqual(after.people, []);
+    const counts = execFileSync(
+      "python3",
+      [
+        "-c",
+        [
+          "import sqlite3, sys",
+          "conn = sqlite3.connect('file:' + sys.argv[1] + '?mode=ro', uri=True)",
+          "print(*conn.execute('select (select count(*) from known_people), (select count(*) from person_events)').fetchone())",
+        ].join("\n"),
+        db,
+      ],
+      { encoding: "utf8" },
+    ).trim();
+    assert.equal(counts, "0 0");
   } finally {
     await stop();
     await rm(dir, { recursive: true, force: true });
