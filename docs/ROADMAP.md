@@ -526,6 +526,12 @@ not change the current status: Phase 2 is active.
   last seen, only with confidence and clear age/context.
 - Store concise local event summaries with time, source and uncertainty, and
   provide retrieval, expiry, export and deletion controls.
+- Implemented: natural singular/plural item questions can retrieve matching
+  user-entered or corrected event notes (for example, asking about “keys” can
+  find a note about “key”). Retrieved notes include their saved timestamp and
+  are labeled as potentially outdated. This does not infer an object's current
+  location from camera imagery. Companion tests cover note retrieval and the
+  uncertainty label; the Mac app build and full local test suite pass.
 
 ### Phase 9 — Proactive companion conversation
 

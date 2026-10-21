@@ -242,6 +242,27 @@ class CompanionTest(unittest.TestCase):
             self.assertEqual(len(store.get_latest_observations(owner, limit=20)), before)
             store.close()
 
+    def test_plural_object_question_recalls_user_note_with_age_context(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            MemoryExtractor(store).process_user_message(
+                owner, 'Remember that the spare key is by the blue sofa.'
+            )
+            store.add_conversation(owner, 'user', 'Where are my keys?')
+
+            prompt = PromptBuilder(store).build_companion_prompt(
+                owner, {'situation': 'The user is asking about an item.'}
+            )
+
+            self.assertIn('Relevant user-provided memory notes and corrections', prompt)
+            self.assertIn('spare key is by the blue sofa', prompt)
+            self.assertIn('saved ', prompt)
+            self.assertIn('may be outdated', prompt)
+            self.assertNotIn('Fresh on-device visual estimates', prompt)
+            store.close()
+
     def test_conversation_history_clear_is_scoped_and_preserves_companion_memory(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')

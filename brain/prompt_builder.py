@@ -93,8 +93,10 @@ class PromptBuilder:
             )
             for item in relevant_event_notes:
                 origin = "User correction" if item.get("source") == "user_correction" else "User note"
+                recorded = item.get("created_at")
+                recorded_suffix = f" (saved {recorded}; may be outdated)" if recorded else " (may be outdated)"
                 sections.append(
-                    f"- {origin}: {json.dumps(str(item.get('event_summary', '')))}"
+                    f"- {origin}{recorded_suffix}: {json.dumps(str(item.get('event_summary', '')))}"
                 )
 
         if relevant_device_events:
