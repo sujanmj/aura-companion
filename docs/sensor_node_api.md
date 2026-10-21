@@ -140,6 +140,31 @@ with urllib.request.urlopen(request, timeout=10) as response:
 For an enrolled node, use `AURA_SENSOR_NODE_TOKEN` and omit `source`/`room`;
 the hub takes both values from its node registration.
 
+### Persistent Pi node presence service
+
+`deploy/systemd/aura-pi-node-heartbeat.service` keeps an enrolled node's online
+status fresh after reboot. It sends heartbeats only; it does not read sensors,
+capture audio/video, or act as the Pi companion runtime. Install the checkout at
+`/opt/aura-companion`, create a dedicated `aura-node` system account, and copy
+the unit into `/etc/systemd/system/`. Create `/etc/aura/aura-node.env` with the
+node ID and one-time enrollment token from this node's private configuration:
+
+```env
+AURA_SENSOR_NODE_ID=pi_bedroom_node
+AURA_SENSOR_NODE_TOKEN=YOUR_NODE_TOKEN
+AURA_SENSOR_API_URL=http://aura-hub.local:8787
+AURA_SENSOR_NODE_HEARTBEAT_INTERVAL_SECONDS=30
+```
+
+Keep the file root-owned with mode `0600`. The startup check rejects missing or
+weak tokens, invalid IDs and URLs, and heartbeat intervals outside 5–60 seconds.
+Enable the service with `systemctl enable --now aura-pi-node-heartbeat.service`.
+Use HTTPS with a trusted certificate when available; plain HTTP exposes the
+node credential on the LAN and should be limited to a trusted isolated network.
+The unit runs as `aura-node` with a read-only filesystem view and does not write
+application state. It is tested on CI only and has not been installed on Pi
+hardware.
+
 v0.4 uses one hub token for administration and separate revocable node tokens for
 each enrolled sensor. Keep the API on a **trusted LAN only**; do not expose it
 directly to the internet. HTTP on a LAN does not encrypt credentials, so use a

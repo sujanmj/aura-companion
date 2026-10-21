@@ -211,9 +211,15 @@ def post_event(hub_url: str, payload: dict[str, Any], token: str | None) -> dict
     raise ConnectionError("sensor event could not be delivered")
 
 
-def send_node_heartbeat(node_id: str, hub_url: str | None = None) -> int:
-    load_env_file()
-    token = os.environ.get("AURA_SENSOR_NODE_TOKEN", "").strip()
+def send_node_heartbeat(
+    node_id: str,
+    hub_url: str | None = None,
+    token: str | None = None,
+) -> int:
+    if token is None:
+        load_env_file()
+        token = os.environ.get("AURA_SENSOR_NODE_TOKEN", "")
+    token = token.strip()
     if len(token) < 32:
         print("AURA_PI_NODE_HEARTBEAT_ERROR: set AURA_SENSOR_NODE_TOKEN from enrollment")
         return 1

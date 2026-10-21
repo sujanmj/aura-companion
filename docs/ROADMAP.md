@@ -375,6 +375,12 @@ Status: security hardening is progressing; kiosk UI, event API and simulators ex
   rejection, and malformed responses; CI run 39550555145 passed on macOS and
   Ubuntu. This is client reliability coverage, not Raspberry Pi hardware
   acceptance.
+- Added: a hardened systemd presence service keeps an enrolled Pi node's
+  heartbeat fresh after reboot. It runs as a dedicated unprivileged account,
+  validates its node credential, hub URL, and interval before startup, and has
+  no writable application-state paths. It sends no sensor, audio, or video data.
+  Unit, configuration, and service-loop tests are part of CI. This has not been
+  installed on a Raspberry Pi and is not a capture runtime.
 - Implemented: optional Supabase sync now has a durable SQLite retry outbox for
   conversation and sensor-event rows. The outbox stores source-row references,
   device IDs and retry metadata rather than duplicating message/event text;
