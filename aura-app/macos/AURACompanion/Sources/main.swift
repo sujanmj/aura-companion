@@ -91,6 +91,7 @@ struct AURAAmbientApp: App {
     private var sceneObservationKey: String?
     private var lastSceneObservationAttempt = Date.distantPast
     private var sceneObservationInFlight = false
+    private var checkinTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -349,7 +350,8 @@ struct AURAAmbientApp: App {
             guard lifecycle.activate(generation) else { return }
             observeAudioConfigurationChange(generation: generation)
             isActive = true; microphoneOn = true; microphoneStopping = false; cameraOn = true; cameraStopping = false
-            status = "Listening locally. Only Hey AURA, direct requests, or explicit support phrases get a reply."
+            status = "Listening locally. Direct replies are phrase-triggered; scheduled check-ins stay off until enabled in Setup."
+            startAmbientCheckins(generation: generation)
         } catch {
             guard lifecycle.contains(generation) else { return }
             stop(); status = "Couldn’t start the local microphone and camera: \(error.localizedDescription)"
@@ -446,6 +448,47 @@ struct AURAAmbientApp: App {
         }
     }
 
+    private func startAmbientCheckins(generation: UInt64) {
+        checkinTask?.cancel()
+        checkinTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled, self.lifecycle.acceptsCaptureEvent(generation) {
+                await self.checkForDueCheckin(generation: generation)
+                do {
+                    try await Task.sleep(nanoseconds: 300_000_000_000)
+                } catch {
+                    break
+                }
+            }
+            if self.lifecycle.generation == generation { self.checkinTask = nil }
+        }
+    }
+
+    private func checkForDueCheckin(generation: UInt64) async {
+        guard lifecycle.acceptsCaptureEvent(generation), !Task.isCancelled,
+              replyTask == nil, !synthesizer.isSpeaking,
+              let cookie,
+              let url = URL(string: "http://127.0.0.1:8790/api/checkin") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("http://127.0.0.1:8790", forHTTPHeaderField: "Origin")
+        request.setValue(cookie, forHTTPHeaderField: "Cookie")
+        request.httpBody = Data("{}".utf8)
+        request.timeoutInterval = 5
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard lifecycle.acceptsCaptureEvent(generation), !Task.isCancelled,
+                  (response as? HTTPURLResponse)?.statusCode == 200 else { return }
+            let checkin = try JSONDecoder().decode(CheckinResponse.self, from: data)
+            guard checkin.due, let message = checkin.response, !message.isEmpty,
+                  replyTask == nil, !synthesizer.isSpeaking else { return }
+            speakLocally(message, generation: generation)
+        } catch {
+            // Check-ins are optional; transient local-service errors do not stop capture.
+        }
+    }
+
     private func handle(_ transcript: String) {
         guard isActive, replyTask == nil, !synthesizer.isSpeaking else { return }
         let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -490,31 +533,36 @@ struct AURAAmbientApp: App {
                 return
             }
             let response = try JSONDecoder().decode(CompanionResponse.self, from: data)
-            await MainActor.run {
-                guard lifecycle.contains(generation), isActive, !Task.isCancelled else { return }
-                recentResponse = response.response
-                let utterance = AVSpeechUtterance(string: response.response); utterance.voice = AVSpeechSynthesisVoice(language: "en-US"); utterance.rate = 0.48
-                let outputGeneration = speechOutputSuppression.begin()
-                let sessionGeneration = lifecycle.generation
-                transcriber?.setOutputSuppressed(true)
-                status = "AURA is speaking locally. Microphone transcription pauses during playback."
-                synthesizer.speak(utterance)
-                Task { [weak self] in
-                    guard let self else { return }
-                    while speechOutputSuppression.contains(outputGeneration), synthesizer.isSpeaking {
-                        try? await Task.sleep(nanoseconds: 100_000_000)
-                    }
-                    guard speechOutputSuppression.contains(outputGeneration) else { return }
-                    try? await Task.sleep(nanoseconds: 800_000_000)
-                    guard speechOutputSuppression.finish(outputGeneration) else { return }
-                    transcriber?.setOutputSuppressed(false)
-                    guard lifecycle.contains(sessionGeneration) else { return }
-                    status = "AURA finished speaking. Listening locally."
-                }
-            }
+            await MainActor.run { speakLocally(response.response, generation: generation) }
         } catch {
             guard lifecycle.contains(generation), !Task.isCancelled else { return }
             status = "AURA’s reply was interrupted. Check the conversation before retrying; it may already be saved."
+        }
+    }
+
+    private func speakLocally(_ text: String, generation: UInt64) {
+        guard lifecycle.acceptsCaptureEvent(generation), isActive,
+              !text.isEmpty, !synthesizer.isSpeaking else { return }
+        recentResponse = text
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = 0.48
+        let outputGeneration = speechOutputSuppression.begin()
+        let sessionGeneration = lifecycle.generation
+        transcriber?.setOutputSuppressed(true)
+        status = "AURA is speaking locally. Microphone transcription pauses during playback."
+        synthesizer.speak(utterance)
+        Task { [weak self] in
+            guard let self else { return }
+            while speechOutputSuppression.contains(outputGeneration), synthesizer.isSpeaking {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+            guard speechOutputSuppression.contains(outputGeneration) else { return }
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            guard speechOutputSuppression.finish(outputGeneration) else { return }
+            transcriber?.setOutputSuppressed(false)
+            guard lifecycle.contains(sessionGeneration) else { return }
+            status = "AURA finished speaking. Listening locally."
         }
     }
 
@@ -522,6 +570,7 @@ struct AURAAmbientApp: App {
         startupTimeoutTask?.cancel()
         startupTimeoutTask = nil
         speechOutputSuppression.cancel()
+        checkinTask?.cancel(); checkinTask = nil
         if !cameraStopping { lifecycle.pause() }
         let stoppedGeneration = lifecycle.generation
         if !preservingWakeResume { wakeResume.cancel() }
@@ -714,6 +763,7 @@ private final class LocalCamera: NSObject, AVCaptureVideoDataOutputSampleBufferD
 }
 
 private struct CompanionResponse: Decodable { let response: String }
+private struct CheckinResponse: Decodable { let due: Bool; let response: String? }
 private enum CaptureError: LocalizedError {
     case noCamera, noMicrophone, inputConfiguration, outputConfiguration, startFailed
     var errorDescription: String? { switch self { case .startFailed: "The camera session did not start. Check camera access and other camera apps."; case .noCamera: "No camera was found."; case .noMicrophone: "No microphone was found."; case .inputConfiguration: "macOS could not add the camera input. Check camera access and close apps using the camera."; case .outputConfiguration: "macOS could not add the local video classifier." } }

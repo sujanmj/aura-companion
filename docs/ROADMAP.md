@@ -67,6 +67,14 @@ Status: in progress; this is the current phase.
   changed summary per minute. The Memory view already supports review/deletion.
   Unit and authenticated API tests pass, and the native helper builds. Hardware
   acceptance of this new persistence path remains outstanding.
+- Implemented: the Mac helper checks the existing local check-in endpoint every
+  five minutes while ambient mode is active. Existing Setup preferences remain
+  the gate: check-ins are off by default, and AURA's local service enforces the
+  user's quiet hours and minimum interval. Replies use local speech and do not
+  invoke Claude or MCP actions. Local native helper build, API, and Python
+  checks pass; the next pushed commit's CI remains the cross-platform gate.
+  Physical speaker delivery of a due scheduled check-in still needs live
+  acceptance.
 - Fixed: copy audio tap buffers before asynchronous recognition and isolate
   delayed errors with per-utterance generations, so a stale callback cannot
   reset a newer phrase. Native tests cover stale callbacks.
