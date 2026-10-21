@@ -368,6 +368,13 @@ Status: security hardening is progressing; kiosk UI, event API and simulators ex
   appear online for 90 seconds after their last contact. Credential enrollment
   and revocation, room/source binding, and status are API-tested. A production Pi
   background service and room-to-room conversation handoff remain.
+- Improved: the enrolled-node heartbeat client retries request timeouts and
+  temporary HTTP 429/5xx failures for up to three total attempts, reusing the
+  same authenticated request. It stops on credential rejection and does not
+  print untrusted response bodies. Four focused tests cover retries, immediate
+  rejection, and malformed responses; CI run 39550555145 passed on macOS and
+  Ubuntu. This is client reliability coverage, not Raspberry Pi hardware
+  acceptance.
 - Implemented: optional Supabase sync now has a durable SQLite retry outbox for
   conversation and sensor-event rows. The outbox stores source-row references,
   device IDs and retry metadata rather than duplicating message/event text;
