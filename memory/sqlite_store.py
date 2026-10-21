@@ -147,6 +147,7 @@ class AuraMemoryStore:
             "mood_logs",
             "routine_memory",
             "forgotten_memory_routines",
+            "routine_reminders",
             "safety_events",
             "emergency_contacts",
             "response_feedback",

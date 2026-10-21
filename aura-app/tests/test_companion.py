@@ -67,13 +67,20 @@ class CompanionTest(unittest.TestCase):
             store.add_conversation(other,'user','other user message')
             store.remember_fact(owner,'favorite_drink','tea')
             store.remember_fact(other,'favorite_drink','coffee')
+            store.add_routine_reminder(owner, 'Take medication', '20:00')
+            store.add_routine_reminder(other, 'Private other reminder', '21:00')
             exported=store.export_user_memory(owner)
             self.assertEqual(exported['format'],'aura-memory-export')
             self.assertEqual(exported['user']['name'],'Owner')
             self.assertEqual(exported['records']['conversation_logs'][0]['message'],'private owner message')
             self.assertEqual(exported['records']['memory_facts'][0]['fact_value'],'tea')
+            self.assertEqual(
+                exported['records']['routine_reminders'][0]['label'],
+                'Take medication',
+            )
             self.assertNotIn('other user message',str(exported))
             self.assertNotIn('coffee',str(exported))
+            self.assertNotIn('Private other reminder',str(exported))
             store.close()
 
     def test_routines_can_be_corrected_forgotten_and_explicitly_remembered_again(self):
