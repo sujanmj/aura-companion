@@ -72,8 +72,9 @@ Status: in progress; this is the current phase.
   camera and microphone capture are paused. Explicit reminder enables and
   check-in preferences remain the gates; quiet hours and daily delivery limits
   are enforced by local SQLite. Replies use local speech and do not invoke
-  Claude or MCP actions. This update has local app-build, native-test, API, and
-  Python verification; cross-platform CI and live speaker acceptance are pending.
+  Claude or MCP actions. Local app-build, native-test, API, and Python checks
+  pass; macOS and Ubuntu push/PR CI passed in runs 39613730506 and 39613739454.
+  Live speaker acceptance remains outstanding.
 - Implemented with CI: companion replies can use up to three relevant on-device
   scene summaries only when they are no more than ten minutes old. Visual
   estimates are labeled uncertain and cannot confirm identity, activity, or an
@@ -92,8 +93,8 @@ Status: in progress; this is the current phase.
 - Implemented for Mac preview: an off-by-default setting can prevent idle
   system and display sleep while ambient mode is live. Pause, stop, and quit
   release the sleep assertion; password and automatic-lock settings are not
-  changed. Local build verification is pending; energy-use and sleep/wake
-  acceptance remain outstanding.
+  changed. The local app build and native lifecycle tests pass; CI, energy-use,
+  and sleep/wake acceptance remain outstanding.
 - Fixed: AURA's spoken reply temporarily suppresses microphone transcription and
   cancels any in-flight recognition, then resumes after a quiet grace period.
   Stale speech-completion callbacks cannot reopen the microphone after a newer
@@ -358,7 +359,8 @@ Status: partial components exist; acceptance not complete.
   bounded speech pace in the native helper. Settings stay in macOS preferences
   and apply to ambient replies and opted-in reminders. Native tests cover
   defaults, saved voice selection, missing-voice fallback, and safe pace bounds;
-  CI is pending, and acoustic quality still needs live acceptance.
+  macOS and Ubuntu pull-request CI passed in run 39615690020, and acoustic
+  quality still needs live acceptance.
 - Verify real voice conversations, interruption, memory continuity and opt-in tools.
 - Exercise real Claude/MCP and optional voice-provider paths when configured.
 - Provide a repeatable onboarding and acceptance procedure.
@@ -551,7 +553,8 @@ not change the current status: Phase 2 is active.
   confirm task or dose completion. Cross-platform tests cover scheduling,
   delivery, dismissal, account scoping, and active-reminder limits. The native
   helper polls while paired and running, including with ambient sensors paused.
-  This expanded delivery path remains pending CI and live speaker acceptance.
+  Pull-request and push CI passed on both platforms in runs 39615337678 and
+  39615327822. Live speaker acceptance remains pending.
 - Add optional, user-controlled links to iPhone or wearable health data where
   supported, and show what is collected, where it is stored and how to remove it.
 - Summarize trends in sleep, activity and meals as non-diagnostic observations

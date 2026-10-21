@@ -368,7 +368,7 @@ struct AURAAmbientApp: App {
             observeAudioConfigurationChange(generation: generation)
             isActive = true; microphoneOn = true; microphoneStopping = false; cameraOn = true; cameraStopping = false
             updateSleepPreventionActivity()
-            status = "Listening locally. Direct replies are phrase-triggered; scheduled check-ins stay off until enabled in Setup."
+            status = "Listening locally. Direct replies are phrase-triggered; check-ins and daily reminders follow your Setup choices."
         } catch {
             guard lifecycle.contains(generation) else { return }
             stop(); status = "Couldn’t start the local microphone and camera: \(error.localizedDescription)"
