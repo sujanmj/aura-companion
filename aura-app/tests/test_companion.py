@@ -345,6 +345,47 @@ class CompanionTest(unittest.TestCase):
             self.assertNotIn('last note I have', result['response'])
             store.close()
 
+    def test_local_companion_answers_routine_question_from_matching_memory(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            store.remember_routine(
+                owner, 'fitness_interest', 'User prefers swimming for exercise.',
+                confidence=1.0, source='user_correction',
+            )
+            store.remember_routine(
+                owner, 'evening_meal', 'User usually eats dinner around eight.',
+                confidence=0.8, source='user_correction',
+            )
+            store.add_conversation(owner, 'user', 'What exercise do I prefer?')
+            engine = CompanionReactionEngine(store, use_llm=False)
+
+            with patch.object(engine.llm_provider, 'generate', side_effect=AssertionError('provider must not run')):
+                result = engine.generate_reaction(owner)
+
+            self.assertIn('swimming for exercise', result['response'])
+            self.assertIn('incomplete or out of date', result['response'])
+            self.assertNotIn('dinner', result['response'])
+            store.close()
+
+    def test_local_routine_recall_does_not_expose_unrelated_memory(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            store.remember_routine(
+                owner, 'fitness_interest', 'User prefers swimming for exercise.',
+                confidence=1.0, source='user_correction',
+            )
+            store.add_conversation(owner, 'user', 'What time is my meeting?')
+            engine = CompanionReactionEngine(store, use_llm=False)
+
+            result = engine.generate_reaction(owner)
+
+            self.assertNotIn('swimming', result['response'])
+            store.close()
+
     def test_conversation_history_clear_is_scoped_and_preserves_companion_memory(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')

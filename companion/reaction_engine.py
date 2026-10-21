@@ -222,6 +222,17 @@ class CompanionReactionEngine:
                 "reasons": ["Recalled a matching user-provided note locally."],
             }
 
+        remembered_routine = self._remembered_routine_reply(user_id, latest_user_message)
+        if remembered_routine:
+            return {
+                "situation": "The user asked about a saved routine memory.",
+                "emotional_need": "practical_help",
+                "tone": "warm_practical",
+                "response": remembered_routine,
+                "confidence": 0.85,
+                "reasons": ["Recalled a relevant routine memory locally."],
+            }
+
         raw_response = self._compose_response(inference, context, style_context)
         fallback_response = self.style_policy.polish_response(raw_response, style_context)
 
@@ -254,6 +265,32 @@ class CompanionReactionEngine:
             "confidence": inference["confidence"],
             "reasons": reasons,
         }
+
+    def _remembered_routine_reply(self, user_id: int, message: str) -> str | None:
+        if not re.search(
+            r"\b(routine|habit|usually|exercise|workout|gym|meal|bedtime|sleep)\b",
+            message,
+            re.IGNORECASE,
+        ):
+            return None
+
+        routines = [
+            {
+                "fact_key": item.get("routine_key", ""),
+                "fact_value": item.get("routine_value", ""),
+                "confidence": item.get("confidence", 0.5),
+            }
+            for item in self.store.get_routine_memory(user_id)
+        ]
+        relevant = self.relevance_filter.filter_facts(message, None, routines)
+        if not relevant:
+            return None
+
+        selected = max(relevant, key=lambda item: item.get("relevance_score", 0.0))
+        routine_value = str(selected.get("fact_value", "")).strip().rstrip(".!? ")
+        if not routine_value:
+            return None
+        return f"The routine memory I have says: {routine_value}. It may be incomplete or out of date."
 
     def _remembered_location_reply(
         self,

@@ -395,6 +395,10 @@ Status: foundations exist in the original reaction/memory engines.
   current message has relevant terms. Routine context is labeled as potentially
   incomplete and never treated as a live schedule or proof of current behavior.
   Companion tests cover relevant inclusion and unrelated-routine exclusion.
+- Implemented: local-only replies can answer matching questions about saved
+  routine memories without sending them to a provider. Responses identify the
+  source as AURA's memory, flag possible staleness, and omit unrelated routines.
+  Companion tests cover provider-free retrieval and unrelated-memory exclusion.
 - Implemented: ambient observations can be deleted individually from the
   authenticated Memory view; deletion is scoped to the current user's SQLite
   records and removes that observation from future exports.
