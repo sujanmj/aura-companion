@@ -49,6 +49,7 @@ class PromptBuilder:
         relevant_facts = self.relevance_filter.filter_facts(current_message, latest_observation, facts)
         previous_assistant = self._previous_assistant_message(conversations)
         relevant_device_events = self._load_relevant_device_events(user_id, current_message)
+        relevant_people = self._load_relevant_people(user_id, current_message)
 
         sections = [
             AURA_IDENTITY,
@@ -91,6 +92,18 @@ class PromptBuilder:
             sections.extend(["", "Relevant memory facts:"])
             for fact in relevant_facts:
                 sections.append(f"- {fact.get('fact_key')}: {fact.get('fact_value')}")
+
+        if relevant_people:
+            sections.extend(
+                [
+                    "",
+                    "Relevant user-entered people memories (not camera identification):",
+                ]
+            )
+            for person in relevant_people:
+                relation = person.get("relation")
+                detail = f" — {relation}" if relation else ""
+                sections.append(f"- {person.get('display_name')}{detail}")
 
         if previous_assistant:
             sections.extend(
@@ -203,3 +216,22 @@ class PromptBuilder:
 
         events = self.store.get_recent_device_events(user_id, limit=10)
         return self.relevance_filter.filter_device_events(current_message, events)
+
+    def _load_relevant_people(
+        self,
+        user_id: int,
+        current_message: str,
+    ) -> list[dict[str, Any]]:
+        if not hasattr(self.store, "get_known_people"):
+            return []
+        message = f" {self.relevance_filter.normalize_text(current_message)} "
+        people = self.store.get_known_people(user_id)
+        relevant: list[dict[str, Any]] = []
+        for person in people:
+            if not person.get("consent_to_remember"):
+                continue
+            name = str(person.get("display_name", "")).strip()
+            normalized_name = self.relevance_filter.normalize_text(name)
+            if normalized_name and f" {normalized_name} " in message:
+                relevant.append(person)
+        return relevant[:5]

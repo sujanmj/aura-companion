@@ -372,8 +372,10 @@ Status: foundations exist in the original reaction/memory engines.
   observations alongside correctable/forgettable facts.
 - Implemented: Memory can add a manually introduced person only after the user
   records their agreement, lists that consent without exposing private notes,
-  and can explicitly forget the person and associated timeline. Changes are
-  scoped to their SQLite account. This does not enroll or recognize faces.
+  and can explicitly forget the person and associated timeline. When the user
+  names a consented person, the existing companion prompt can use their name
+  and relationship; no camera matching is implied. Changes are scoped to their
+  SQLite account. This does not enroll or recognize faces.
 - Implemented: routines can be corrected or explicitly forgotten; a forgotten
   routine is suppressed from automatic conversation extraction until the user
   explicitly asks AURA to remember it again.

@@ -155,6 +155,30 @@ class CompanionTest(unittest.TestCase):
             'On-device scene estimate: sofa.'
         ])
 
+    def test_only_explicitly_consented_and_named_people_enter_prompt_context(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            store.add_known_person(
+                owner, 'Alex Rivera', relation='friend', consent_to_remember=True
+            )
+            store.add_known_person(
+                owner, 'Sam', relation='neighbor', consent_to_remember=False
+            )
+            store.add_known_person(
+                owner, 'Taylor', relation='family', consent_to_remember=True
+            )
+            store.add_conversation(owner, 'user', 'Alex Rivera is coming for dinner.')
+            prompt = PromptBuilder(store).build_companion_prompt(
+                owner, {'situation': 'The user is talking about a visitor.'}
+            )
+            self.assertIn('Relevant user-entered people memories (not camera identification)', prompt)
+            self.assertIn('- Alex Rivera — friend', prompt)
+            self.assertNotIn('Sam — neighbor', prompt)
+            self.assertNotIn('Taylor — family', prompt)
+            store.close()
+
     def test_conversation_history_clear_is_scoped_and_preserves_companion_memory(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')
