@@ -234,6 +234,17 @@ enum AmbientPowerSettings {
     static let keepAwakePreferenceKey = "auraKeepMacAwakeWhileAmbient"
 }
 
+struct SleepPreventionState {
+    private(set) var isPreventingSleep = false
+
+    mutating func update(isActive: Bool, enabled: Bool) -> Bool? {
+        let shouldPrevent = isActive && enabled
+        guard shouldPrevent != isPreventingSleep else { return nil }
+        isPreventingSleep = shouldPrevent
+        return shouldPrevent
+    }
+}
+
 enum PermissionSettings {
     static func target(for status: String) -> String? {
         if status.hasPrefix("Allow Speech Recognition") || status.hasPrefix("Speech Recognition permission check timed out") {

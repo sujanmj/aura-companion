@@ -95,6 +95,7 @@ struct AURAAmbientApp: App {
     private var personPresenceNoticeTracker = PersonPresenceNoticeTracker()
     private var keepMacAwake = UserDefaults.standard.bool(forKey: AmbientPowerSettings.keepAwakePreferenceKey)
     private var sleepPreventionActivity: NSObjectProtocol?
+    private var sleepPreventionState = SleepPreventionState()
 
     override init() {
         super.init()
@@ -664,18 +665,16 @@ struct AURAAmbientApp: App {
     }
 
     private func updateSleepPreventionActivity() {
-        guard isActive, keepMacAwake else {
-            if let sleepPreventionActivity {
-                ProcessInfo.processInfo.endActivity(sleepPreventionActivity)
-                self.sleepPreventionActivity = nil
-            }
-            return
+        guard let shouldPreventSleep = sleepPreventionState.update(isActive: isActive, enabled: keepMacAwake) else { return }
+        if shouldPreventSleep {
+            sleepPreventionActivity = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiated, .idleSystemSleepDisabled, .idleDisplaySleepDisabled],
+                reason: "AURA ambient mode is using the Mac camera and microphone"
+            )
+        } else if let sleepPreventionActivity {
+            ProcessInfo.processInfo.endActivity(sleepPreventionActivity)
+            self.sleepPreventionActivity = nil
         }
-        guard sleepPreventionActivity == nil else { return }
-        sleepPreventionActivity = ProcessInfo.processInfo.beginActivity(
-            options: [.userInitiated, .idleSystemSleepDisabled, .idleDisplaySleepDisabled],
-            reason: "AURA ambient mode is using the Mac camera and microphone"
-        )
     }
 
     private func refreshPausedStatus() {

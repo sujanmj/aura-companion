@@ -121,6 +121,14 @@ struct LifecycleTests {
         precondition(personNotice.observe(isPresent: true, enabled: true), "Opted-in stable re-entry may trigger one notice")
         precondition(!personNotice.observe(isPresent: true, enabled: true), "A continuously visible person must not trigger repeated notices")
 
+        var sleepPrevention = SleepPreventionState()
+        precondition(sleepPrevention.update(isActive: false, enabled: true) == nil, "A saved preference must not prevent sleep while capture is paused")
+        precondition(sleepPrevention.update(isActive: true, enabled: false) == nil, "Sleep prevention stays off until explicitly enabled")
+        precondition(sleepPrevention.update(isActive: true, enabled: true) == true, "The opt-in assertion starts only for live ambient capture")
+        precondition(sleepPrevention.update(isActive: true, enabled: true) == nil, "Repeated live updates must not create duplicate assertions")
+        precondition(sleepPrevention.update(isActive: false, enabled: true) == false, "Pause releases the assertion even if the preference remains enabled")
+        precondition(!sleepPrevention.isPreventingSleep)
+
         precondition(
             PermissionSettings.target(for: "Allow Speech Recognition in System Settings") == "Privacy_SpeechRecognition",
             "Speech permission denial must link to its privacy pane"
