@@ -93,7 +93,8 @@ Status: in progress; this is the current phase.
 - Implemented for Mac preview: an off-by-default setting can prevent idle
   system and display sleep while ambient mode is live. Pause, stop, and quit
   release the sleep assertion; password and automatic-lock settings are not
-  changed. The local app build and native lifecycle tests pass; CI, energy-use,
+  changed. The local app build and native lifecycle tests pass, and push CI
+  passed on macOS and Ubuntu in run 39617638169. Pull-request CI, energy-use,
   and sleep/wake acceptance remain outstanding.
 - Fixed: AURA's spoken reply temporarily suppresses microphone transcription and
   cancels any in-flight recognition, then resumes after a quiet grace period.
@@ -505,7 +506,8 @@ not change the current status: Phase 2 is active.
   re-entry, and says it cannot identify who is present. It does not claim a
   visitor is unknown, stores no identity, and runs only during explicitly
   started ambient mode. Native tests cover opt-out, debounce, re-arming, and
-  one notice per entry; CI and live false-positive acceptance are pending.
+  one notice per entry; push CI passed in run 39617638169, while pull-request
+  CI and live false-positive acceptance remain pending.
 - Finish and validate continuous perception on Mac first, with explicit
   camera/microphone indicators, a visible pause, resource limits, and reliable
   offline behavior; port the validated runtime to Pi afterward.
