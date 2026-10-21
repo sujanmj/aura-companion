@@ -510,10 +510,7 @@ struct AURAAmbientApp: App {
         }
         recentResponse = text
         status = "AURA is speaking an opted-in check-in or reminder. Microphone and camera are off."
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = 0.48
-        synthesizer.speak(utterance)
+        synthesizer.speak(SpeechOutputSettings.utterance(text))
         let generation = pairingGeneration.value
         Task { [weak self] in
             guard let self else { return }
@@ -581,9 +578,7 @@ struct AURAAmbientApp: App {
         guard lifecycle.acceptsCaptureEvent(generation), isActive,
               !text.isEmpty, !synthesizer.isSpeaking else { return }
         recentResponse = text
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = 0.48
+        let utterance = SpeechOutputSettings.utterance(text)
         let outputGeneration = speechOutputSuppression.begin()
         let sessionGeneration = lifecycle.generation
         transcriber?.setOutputSuppressed(true)
@@ -1123,12 +1118,41 @@ private enum SpeechPipelineError: LocalizedError {
 
 private struct MenuView: View {
     @ObservedObject var monitor: AmbientMonitor
+    @AppStorage(SpeechOutputSettings.voicePreferenceKey) private var speechVoiceIdentifier = ""
+    @AppStorage(SpeechOutputSettings.ratePreferenceKey) private var speechRate = 0.48
+
+    private var englishVoices: [AVSpeechSynthesisVoice] {
+        AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language.lowercased().hasPrefix("en") }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
             HStack { Text("✳ AURA").font(.system(size: 22, weight: .medium)); Spacer(); Text(monitor.isActive ? "LIVE" : "PAUSED").font(.caption2).tracking(2).foregroundStyle(monitor.isActive ? .green : .secondary) }
             Text("Ambient companion").font(.headline)
             Text("AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. While ambient mode is on, changed scene summaries may be stored in local SQLite. Only direct requests and explicit support phrases reach your AURA companion.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) { Label(monitor.microphoneStopping ? "Microphone stopping" : monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn || monitor.microphoneStopping ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
+            Group {
+                Picker("Spoken voice", selection: $speechVoiceIdentifier) {
+                    Text("English (US) default").tag("")
+                    ForEach(englishVoices, id: \.identifier) { voice in
+                        Text("\(voice.name) · \(voice.language)").tag(voice.identifier)
+                    }
+                }
+                Slider(value: $speechRate, in: SpeechOutputSettings.rateRange) {
+                    Text("Speech pace")
+                }
+                HStack {
+                    Text("Slower")
+                    Spacer()
+                    Text("Speech pace")
+                    Spacer()
+                    Text("Faster")
+                }.font(.caption2).foregroundStyle(.secondary)
+            }
+            Text("Voice and pace stay on this Mac and apply to AURA’s spoken replies and opted-in reminders.")
+                .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             if !monitor.isPaired {
                 if monitor.canRetrySavedPairing {
                     Button(monitor.isCheckingPairing ? "Checking saved pairing…" : "Retry saved pairing") {
@@ -1160,6 +1184,25 @@ private struct MenuView: View {
             }
             Divider(); Text("Closing this window or pressing Pause stops local listening and camera capture.").font(.system(size: 10)).foregroundStyle(.tertiary)
         }.padding(18).frame(width: 350)
+    }
+}
+
+private enum SpeechOutputSettings {
+    static let voicePreferenceKey = "auraSpeechVoiceIdentifier"
+    static let ratePreferenceKey = "auraSpeechRate"
+    static let rateRange = 0.42...0.60
+
+    static func utterance(_ text: String) -> AVSpeechUtterance {
+        let utterance = AVSpeechUtterance(string: text)
+        let selectedIdentifier = UserDefaults.standard.string(forKey: voicePreferenceKey) ?? ""
+        let installedVoices = AVSpeechSynthesisVoice.speechVoices()
+        utterance.voice = installedVoices.first(where: { $0.identifier == selectedIdentifier })
+            ?? AVSpeechSynthesisVoice(language: "en-US")
+        let storedRate = UserDefaults.standard.object(forKey: ratePreferenceKey) as? Double ?? 0.48
+        utterance.rate = storedRate.isFinite
+            ? Float(min(max(storedRate, rateRange.lowerBound), rateRange.upperBound))
+            : 0.48
+        return utterance
     }
 }
 
