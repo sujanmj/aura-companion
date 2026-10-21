@@ -3,6 +3,30 @@
 AURA is currently a development preview, not a finished always-present companion.
 The confirmed repository is https://github.com/sujanmj/aura-companion.
 
+## Long-term companion target
+
+The intended product is a present, personal companion: it can notice useful
+context throughout the day, remember user-approved people, events and routines,
+and speak naturally without requiring a wake phrase for every exchange. It may
+help find recently seen objects, offer timely routine and medication reminders,
+and contribute to a shared conversation when invited. This is an aspiration;
+these capabilities are not implemented as a complete system today. The active
+delivery phase remains Phase 2 below.
+
+Always-present sensing must be distinguishable from recording. Audio and video
+are processed only while the user has enabled the relevant sensor, with visible
+status and an immediate pause control. Raw media is not retained by default;
+local, user-reviewable summaries are the memory. Face/name memory is limited to
+people the user enrolls with appropriate consent. A person AURA cannot identify
+may trigger a configured visitor notice, but AURA must not invent their name or
+identity. Activity and object observations carry uncertainty and can be corrected
+or forgotten. Proactive speech respects quiet hours, interruption preferences,
+and confidence thresholds. Online factual grounding is opt-in, must distinguish
+verified information from uncertainty, and must not turn ambient conversation
+into unrestricted external tool actions. Health signals and medication schedules
+are separately opt-in; reminders are not proof that a dose was taken or a
+substitute for professional care.
+
 For every milestone: implement, run relevant automated tests, fix failures, commit,
 push, and verify CI before continuing. CI success proves only the checks it ran.
 Live provider, hardware, and multi-device behavior require separate acceptance
@@ -415,3 +439,69 @@ Status: simulated safety workflows exist; production validation remains.
 Exit: release checklist and evidence identify tested platforms, known limitations,
 hardware coverage and rollback instructions. A preview is never labeled production
 ready solely because it compiles or passes CI.
+
+## Future companion capability phases
+
+These phases extend the delivery work above. They are not complete, and they do
+not change the current status: Phase 2 is active.
+
+### Phase 7 — Continuous, private perception
+
+- Build the real Pi sensor runtime with explicit camera/microphone indicators,
+  a physical or on-screen pause, resource limits, and reliable offline behavior.
+- Process live streams locally where supported; separate transient perception
+  from information deliberately saved to SQLite. Raw audio/video retention stays
+  off unless the user makes a specific, informed choice.
+- Validate consent, sensor shutdown, reconnects, sleep/wake, storage bounds and
+  multi-hour operation on target hardware before describing it as always-on.
+
+### Phase 8 — People, objects and episodic memory
+
+- Let the user enroll and name consenting household members; give the user a
+  way to review, correct and remove those profiles and related memories.
+- Support configurable notices for unrecognized visitors without guessing who
+  they are. Detect and remember useful object sightings, such as where keys were
+  last seen, only with confidence and clear age/context.
+- Store concise local event summaries with time, source and uncertainty, and
+  provide retrieval, expiry, export and deletion controls.
+
+### Phase 9 — Proactive companion conversation
+
+- Offer natural back-and-forth speech without requiring a repeated wake phrase,
+  using turn detection, echo control, speaker preference and interruption rules.
+- Learn routines only from user-approved memory and feedback. Make check-ins,
+  meal/bedtime prompts and other nudges configurable, quiet-hour aware and easy
+  to dismiss or correct.
+- Ask when context is ambiguous; do not present inferred mood or activity as
+  certain knowledge.
+
+### Phase 10 — Shared conversation and grounded knowledge
+
+- Let the owner choose when AURA may join nearby conversations, while making
+  ambient sensing visible and respecting other people's privacy.
+- Distinguish a helpful, invited contribution from an interruption. For claims
+  that need checking, use an explicitly enabled online source, cite or name the
+  basis in the reply, and state uncertainty rather than confidently guessing.
+- Keep online lookup separate from ambient tool execution; every consequential
+  action continues to require explicit user approval.
+
+### Phase 11 — Opt-in routine and wellness support
+
+- Add optional, user-controlled links to iPhone or wearable health data where
+  supported, and show what is collected, where it is stored and how to remove it.
+- Summarize trends in sleep, activity and meals as non-diagnostic observations
+  the user can correct, rather than claiming to optimize health automatically.
+- Support explicit medication schedules and reminders across enrolled devices,
+  with a clear way to acknowledge or dismiss each reminder. Never infer a dose
+  was taken from camera footage or treat a reminder as confirmation.
+
+### Phase 12 — Companion acceptance and release
+
+- Test end-to-end across Mac and Pi, including room handoff, false detections,
+  mistaken memories, interruptions, network loss, privacy controls and deletion.
+- Publish only a signed, documented build whose tested sensors, providers,
+  retention behavior and known limitations match its release notes.
+
+Exit for these future phases: the behavior is useful in real homes, stays under
+the user's control, has passed privacy and reliability acceptance, and is never
+described as human-level or production-ready without evidence.
