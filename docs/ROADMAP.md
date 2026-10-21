@@ -393,6 +393,11 @@ Status: foundations exist in the original reaction/memory engines.
   cue still takes precedence. Companion tests cover both cases.
 - Implemented: consent-based local check-ins default off, wait for a saved idle
   interval, honor quiet hours, and only appear while the web companion is open.
+- Implemented: an explicit “remember that …” request saves a user-provided event
+  note in the existing SQLite observation history. Related notes enter reply
+  context only when the user mentions matching terms; unrelated notes stay out.
+  Notes are marked unverified, shown in Memory, and can be deleted there. Simple
+  credential and payment-secret requests are excluded from event-note storage.
 - Remaining: broader native controls and lifecycle acceptance.
 - Handle interruptions, uncertainty and emotional cues without claiming mind-reading.
 

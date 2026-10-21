@@ -179,6 +179,43 @@ class CompanionTest(unittest.TestCase):
             self.assertNotIn('Taylor — family', prompt)
             store.close()
 
+    def test_explicit_remember_requests_store_retrievable_local_event_notes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            extractor = MemoryExtractor(store)
+            actions = extractor.process_user_message(
+                owner,
+                'Remember that we left the spare key by the blue sofa yesterday.',
+            )
+            self.assertIn('remembered explicit event note', actions)
+            saved = store.get_latest_observations(owner, limit=1)[0]
+            self.assertEqual(saved['source'], 'user_explicit')
+            self.assertEqual(
+                saved['event_summary'],
+                'we left the spare key by the blue sofa yesterday',
+            )
+            store.add_conversation(owner, 'user', 'What is the weather like?')
+            unrelated = PromptBuilder(store).build_companion_prompt(
+                owner, {'situation': 'The user is asking a general question.'}
+            )
+            self.assertNotIn('spare key by the blue sofa', unrelated)
+            store.add_conversation(owner, 'user', 'Where did we leave the spare key?')
+            prompt = PromptBuilder(store).build_companion_prompt(
+                owner, {'situation': 'The user is asking about a remembered item.'}
+            )
+            self.assertIn('we left the spare key by the blue sofa yesterday', prompt)
+            self.assertIn('user-provided memory note', prompt)
+
+            before = len(store.get_latest_observations(owner, limit=20))
+            actions = extractor.process_user_message(
+                owner, 'Remember my password is hunter2.'
+            )
+            self.assertIn('not stored: sensitive credential or financial detail', actions)
+            self.assertEqual(len(store.get_latest_observations(owner, limit=20)), before)
+            store.close()
+
     def test_conversation_history_clear_is_scoped_and_preserves_companion_memory(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')
