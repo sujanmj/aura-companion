@@ -224,21 +224,35 @@ def send_node_heartbeat(node_id: str, hub_url: str | None = None) -> int:
         headers={"Content-Type": "application/json", AUTH_HEADER: token},
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(request, timeout=10) as response:
-            body = response.read().decode("utf-8")
-            result = json.loads(body) if body else {}
-            if response.status != 200 or not result.get("ok"):
-                print("AURA_PI_NODE_HEARTBEAT_ERROR: hub rejected heartbeat")
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                body = response.read().decode("utf-8")
+                try:
+                    result = json.loads(body) if body else {}
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    result = {}
+                if (
+                    response.status != 200
+                    or not isinstance(result, dict)
+                    or result.get("ok") is not True
+                ):
+                    print("AURA_PI_NODE_HEARTBEAT_ERROR: hub rejected heartbeat")
+                    return 1
+                print(f"AURA_PI_NODE_HEARTBEAT_OK node_id={node_id}")
+                return 0
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+            exc.close()
+            if (status < 500 and status != 429) or attempt == 2:
+                print(f"AURA_PI_NODE_HEARTBEAT_ERROR: HTTP {status}")
                 return 1
-    except urllib.error.HTTPError as exc:
-        print(f"AURA_PI_NODE_HEARTBEAT_ERROR: HTTP {exc.code}")
-        return 1
-    except urllib.error.URLError:
-        print("AURA_PI_NODE_HEARTBEAT_ERROR: hub is unreachable")
-        return 1
-    print(f"AURA_PI_NODE_HEARTBEAT_OK node_id={node_id}")
-    return 0
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == 2:
+                print("AURA_PI_NODE_HEARTBEAT_ERROR: hub is unreachable")
+                return 1
+        time.sleep(0.5 * (2**attempt))
+    return 1
 
 
 def send_simulated_event(
