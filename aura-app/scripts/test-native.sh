@@ -9,3 +9,9 @@ swiftc -parse-as-library \
   macos/tests/LifecycleTests.swift \
   -o "$AURA_TEST_DIR/lifecycle-tests"
 "$AURA_TEST_DIR/lifecycle-tests"
+swiftc -parse-as-library \
+  -framework AVFoundation \
+  macos/AURACompanion/Sources/SpeechOutputSettings.swift \
+  macos/tests/SpeechOutputSettingsTests.swift \
+  -o "$AURA_TEST_DIR/speech-settings-tests"
+"$AURA_TEST_DIR/speech-settings-tests"

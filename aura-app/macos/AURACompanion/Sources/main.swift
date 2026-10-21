@@ -1187,25 +1187,6 @@ private struct MenuView: View {
     }
 }
 
-private enum SpeechOutputSettings {
-    static let voicePreferenceKey = "auraSpeechVoiceIdentifier"
-    static let ratePreferenceKey = "auraSpeechRate"
-    static let rateRange = 0.42...0.60
-
-    static func utterance(_ text: String) -> AVSpeechUtterance {
-        let utterance = AVSpeechUtterance(string: text)
-        let selectedIdentifier = UserDefaults.standard.string(forKey: voicePreferenceKey) ?? ""
-        let installedVoices = AVSpeechSynthesisVoice.speechVoices()
-        utterance.voice = installedVoices.first(where: { $0.identifier == selectedIdentifier })
-            ?? AVSpeechSynthesisVoice(language: "en-US")
-        let storedRate = UserDefaults.standard.object(forKey: ratePreferenceKey) as? Double ?? 0.48
-        utterance.rate = storedRate.isFinite
-            ? Float(min(max(storedRate, rateRange.lowerBound), rateRange.upperBound))
-            : 0.48
-        return utterance
-    }
-}
-
 private enum Keychain {
     private static let account = "aura-companion-cookie"
     private static let timeout: TimeInterval = 8

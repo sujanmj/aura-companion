@@ -349,6 +349,11 @@ Status: partial components exist; acceptance not complete.
   apply when configured cloud speech falls back to local browser speech. The
   default voice and existing opt-in Speak replies behavior are unchanged;
   end-to-end tests verify persistence and the actual utterance settings.
+- Implemented for Mac preview: choose an installed English system voice and
+  bounded speech pace in the native helper. Settings stay in macOS preferences
+  and apply to ambient replies and opted-in reminders. Native tests cover
+  defaults, saved voice selection, missing-voice fallback, and safe pace bounds;
+  CI is pending, and acoustic quality still needs live acceptance.
 - Verify real voice conversations, interruption, memory continuity and opt-in tools.
 - Exercise real Claude/MCP and optional voice-provider paths when configured.
 - Provide a repeatable onboarding and acceptance procedure.
