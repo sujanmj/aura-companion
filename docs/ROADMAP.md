@@ -519,6 +519,11 @@ not change the current status: Phase 2 is active.
 
 ### Phase 11 — Opt-in routine and wellness support
 
+- Implemented for Mac preview: user-created daily local reminders require an
+  explicit enable checkbox, are delivered at most once per local day, and can
+  be dismissed for that day or deleted. AURA states it cannot confirm task or
+  dose completion. Cross-platform tests cover scheduling, delivery, dismissal
+  and account scoping; live speaker delivery still needs Mac acceptance.
 - Add optional, user-controlled links to iPhone or wearable health data where
   supported, and show what is collected, where it is stored and how to remove it.
 - Summarize trends in sleep, activity and meals as non-diagnostic observations

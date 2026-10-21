@@ -236,6 +236,121 @@ class AuraMemoryStore:
         self.conn.commit()
         return self.get_companion_preferences(user_id)
 
+    def get_routine_reminders(self, user_id: int) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            """SELECT id, label, local_time, enabled, last_delivered_on,
+                      dismissed_on, created_at
+               FROM routine_reminders WHERE user_id=? ORDER BY local_time, id""",
+            (user_id,),
+        ).fetchall()
+        reminders = [dict(row) for row in rows]
+        for reminder in reminders:
+            reminder["enabled"] = bool(reminder["enabled"])
+        return reminders
+
+    def add_routine_reminder(
+        self, user_id: int, label: str, local_time: str
+    ) -> int:
+        label = label.strip() if isinstance(label, str) else ""
+        if not 1 <= len(label) <= 120:
+            raise ValueError("Reminder label must contain 1–120 characters")
+        try:
+            parsed_time = time.fromisoformat(local_time)
+        except (TypeError, ValueError):
+            raise ValueError("Reminder time must use HH:MM") from None
+        if parsed_time.second or parsed_time.microsecond or parsed_time.tzinfo:
+            raise ValueError("Reminder time must use HH:MM")
+        count = self.conn.execute(
+            "SELECT COUNT(*) FROM routine_reminders WHERE user_id=? AND enabled=1",
+            (user_id,),
+        ).fetchone()[0]
+        if count >= 20:
+            raise ValueError("A maximum of 20 active reminders is allowed")
+        cur = self.conn.execute(
+            """INSERT INTO routine_reminders (user_id, label, local_time, enabled)
+               VALUES (?, ?, ?, 1)""",
+            (user_id, label, parsed_time.strftime("%H:%M")),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def delete_routine_reminder(self, user_id: int, reminder_id: int) -> bool:
+        cur = self.conn.execute(
+            "DELETE FROM routine_reminders WHERE id=? AND user_id=?",
+            (reminder_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def dismiss_routine_reminder(
+        self,
+        user_id: int,
+        reminder_id: int,
+        now: datetime | None = None,
+    ) -> bool:
+        now = now or datetime.now().astimezone()
+        if now.tzinfo is None:
+            raise ValueError("Dismissal time must include a timezone")
+        cur = self.conn.execute(
+            """UPDATE routine_reminders SET dismissed_on=?
+               WHERE id=? AND user_id=? AND enabled=1""",
+            (now.date().isoformat(), reminder_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def create_due_routine_reminder(
+        self, user_id: int, now: datetime | None = None
+    ) -> dict[str, Any] | None:
+        """Deliver one user-entered local reminder at most once on each local date."""
+        now = now or datetime.now().astimezone()
+        if now.tzinfo is None:
+            raise ValueError("Reminder time must include a timezone")
+        local_now = now
+        today = local_now.date().isoformat()
+        rows = self.conn.execute(
+            """SELECT id, label FROM routine_reminders
+               WHERE user_id=? AND enabled=1 AND local_time<=?
+                 AND (last_delivered_on IS NULL OR last_delivered_on<>?)
+                 AND (dismissed_on IS NULL OR dismissed_on<>?)
+               ORDER BY local_time, id""",
+            (user_id, local_now.strftime("%H:%M"), today, today),
+        ).fetchall()
+        if not rows:
+            return None
+        reminder = rows[0]
+        profile = self.conn.execute(
+            "SELECT preferred_name FROM users WHERE id=?", (user_id,)
+        ).fetchone()
+        name = (profile["preferred_name"] or "").strip() if profile else ""
+        greeting = f"{name}, " if name else ""
+        response = (
+            f"{greeting}a reminder you set: {reminder['label']}. "
+            "I can’t tell whether you’ve done it; you can dismiss today’s reminder in Memory."
+        )
+        with self.conn:
+            claimed = self.conn.execute(
+                """UPDATE routine_reminders SET last_delivered_on=?
+                   WHERE id=? AND user_id=? AND enabled=1
+                     AND (last_delivered_on IS NULL OR last_delivered_on<>?)
+                     AND (dismissed_on IS NULL OR dismissed_on<>?)""",
+                (today, reminder["id"], user_id, today, today),
+            )
+            if claimed.rowcount != 1:
+                return None
+            message_id = self.conn.execute(
+                """INSERT INTO conversation_logs (user_id, role, message, emotion_tag)
+                   VALUES (?, 'assistant', ?, 'routine_reminder')""",
+                (user_id, response),
+            ).lastrowid
+        return {
+            "id": int(message_id),
+            "reminder_id": int(reminder["id"]),
+            "response": response,
+            "provider": "local",
+            "reminder": True,
+        }
+
     def create_checkin_if_due(
         self, user_id: int, now: datetime | None = None
     ) -> dict[str, Any] | None:

@@ -62,6 +62,7 @@ def main():
                               'conversations': list(reversed(store.get_recent_conversations(user, limit=30))),
                               'observations': list(reversed(store.get_latest_observations(user, limit=20))),
                               'routines': store.get_routine_memory(user),
+                              'reminders': store.get_routine_reminders(user),
                               'people': [
                                   {key: person.get(key) for key in (
                                       'id', 'display_name', 'relation', 'trust_level',
@@ -82,11 +83,34 @@ def main():
                         req.get('checkin_interval_hours'),
                     )
                 elif op == 'checkin':
-                    result = store.create_checkin_if_due(user)
+                    result = store.create_due_routine_reminder(user)
+                    if result is None:
+                        result = store.create_checkin_if_due(user)
                     if result is None:
                         result = {'due': False}
                     else:
                         result['due'] = True
+                elif op == 'create_reminder':
+                    reminder_id = store.add_routine_reminder(
+                        user,
+                        req.get('label'),
+                        req.get('local_time'),
+                    )
+                    result = {'created': True, 'reminder_id': reminder_id}
+                elif op == 'delete_reminder':
+                    reminder_id = req.get('reminder_id')
+                    if not isinstance(reminder_id, int) or isinstance(reminder_id, bool) or reminder_id <= 0:
+                        raise ValueError('Invalid reminder')
+                    if not store.delete_routine_reminder(user, reminder_id):
+                        raise ValueError('Reminder not found')
+                    result = {'ok': True}
+                elif op == 'dismiss_reminder':
+                    reminder_id = req.get('reminder_id')
+                    if not isinstance(reminder_id, int) or isinstance(reminder_id, bool) or reminder_id <= 0:
+                        raise ValueError('Invalid reminder')
+                    if not store.dismiss_routine_reminder(user, reminder_id):
+                        raise ValueError('Reminder not found')
+                    result = {'ok': True}
                 elif op == 'export':
                     result = store.export_user_memory(user)
                 elif op == 'clear_conversations':

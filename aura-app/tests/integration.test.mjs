@@ -70,6 +70,10 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     assert.equal((await fetch(base + "/api/readiness")).status, 401);
     assert.equal((await post("person/delete", { person_id: 1 })).status, 401);
     assert.equal(
+      (await post("reminder/create", { label: "Take medication", local_time: "20:00", enabled: true })).status,
+      401,
+    );
+    assert.equal(
       (await post("login", { token }, "", "https://evil.test")).status,
       403,
     );
@@ -558,6 +562,49 @@ test("people memory is private and forget removes its associated timeline", asyn
     ).json();
     assert.deepEqual(afterCreate.people.map((person) => person.display_name), ["Taylor"]);
     assert.equal(afterCreate.people[0].face_profile_status, "not_enrolled");
+    assert.equal(
+      (
+        await post(
+          "reminder/create",
+          { label: "Take medication", local_time: "20:00" },
+          cookie,
+        )
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await post(
+          "reminder/create",
+          { label: "Take medication", local_time: "25:00", enabled: true },
+          cookie,
+        )
+      ).status,
+      400,
+    );
+    const reminderResponse = await post(
+      "reminder/create",
+      { label: "Take medication", local_time: "20:00", enabled: true },
+      cookie,
+    );
+    assert.equal(reminderResponse.status, 201);
+    const reminder = await reminderResponse.json();
+    const reminderStatus = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.equal(reminderStatus.reminders[0].label, "Take medication");
+    assert.equal(
+      (await post("reminder/dismiss", { reminder_id: reminder.reminder_id }, cookie)).status,
+      200,
+    );
+    const dismissedStatus = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.ok(dismissedStatus.reminders[0].dismissed_on);
+    assert.equal(
+      (await post("reminder/delete", { reminder_id: reminder.reminder_id }, cookie)).status,
+      200,
+    );
     const counts = execFileSync(
       "python3",
       [

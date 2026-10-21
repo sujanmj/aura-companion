@@ -36,6 +36,14 @@ type Status = {
     face_profile_status: string;
     last_seen_at: string | null;
   }[];
+  reminders: {
+    id: number;
+    label: string;
+    local_time: string;
+    enabled: boolean;
+    last_delivered_on: string | null;
+    dismissed_on: string | null;
+  }[];
   preferences: CheckinPreferences;
   conversations: Message[];
   actions: boolean;
@@ -159,6 +167,13 @@ class OrbBoundary extends Component<
     );
   }
 }
+function localDateKey(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
 function App() {
   const kioskRequested =
     new URLSearchParams(window.location.search).get("kiosk") === "1";
@@ -196,7 +211,10 @@ function App() {
     [routineDraft, setRoutineDraft] = useState(""),
     [personName, setPersonName] = useState(""),
     [personRelation, setPersonRelation] = useState(""),
-    [personConsent, setPersonConsent] = useState(false);
+    [personConsent, setPersonConsent] = useState(false),
+    [reminderLabel, setReminderLabel] = useState(""),
+    [reminderTime, setReminderTime] = useState("20:00"),
+    [reminderConsent, setReminderConsent] = useState(false);
   const stopListen = useRef<(() => void) | null>(null),
     bottom = useRef<HTMLDivElement>(null),
     micStarting = useRef(false),
@@ -223,19 +241,31 @@ function App() {
     };
   }, []);
   useEffect(() => {
-    if (!status?.preferences.checkins_enabled || tab !== "conversation") return;
+    if (
+      (!status?.preferences.checkins_enabled &&
+        !status?.reminders.some((reminder) => reminder.enabled)) ||
+      tab !== "conversation"
+    ) return;
     let pending = false;
     const checkIn = async () => {
       if (pending || document.visibilityState !== "visible") return;
       pending = true;
       try {
-        const result = await api<{ due: boolean; response?: string }>(
+        const result = await api<{
+          due: boolean;
+          response?: string;
+          reminder?: boolean;
+        }>(
           "checkin",
           {},
         );
         if (result.due) {
           await refresh();
-          setError("AURA checked in. Reply whenever you feel like it.");
+          setError(
+            result.reminder
+              ? "AURA delivered a scheduled reminder."
+              : "AURA checked in. Reply whenever you feel like it.",
+          );
         }
       } catch {
         // Check-ins are optional; transient errors do not interrupt conversation.
@@ -250,7 +280,7 @@ function App() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", checkIn);
     };
-  }, [status?.preferences.checkins_enabled, tab]);
+  }, [status?.preferences.checkins_enabled, status?.reminders, tab]);
   useEffect(() => {
     if (!status || tab !== "setup") return;
     api<CheckinPreferences>("preferences")
@@ -1120,6 +1150,120 @@ function App() {
                     </article>
                   ))
                 )}
+                <section className="memory-review">
+                  <h3>Daily reminders</h3>
+                  <p>
+                    These run on this Mac while AURA is open or ambient mode is
+                    active. A reminder is not confirmation that you completed
+                    the task or took a dose.
+                  </p>
+                  <form
+                    className="person-form"
+                    onSubmit={async (event) => {
+                      event.preventDefault();
+                      try {
+                        await api("reminder/create", {
+                          label: reminderLabel,
+                          local_time: reminderTime,
+                          enabled: reminderConsent,
+                        });
+                        await refresh();
+                        setReminderLabel("");
+                        setReminderTime("20:00");
+                        setReminderConsent(false);
+                        setError("Daily reminder saved.");
+                      } catch (e) {
+                        setError(String(e));
+                      }
+                    }}
+                  >
+                    <label htmlFor="reminder-label">What should AURA remind you about?</label>
+                    <input
+                      id="reminder-label"
+                      value={reminderLabel}
+                      maxLength={120}
+                      onChange={(event) => setReminderLabel(event.target.value)}
+                      required
+                    />
+                    <label htmlFor="reminder-time">Local reminder time</label>
+                    <input
+                      id="reminder-time"
+                      type="time"
+                      value={reminderTime}
+                      onChange={(event) => setReminderTime(event.target.value)}
+                      required
+                    />
+                    <label className="person-consent">
+                      <input
+                        type="checkbox"
+                        checked={reminderConsent}
+                        onChange={(event) => setReminderConsent(event.target.checked)}
+                      />
+                      Enable this daily reminder on this Mac.
+                    </label>
+                    <button
+                      className="primary"
+                      disabled={!reminderLabel.trim() || !reminderConsent}
+                    >
+                      Add daily reminder
+                    </button>
+                  </form>
+                  {status.reminders.length === 0 ? (
+                    <p>No daily reminders are set.</p>
+                  ) : (
+                    status.reminders.map((reminder) => (
+                      <article className="fact" key={reminder.id}>
+                        <small>Daily · {reminder.local_time} local time</small>
+                        <p>{reminder.label}</p>
+                        {reminder.last_delivered_on && (
+                          <time>Last delivered {reminder.last_delivered_on}</time>
+                        )}
+                        <div className="fact-actions">
+                          {reminder.last_delivered_on === localDateKey() &&
+                            (reminder.dismissed_on === localDateKey() ? (
+                              <span>Dismissed today</span>
+                            ) : (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await api("reminder/dismiss", {
+                                      reminder_id: reminder.id,
+                                    });
+                                    await refresh();
+                                    setError("Reminder dismissed for today.");
+                                  } catch (e) {
+                                    setError(String(e));
+                                  }
+                                }}
+                              >
+                                Dismiss today’s reminder
+                              </button>
+                            ))}
+                          <button
+                            onClick={async () => {
+                              if (
+                                !window.confirm(
+                                  `Delete the daily reminder “${reminder.label}”? This cannot be undone.`,
+                                )
+                              ) return;
+                              try {
+                                await api("reminder/delete", {
+                                  reminder_id: reminder.id,
+                                });
+                                await refresh();
+                                setError("Daily reminder deleted.");
+                              } catch (e) {
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            Delete reminder
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </section>
                 <section className="memory-review">
                   <h3>People</h3>
                   <p>

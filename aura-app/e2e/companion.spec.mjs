@@ -332,6 +332,29 @@ test("people are added only with recorded consent and can be forgotten", async (
   await expect(person).toHaveCount(0);
 });
 
+test("daily reminders require opt-in and can be deleted", async ({ page }) => {
+  await connect(page);
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  await page.getByLabel("What should AURA remind you about?").fill("Stretch");
+  await page.getByLabel("Local reminder time").fill("21:00");
+  const add = page.getByRole("button", { name: "Add daily reminder" });
+  await expect(add).toBeDisabled();
+  await page.getByLabel("Enable this daily reminder on this Mac.").check();
+  await add.click();
+  const reminder = page.locator(".fact").filter({ hasText: "Stretch" });
+  await expect(reminder).toContainText("21:00 local time");
+  await expect(
+    page.getByText("A reminder is not confirmation that you completed the task or took a dose."),
+  ).toBeVisible();
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("Delete the daily reminder");
+    void dialog.accept();
+  });
+  await reminder.getByRole("button", { name: "Delete reminder" }).click();
+  await expect(page.getByRole("status")).toContainText("Daily reminder deleted");
+  await expect(reminder).toHaveCount(0);
+});
+
 test("camera context observations can be deleted from saved memory", async ({
   page,
 }) => {

@@ -303,6 +303,45 @@ const server = http.createServer(async (req, res) => {
         gate.close();
         return json(res, 200, { ok: true });
       }
+      if (url.pathname === "/api/reminder/create") {
+        if (
+          typeof data.label !== "string" ||
+          !data.label.trim() ||
+          data.label.trim().length > 120 ||
+          typeof data.local_time !== "string" ||
+          !/^([01]\d|2[0-3]):[0-5]\d$/.test(data.local_time)
+        )
+          return json(res, 400, { error: "Enter a reminder and a valid local time." });
+        if (data.enabled !== true)
+          return json(res, 400, { error: "Confirm that you want this reminder enabled." });
+        try {
+          return json(
+            res,
+            201,
+            await memory("create_reminder", {
+              label: data.label,
+              local_time: data.local_time,
+            }),
+          );
+        } catch {
+          return json(res, 400, { error: "AURA could not save this reminder." });
+        }
+      }
+      if (
+        url.pathname === "/api/reminder/delete" ||
+        url.pathname === "/api/reminder/dismiss"
+      ) {
+        if (!Number.isSafeInteger(data.reminder_id) || data.reminder_id <= 0)
+          return json(res, 400, { error: "Choose a valid reminder." });
+        try {
+          const op = url.pathname.endsWith("/delete")
+            ? "delete_reminder"
+            : "dismiss_reminder";
+          return json(res, 200, await memory(op, data));
+        } catch {
+          return json(res, 404, { error: "That reminder could not be found." });
+        }
+      }
       if (url.pathname === "/api/person/create") {
         if (
           typeof data.display_name !== "string" ||

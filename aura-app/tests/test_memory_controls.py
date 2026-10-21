@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from memory.sqlite_store import AuraMemoryStore
@@ -63,6 +64,41 @@ class MemoryControlsTest(unittest.TestCase):
             self.store.get_recent_person_events(self.other)[0]['event_summary'],
             'Taylor was introduced.',
         )
+    def test_daily_reminders_are_once_per_local_day_and_owner_scoped(self):
+        reminder_id = self.store.add_routine_reminder(
+            self.owner, 'Take medication', '20:00'
+        )
+        other_id = self.store.add_routine_reminder(
+            self.other, 'Feed the cat', '19:00'
+        )
+        day = datetime(2026, 10, 21, 20, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+        before = self.store.create_due_routine_reminder(
+            self.owner, day - timedelta(minutes=1)
+        )
+        self.assertIsNone(before)
+        due = self.store.create_due_routine_reminder(self.owner, day)
+        self.assertEqual(due['reminder_id'], reminder_id)
+        self.assertIn('Take medication', due['response'])
+        self.assertIn("can’t tell whether you’ve done it", due['response'])
+        self.assertIsNone(self.store.create_due_routine_reminder(self.owner, day))
+        self.assertFalse(self.store.dismiss_routine_reminder(self.other, reminder_id, day))
+        self.assertTrue(self.store.dismiss_routine_reminder(self.owner, reminder_id, day))
+        reminders = self.store.get_routine_reminders(self.owner)
+        self.assertEqual(reminders[0]['dismissed_on'], '2026-10-21')
+        self.assertEqual(self.store.get_routine_reminders(self.other)[0]['id'], other_id)
+        self.assertFalse(self.store.delete_routine_reminder(self.other, reminder_id))
+        self.assertTrue(self.store.delete_routine_reminder(self.owner, reminder_id))
+        self.assertEqual(self.store.get_routine_reminders(self.owner), [])
+
+    def test_daily_reminders_reject_invalid_values_and_repeat_tomorrow(self):
+        for label, clock in (('', '09:00'), ('x' * 121, '09:00'), ('Water', '25:00')):
+            with self.assertRaises(ValueError):
+                self.store.add_routine_reminder(self.owner, label, clock)
+        self.store.add_routine_reminder(self.owner, 'Walk', '09:30')
+        first_day = datetime(2026, 10, 21, 10, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+        self.assertIsNotNone(self.store.create_due_routine_reminder(self.owner, first_day))
+        next_day = first_day + timedelta(days=1)
+        self.assertIsNotNone(self.store.create_due_routine_reminder(self.owner, next_day))
     def test_ambient_scene_saves_only_derived_summaries_and_rate_limits_changes(self):
         first = self.store.add_ambient_scene_observation(
             self.owner, ['living room', 'sofa'], True, 0.91
