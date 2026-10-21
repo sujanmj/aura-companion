@@ -104,6 +104,13 @@ def main():
                     if not store.delete_routine_reminder(user, reminder_id):
                         raise ValueError('Reminder not found')
                     result = {'ok': True}
+                elif op == 'set_reminder_enabled':
+                    reminder_id = req.get('reminder_id')
+                    enabled = req.get('enabled')
+                    if not isinstance(reminder_id, int) or isinstance(reminder_id, bool) or reminder_id <= 0:
+                        raise ValueError('Invalid reminder')
+                    result = store.set_routine_reminder_enabled(user, reminder_id, enabled)
+                    result = {'ok': result is None, 'reason': result}
                 elif op == 'dismiss_reminder':
                     reminder_id = req.get('reminder_id')
                     if not isinstance(reminder_id, int) or isinstance(reminder_id, bool) or reminder_id <= 0:

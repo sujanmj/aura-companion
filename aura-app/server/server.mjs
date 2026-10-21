@@ -338,15 +338,25 @@ const server = http.createServer(async (req, res) => {
       }
       if (
         url.pathname === "/api/reminder/delete" ||
-        url.pathname === "/api/reminder/dismiss"
+        url.pathname === "/api/reminder/dismiss" ||
+        url.pathname === "/api/reminder/enabled"
       ) {
         if (!Number.isSafeInteger(data.reminder_id) || data.reminder_id <= 0)
           return json(res, 400, { error: "Choose a valid reminder." });
+        if (url.pathname === "/api/reminder/enabled" && typeof data.enabled !== "boolean")
+          return json(res, 400, { error: "Choose whether this reminder should be active." });
         try {
           const op = url.pathname.endsWith("/delete")
             ? "delete_reminder"
-            : "dismiss_reminder";
-          return json(res, 200, await memory(op, data));
+            : url.pathname.endsWith("/enabled")
+              ? "set_reminder_enabled"
+              : "dismiss_reminder";
+          const result = await memory(op, data);
+          if (result.reason === "not_found")
+            return json(res, 404, { error: "That reminder could not be found." });
+          if (result.reason === "limit")
+            return json(res, 409, { error: "Pause another reminder before enabling this one." });
+          return json(res, 200, result);
         } catch {
           return json(res, 404, { error: "That reminder could not be found." });
         }

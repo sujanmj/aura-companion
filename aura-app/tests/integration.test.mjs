@@ -73,6 +73,10 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       (await post("reminder/create", { label: "Take medication", local_time: "20:00", enabled: true })).status,
       401,
     );
+    assert.equal(
+      (await post("reminder/enabled", { reminder_id: 1, enabled: false })).status,
+      401,
+    );
     assert.equal((await post("observations/clear", {})).status, 401);
     assert.equal(
       (await post("login", { token }, "", "https://evil.test")).status,
@@ -641,10 +645,27 @@ test("people memory is private and forget removes its associated timeline", asyn
     );
     assert.equal(reminderResponse.status, 201);
     const reminder = await reminderResponse.json();
+    assert.equal(
+      (await post("reminder/enabled", { reminder_id: reminder.reminder_id, enabled: "false" }, cookie)).status,
+      400,
+    );
+    assert.equal(
+      (await post("reminder/enabled", { reminder_id: reminder.reminder_id, enabled: false }, cookie, "https://evil.test")).status,
+      403,
+    );
+    assert.equal(
+      (await post("reminder/enabled", { reminder_id: reminder.reminder_id, enabled: false }, cookie)).status,
+      200,
+    );
     const reminderStatus = await (
       await fetch(base + "/api/status", { headers: { Cookie: cookie } })
     ).json();
     assert.equal(reminderStatus.reminders[0].label, "Take medication");
+    assert.equal(reminderStatus.reminders[0].enabled, false);
+    assert.equal(
+      (await post("reminder/enabled", { reminder_id: reminder.reminder_id, enabled: true }, cookie)).status,
+      200,
+    );
     assert.equal(
       (await post("reminder/dismiss", { reminder_id: reminder.reminder_id }, cookie)).status,
       200,

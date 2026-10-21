@@ -100,6 +100,39 @@ class MemoryControlsTest(unittest.TestCase):
         next_day = first_day + timedelta(days=1)
         self.assertIsNotNone(self.store.create_due_routine_reminder(self.owner, next_day))
 
+    def test_daily_reminders_can_be_paused_and_reenabled_without_cross_user_access(self):
+        reminder_id = self.store.add_routine_reminder(self.owner, 'Walk', '09:30')
+        self.assertEqual(
+            self.store.set_routine_reminder_enabled(self.other, reminder_id, False),
+            'not_found',
+        )
+        self.assertIsNone(self.store.set_routine_reminder_enabled(self.owner, reminder_id, False))
+        self.assertFalse(self.store.get_routine_reminders(self.owner)[0]['enabled'])
+        due_time = datetime(2026, 10, 21, 10, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+        self.assertIsNone(self.store.create_due_routine_reminder(self.owner, due_time))
+        self.assertIsNone(self.store.set_routine_reminder_enabled(self.owner, reminder_id, True))
+        self.assertIsNotNone(self.store.create_due_routine_reminder(self.owner, due_time))
+        with self.assertRaises(ValueError):
+            self.store.set_routine_reminder_enabled(self.owner, reminder_id, 1)
+
+    def test_reenabling_reminder_respects_active_reminder_limit(self):
+        reminders = [
+            self.store.add_routine_reminder(self.owner, f'Reminder {index}', '09:00')
+            for index in range(20)
+        ]
+        self.assertIsNone(self.store.set_routine_reminder_enabled(self.owner, reminders[0], False))
+        reminders.append(
+            self.store.add_routine_reminder(self.owner, 'Reminder 20', '09:00')
+        )
+        self.assertEqual(
+            self.store.set_routine_reminder_enabled(self.owner, reminders[0], True),
+            'limit',
+        )
+        self.assertFalse(next(
+            reminder for reminder in self.store.get_routine_reminders(self.owner)
+            if reminder['id'] == reminders[0]
+        )['enabled'])
+
     def test_observation_corrections_are_user_labeled_bounded_and_owner_scoped(self):
         observation_id = self.store.add_ambient_scene_observation(
             self.owner, ['sofa'], False, 0.8

@@ -1215,13 +1215,36 @@ function App() {
                   ) : (
                     status.reminders.map((reminder) => (
                       <article className="fact" key={reminder.id}>
-                        <small>Daily · {reminder.local_time} local time</small>
+                        <small>
+                          Daily · {reminder.local_time} local time ·{" "}
+                          {reminder.enabled ? "active" : "paused"}
+                        </small>
                         <p>{reminder.label}</p>
                         {reminder.last_delivered_on && (
                           <time>Last delivered {reminder.last_delivered_on}</time>
                         )}
                         <div className="fact-actions">
-                          {reminder.last_delivered_on === localDateKey() &&
+                          <button
+                            onClick={async () => {
+                              try {
+                                await api("reminder/enabled", {
+                                  reminder_id: reminder.id,
+                                  enabled: !reminder.enabled,
+                                });
+                                await refresh();
+                                setError(
+                                  reminder.enabled
+                                    ? "Daily reminder paused."
+                                    : "Daily reminder enabled.",
+                                );
+                              } catch (e) {
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            {reminder.enabled ? "Pause reminder" : "Enable reminder"}
+                          </button>
+                          {reminder.enabled && reminder.last_delivered_on === localDateKey() &&
                             (reminder.dismissed_on === localDateKey() ? (
                               <span>Dismissed today</span>
                             ) : (

@@ -346,6 +346,12 @@ test("daily reminders require opt-in and can be deleted", async ({ page }) => {
   await expect(
     page.getByText("A reminder is not confirmation that you completed the task or took a dose."),
   ).toBeVisible();
+  await reminder.getByRole("button", { name: "Pause reminder" }).click();
+  await expect(reminder).toContainText("paused");
+  await expect(page.getByRole("status")).toContainText("Daily reminder paused");
+  await reminder.getByRole("button", { name: "Enable reminder" }).click();
+  await expect(reminder).toContainText("active");
+  await expect(page.getByRole("status")).toContainText("Daily reminder enabled");
   page.once("dialog", (dialog) => {
     expect(dialog.message()).toContain("Delete the daily reminder");
     void dialog.accept();

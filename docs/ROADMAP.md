@@ -531,11 +531,11 @@ not change the current status: Phase 2 is active.
 
 - Implemented for Mac preview: user-created daily local reminders require an
   explicit enable checkbox, are delivered at most once per local day, and can
-  be dismissed for that day or deleted. AURA states it cannot confirm task or
-  dose completion. Cross-platform tests cover scheduling, delivery, dismissal
-  and account scoping. The native helper polls while paired and running,
-  including with ambient sensors paused; this expanded delivery path remains
-  pending CI and live speaker acceptance.
+  be paused, resumed, dismissed for that day, or deleted. AURA states it cannot
+  confirm task or dose completion. Cross-platform tests cover scheduling,
+  delivery, dismissal, account scoping, and active-reminder limits. The native
+  helper polls while paired and running, including with ambient sensors paused.
+  This expanded delivery path remains pending CI and live speaker acceptance.
 - Add optional, user-controlled links to iPhone or wearable health data where
   supported, and show what is collected, where it is stored and how to remove it.
 - Summarize trends in sleep, activity and meals as non-diagnostic observations

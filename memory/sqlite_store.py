@@ -283,6 +283,31 @@ class AuraMemoryStore:
         self.conn.commit()
         return cur.rowcount == 1
 
+    def set_routine_reminder_enabled(
+        self, user_id: int, reminder_id: int, enabled: bool
+    ) -> str | None:
+        if not isinstance(enabled, bool):
+            raise ValueError("Reminder enabled must be a boolean")
+        row = self.conn.execute(
+            "SELECT enabled FROM routine_reminders WHERE id=? AND user_id=?",
+            (reminder_id, user_id),
+        ).fetchone()
+        if not row:
+            return "not_found"
+        if enabled and not bool(row["enabled"]):
+            count = self.conn.execute(
+                "SELECT COUNT(*) FROM routine_reminders WHERE user_id=? AND enabled=1",
+                (user_id,),
+            ).fetchone()[0]
+            if count >= 20:
+                return "limit"
+        self.conn.execute(
+            "UPDATE routine_reminders SET enabled=? WHERE id=? AND user_id=?",
+            (int(enabled), reminder_id, user_id),
+        )
+        self.conn.commit()
+        return None
+
     def dismiss_routine_reminder(
         self,
         user_id: int,
