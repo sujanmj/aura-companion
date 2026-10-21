@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from companion.context_relevance import ContextRelevanceFilter
@@ -32,12 +33,19 @@ class PromptBuilder:
     def build_companion_prompt(self, user_id: int, situation_result: dict[str, Any]) -> str:
         facts = self.store.get_memory_facts(user_id)
         conversations = self.store.get_recent_conversations(user_id, limit=8)
-        observations = self.store.get_latest_observations(user_id, limit=5)
+        observations = self.store.get_latest_observations(user_id, limit=20)
         feedback = self._load_feedback(user_id)
 
         current_message = self._latest_user_message(conversations)
-        latest_record = observations[0] if observations else None
-        latest_observation = latest_record.get("event_summary") if latest_record else None
+        latest_record = next(
+            (item for item in observations if item.get("source") != "mac_local_vision"),
+            None,
+        )
+        recent_visual = self._select_recent_visual_observations(current_message, observations)
+        latest_observation = (
+            latest_record.get("event_summary") if latest_record else
+            (recent_visual[0].get("event_summary") if recent_visual else None)
+        )
         relevant_facts = self.relevance_filter.filter_facts(current_message, latest_observation, facts)
         previous_assistant = self._previous_assistant_message(conversations)
         relevant_device_events = self._load_relevant_device_events(user_id, current_message)
@@ -51,19 +59,23 @@ class PromptBuilder:
 
         sections.extend(["", "CURRENT USER MESSAGE:", current_message or "(none)"])
 
-        if latest_observation:
-            if latest_record.get("source") == "mac_local_vision":
-                confidence = float(latest_record.get("confidence", 0.0))
-                recorded = latest_record.get("created_at", "unknown time")
-                sections.extend(
-                    [
-                        "",
-                        "Recent on-device visual estimate (may be inaccurate or stale; not proof of identity, activity, or exact object location):",
-                        f"- {latest_observation} (confidence={confidence:.2f}, recorded={recorded})",
-                    ]
+        if latest_observation and latest_record:
+            sections.extend(["", "Latest observation:", f"- {latest_observation}"])
+
+        if recent_visual:
+            sections.extend(
+                [
+                    "",
+                    "Fresh on-device visual estimates (clues only; they cannot identify a person or confirm an exact object or activity):",
+                ]
+            )
+            for item in recent_visual:
+                confidence = float(item.get("confidence", 0.0))
+                recorded = item.get("created_at", "unknown time")
+                sections.append(
+                    f"- {item.get('event_summary', '')} "
+                    f"(confidence={confidence:.2f}, recorded={recorded})"
                 )
-            else:
-                sections.extend(["", "Latest observation:", f"- {latest_observation}"])
 
         if relevant_device_events:
             sections.extend(["", "Relevant device events:"])
@@ -115,6 +127,45 @@ class PromptBuilder:
         )
 
         return "\n".join(sections)
+
+    def _select_recent_visual_observations(
+        self,
+        current_message: str,
+        observations: list[dict[str, Any]],
+        *,
+        now: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return only fresh and relevant derived scene summaries, never raw media."""
+        now = now or datetime.now(timezone.utc)
+        message_words = self.relevance_filter.extract_keywords(current_message)
+        visual_intent = bool(
+            message_words
+            & {"see", "seeing", "look", "looking", "room", "around", "find", "where", "search", "searching"}
+        )
+        selected: list[dict[str, Any]] = []
+        for item in observations:
+            if item.get("source") != "mac_local_vision":
+                continue
+            recorded = item.get("created_at")
+            if not isinstance(recorded, str):
+                continue
+            try:
+                timestamp = datetime.fromisoformat(recorded.replace("Z", "+00:00"))
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+            age = now - timestamp.astimezone(timezone.utc)
+            if age < timedelta(minutes=-1) or age > timedelta(minutes=10):
+                continue
+            summary = str(item.get("event_summary", ""))
+            summary_words = self.relevance_filter.extract_keywords(summary)
+            if not visual_intent and not (message_words & summary_words):
+                continue
+            selected.append(item)
+            if len(selected) == 3:
+                break
+        return selected
 
     def _latest_user_message(self, conversations: list[dict[str, Any]]) -> str:
         for conv in conversations:

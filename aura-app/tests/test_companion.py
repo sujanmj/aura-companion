@@ -125,11 +125,35 @@ class CompanionTest(unittest.TestCase):
             prompt = PromptBuilder(store).build_companion_prompt(
                 owner, {'situation': 'The user is looking for keys.'}
             )
-            self.assertIn('may be inaccurate or stale', prompt)
-            self.assertIn('not proof of identity, activity, or exact object location', prompt)
+            self.assertIn('Fresh on-device visual estimates', prompt)
+            self.assertIn('cannot identify a person or confirm an exact object or activity', prompt)
             self.assertIn('confidence=0.42', prompt)
             self.assertIn('recorded=', prompt)
             store.close()
+
+    def test_visual_recall_skips_stale_and_unrelated_estimates(self):
+        now = datetime(2026, 10, 21, 12, 0, tzinfo=timezone.utc)
+        builder = PromptBuilder(object())
+        estimates = [
+            {
+                'source': 'mac_local_vision', 'event_summary': 'On-device scene estimate: sofa.',
+                'created_at': '2026-10-21 11:59:00', 'confidence': 0.7,
+            },
+            {
+                'source': 'mac_local_vision', 'event_summary': 'On-device scene estimate: kitchen.',
+                'created_at': '2026-10-21 11:40:00', 'confidence': 0.8,
+            },
+            {
+                'source': 'user_note', 'event_summary': 'User said the keys are in the drawer.',
+                'created_at': '2026-10-21 11:59:00', 'confidence': 1.0,
+            },
+        ]
+        selected = builder._select_recent_visual_observations(
+            'Where did I leave my keys?', estimates, now=now
+        )
+        self.assertEqual([item['event_summary'] for item in selected], [
+            'On-device scene estimate: sofa.'
+        ])
 
     def test_conversation_history_clear_is_scoped_and_preserves_companion_memory(self):
         with tempfile.TemporaryDirectory() as folder:
