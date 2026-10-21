@@ -80,12 +80,6 @@ Status: in progress; this is the current phase.
   estimates are labeled uncertain and cannot confirm identity, activity, or an
   exact object location. Automated memory/prompt tests and cross-platform CI
   pass; end-to-end camera acceptance remains outstanding.
-- Implemented: saved observations can be corrected or deleted from Memory.
-  Corrections replace the selected row in the existing SQLite database, are
-  marked `user_correction` with explicit user-authored wording, and can enter
-  replies only when relevant to the current message. API input is bounded and
-  edits remain scoped to the owning account. Local Python, API, and browser
-  checks cover this flow; CI verification is pending.
 - Fixed: copy audio tap buffers before asynchronous recognition and isolate
   delayed errors with per-utterance generations, so a stale callback cannot
   reset a newer phrase. Native tests cover stale callbacks.
@@ -388,6 +382,13 @@ Status: foundations exist in the original reaction/memory engines.
 - Implemented: ambient observations can be deleted individually from the
   authenticated Memory view; deletion is scoped to the current user's SQLite
   records and removes that observation from future exports.
+- Implemented and CI-verified in commit `eadd6a6`: saved observations can also
+  be corrected in Memory. A correction replaces the selected SQLite row, is
+  marked `user_correction` with explicit user-authored wording, and enters a
+  reply only when relevant to the current message. The authenticated API bounds
+  the input and scopes edits to the owning account. Browser, API, prompt and
+  storage tests pass; macOS and Ubuntu push and pull-request workflows passed
+  in runs 39592037061, 39592050401.
 - Fixed: emotional cues are inferred from the current user turn instead of
   accumulating across unrelated older messages. Quiet or still camera context
   no longer counts as evidence that someone is sad or lonely.
