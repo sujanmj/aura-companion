@@ -303,6 +303,31 @@ const server = http.createServer(async (req, res) => {
         gate.close();
         return json(res, 200, { ok: true });
       }
+      if (url.pathname === "/api/person/create") {
+        if (
+          typeof data.display_name !== "string" ||
+          !data.display_name.trim() ||
+          data.display_name.trim().length > 100 ||
+          (data.relation !== undefined &&
+            data.relation !== null &&
+            (typeof data.relation !== "string" || data.relation.length > 100))
+        )
+          return json(res, 400, { error: "Enter a name and an optional short relationship." });
+        if (data.consent_to_remember !== true)
+          return json(res, 400, { error: "Confirm that this person agreed to be remembered." });
+        try {
+          const result = await memory("create_person", {
+            display_name: data.display_name,
+            relation: data.relation,
+            consent_to_remember: true,
+          });
+          if (!result.created)
+            return json(res, 409, { error: "That person is already in AURA memory." });
+          return json(res, 201, result);
+        } catch {
+          return json(res, 503, { error: "AURA could not save this person right now." });
+        }
+      }
       if (
         url.pathname === "/api/fact/update" ||
         url.pathname === "/api/fact/delete" ||

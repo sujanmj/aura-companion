@@ -520,6 +520,20 @@ test("people memory is private and forget removes its associated timeline", asyn
     assert.equal(before.people[0].consent_to_remember, 1);
     assert.equal("notes" in before.people[0], false);
     assert.equal(
+      (await post("person/create", { display_name: "Taylor" }, cookie)).status,
+      400,
+    );
+    assert.equal(
+      (
+        await post(
+          "person/create",
+          { display_name: "Alex", consent_to_remember: true },
+          cookie,
+        )
+      ).status,
+      409,
+    );
+    assert.equal(
       (await post("person/delete", { person_id: personId }, cookie)).status,
       200,
     );
@@ -527,6 +541,23 @@ test("people memory is private and forget removes its associated timeline", asyn
       await fetch(base + "/api/status", { headers: { Cookie: cookie } })
     ).json();
     assert.deepEqual(after.people, []);
+    const created = await post(
+      "person/create",
+      {
+        display_name: "Taylor",
+        relation: "friend",
+        consent_to_remember: true,
+      },
+      cookie,
+    );
+    assert.equal(created.status, 201);
+    const createdPerson = await created.json();
+    assert.equal(createdPerson.display_name, "Taylor");
+    const afterCreate = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.deepEqual(afterCreate.people.map((person) => person.display_name), ["Taylor"]);
+    assert.equal(afterCreate.people[0].face_profile_status, "not_enrolled");
     const counts = execFileSync(
       "python3",
       [
@@ -540,7 +571,7 @@ test("people memory is private and forget removes its associated timeline", asyn
       ],
       { encoding: "utf8" },
     ).trim();
-    assert.equal(counts, "0 0");
+    assert.equal(counts, "1 1");
   } finally {
     await stop();
     await rm(dir, { recursive: true, force: true });

@@ -193,7 +193,10 @@ function App() {
     [editingFact, setEditingFact] = useState<number | null>(null),
     [factDraft, setFactDraft] = useState(""),
     [editingRoutine, setEditingRoutine] = useState<number | null>(null),
-    [routineDraft, setRoutineDraft] = useState("");
+    [routineDraft, setRoutineDraft] = useState(""),
+    [personName, setPersonName] = useState(""),
+    [personRelation, setPersonRelation] = useState(""),
+    [personConsent, setPersonConsent] = useState(false);
   const stopListen = useRef<(() => void) | null>(null),
     bottom = useRef<HTMLDivElement>(null),
     micStarting = useRef(false),
@@ -1121,8 +1124,59 @@ function App() {
                   <h3>People</h3>
                   <p>
                     Names here were added through AURA’s existing memory.
-                    Face recognition is not enabled by this list.
+                    This is a manual name memory; face recognition is not
+                    enabled.
                   </p>
+                  <form
+                    className="person-form"
+                    onSubmit={async (event) => {
+                      event.preventDefault();
+                      try {
+                        await api("person/create", {
+                          display_name: personName,
+                          relation: personRelation,
+                          consent_to_remember: personConsent,
+                        });
+                        await refresh();
+                        setPersonName("");
+                        setPersonRelation("");
+                        setPersonConsent(false);
+                        setError("Person added to AURA memory.");
+                      } catch (e) {
+                        setError(String(e));
+                      }
+                    }}
+                  >
+                    <label htmlFor="person-name">Name</label>
+                    <input
+                      id="person-name"
+                      value={personName}
+                      maxLength={100}
+                      onChange={(event) => setPersonName(event.target.value)}
+                      required
+                    />
+                    <label htmlFor="person-relation">Relationship (optional)</label>
+                    <input
+                      id="person-relation"
+                      value={personRelation}
+                      maxLength={100}
+                      onChange={(event) => setPersonRelation(event.target.value)}
+                    />
+                    <label className="person-consent">
+                      <input
+                        type="checkbox"
+                        checked={personConsent}
+                        onChange={(event) => setPersonConsent(event.target.checked)}
+                      />
+                      They agreed that AURA may remember their name.
+                    </label>
+                    <button
+                      className="primary"
+                      disabled={!personName.trim() || !personConsent}
+                    >
+                      Add person
+                    </button>
+                  </form>
                   {status.people.length === 0 ? (
                     <p>No people have been added to memory.</p>
                   ) : (

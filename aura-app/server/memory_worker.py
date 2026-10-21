@@ -141,6 +141,40 @@ def main():
                     if not store.delete_observation(user, observation_id):
                         raise ValueError('Observation not found')
                     result = {'ok': True}
+                elif op == 'create_person':
+                    name = req.get('display_name')
+                    relation = req.get('relation') or None
+                    if not isinstance(name, str) or not 1 <= len(name.strip()) <= 100:
+                        raise ValueError('Invalid person name')
+                    if relation is not None and (
+                        not isinstance(relation, str) or len(relation.strip()) > 100
+                    ):
+                        raise ValueError('Invalid person relation')
+                    if req.get('consent_to_remember') is not True:
+                        raise ValueError('Consent is required')
+                    name = name.strip()
+                    if store.find_known_person(user, name):
+                        result = {'created': False, 'reason': 'already_exists'}
+                    else:
+                        person_id = store.add_known_person(
+                            user,
+                            name,
+                            relation=relation.strip() if relation else None,
+                            trust_level='known',
+                            consent_to_remember=True,
+                        )
+                        store.add_person_event(
+                            user,
+                            person_id,
+                            'person_introduced',
+                            f'{name} was introduced to AURA.',
+                            source='manual',
+                        )
+                        result = {
+                            'created': True,
+                            'person_id': person_id,
+                            'display_name': name,
+                        }
                 elif op == 'forget_person':
                     person_id = req.get('person_id')
                     if not isinstance(person_id, int) or isinstance(person_id, bool) or person_id <= 0:

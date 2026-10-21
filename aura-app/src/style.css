@@ -419,6 +419,7 @@ h1 {
 }
 .details textarea,
 .details select,
+.details input:not([type="checkbox"]),
 .login input {
   display: block;
   background: #0d141c;
@@ -773,6 +774,27 @@ footer {
 }
 .memory-review > h3 {
   margin-bottom: 10px;
+}
+.memory-review > .person-form {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+.memory-review > .person-form label {
+  margin: 4px 0;
+}
+.memory-review > .person-form input:not([type="checkbox"]) {
+  margin-bottom: 6px;
+}
+.memory-review > .person-form .person-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.5;
+}
+.person-consent input {
+  margin-top: 3px;
+  accent-color: var(--accent);
 }
 .memory-review time {
   opacity: 0.65;

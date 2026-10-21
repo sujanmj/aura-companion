@@ -218,7 +218,9 @@ test("saved facts can be corrected and forgetting requires confirmation", async 
   await page.getByRole("button", { name: "Memory 02" }).click();
   const people = page.getByRole("heading", { name: "People" }).locator("..");
   await expect(people).toContainText("No people have been added to memory.");
-  await expect(people).toContainText("Face recognition is not enabled by this list.");
+  await expect(people).toContainText(
+    "This is a manual name memory; face recognition is not enabled.",
+  );
   const fact = page.locator(".fact").filter({ hasText: "recent anxiety" });
   await expect(fact).toBeVisible();
   await fact.getByRole("button", { name: "Correct" }).click();
@@ -305,6 +307,29 @@ test("saved routines can be corrected and forgotten without automatic recreation
   await expect(
     page.getByRole("heading", { name: "Routines" }).locator(".."),
   ).toContainText("No routines have been saved.");
+});
+
+test("people are added only with recorded consent and can be forgotten", async ({
+  page,
+}) => {
+  await connect(page);
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Maya");
+  await page.getByLabel("Relationship (optional)").fill("friend");
+  const add = page.getByRole("button", { name: "Add person" });
+  await expect(add).toBeDisabled();
+  await page.getByLabel("They agreed that AURA may remember their name.").check();
+  await add.click();
+  const person = page.locator(".fact").filter({ hasText: "Maya" });
+  await expect(person).toBeVisible();
+  await expect(person).toContainText("friend");
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("associated timeline");
+    void dialog.accept();
+  });
+  await person.getByRole("button", { name: "Forget person" }).click();
+  await expect(page.getByRole("status")).toContainText("Person forgotten");
+  await expect(person).toHaveCount(0);
 });
 
 test("camera context observations can be deleted from saved memory", async ({
