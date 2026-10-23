@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import secrets
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
@@ -11,18 +14,18 @@ from actions.voice_runtime import create_runtime_speaker
 from api.dashboard_service import DashboardService
 from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
-from memory.sqlite_store import AuraMemoryStore
+from memory.sqlite_store import AuraMemoryStore, DEFAULT_DB_PATH
 from incidents.incident_service import IncidentService, incident_api_summary
 from runtime.heartbeat import RuntimeHeartbeat
 from safety.confirmation_engine import ConfirmationEngine
 from safety.escalation_engine import EscalationEngine
 from safety.safety_engine import SafetyEngine
+from cloud.supabase_sync import start_retry_worker, sync_sensor_event
 
 DEFAULT_USER_NAME = "Sujan M J"
 DEFAULT_PREFERRED_NAME = "Sujan"
-API_VERSION = "0.2"
+API_VERSION = "0.4"
 AUTH_HEADER = "X-AURA-API-Token"
-_auth_warning_printed = False
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_STATIC_FILES = {
     "/dashboard": (PROJECT_ROOT / "web" / "dashboard.html", "text/html; charset=utf-8"),
@@ -50,25 +53,17 @@ def get_sensor_api_token() -> str | None:
     token = os.environ.get("AURA_SENSOR_API_TOKEN")
     if token:
         stripped = token.strip()
-        return stripped or None
+        return stripped if len(stripped) >= 32 else None
     return None
 
 
 def is_request_authorized(handler: BaseHTTPRequestHandler) -> bool:
-    global _auth_warning_printed
-
     token = get_sensor_api_token()
     if not token:
-        if not _auth_warning_printed:
-            print(
-                "AURA_SENSOR_API_AUTH_WARNING: AURA_SENSOR_API_TOKEN not set; "
-                "API is open on local host/network."
-            )
-            _auth_warning_printed = True
-        return True
+        return False
 
     provided = handler.headers.get(AUTH_HEADER)
-    return provided == token
+    return bool(provided) and secrets.compare_digest(provided, token)
 
 
 def _serialize_event_row(event: dict[str, Any]) -> dict[str, Any]:
@@ -118,8 +113,26 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
         confidence=float(payload.get("confidence", 0.5)),
         requires_action=bool(payload.get("requires_action", False)),
         metadata=payload.get("metadata"),
+        external_event_id=payload.get("event_uuid"),
     )
     published["room"] = payload.get("room")
+    if published.get("duplicate"):
+        return {
+            "ok": True,
+            "event": published,
+            "safety": None,
+            "escalation": None,
+            "confirmation": None,
+            "dispatch_results": [],
+            "incident": None,
+        }
+
+    threading.Thread(
+        target=sync_sensor_event,
+        args=(published,),
+        name="aura-cloud-sensor-sync",
+        daemon=True,
+    ).start()
 
     incident_service = IncidentService(store)
     incident = incident_service.create_or_get_for_event(user_id, published)
@@ -208,7 +221,7 @@ def process_sensor_event(store: AuraMemoryStore, user_id: int, payload: dict[str
 
 
 class AuraSensorAPIHandler(BaseHTTPRequestHandler):
-    server_version = "AuraSensorAPI/0.2"
+    server_version = "AuraSensorAPI/0.4"
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"[sensor-api] {self.address_string()} - {format % args}")
@@ -253,6 +266,16 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
         self._send_unauthorized()
         return False
 
+    def _require_sensor_node_auth(self) -> bool:
+        store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
+        provided = self.headers.get(AUTH_HEADER, "")
+        node = store.get_sensor_node_by_token(provided) if len(provided) >= 32 else None
+        if node:
+            self.authenticated_sensor_node = node
+            return True
+        self._send_unauthorized()
+        return False
+
     def _read_json_body(self) -> dict[str, Any] | None:
         try:
             content_length = int(self.headers.get("Content-Length", "0"))
@@ -287,15 +310,19 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
         return max(1, min(value, maximum))
 
     def do_GET(self) -> None:
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        query = parse_qs(parsed_url.query)
+
+        if path != "/health" and path not in WEB_STATIC_FILES:
+            if not self._require_auth():
+                return
+
         store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
         beat_sensor_api_heartbeat(
             store,
             metadata={"path": self.path, "method": "GET"},
         )
-
-        parsed_url = urlparse(self.path)
-        path = parsed_url.path
-        query = parse_qs(parsed_url.query)
 
         try:
             if path == "/health":
@@ -307,6 +334,12 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
                         "version": API_VERSION,
                     },
                 )
+                return
+
+            if path == "/nodes/status":
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                self._send_json(200, {"ok": True, "nodes": store.list_sensor_nodes(user_id)})
                 return
 
             if path in WEB_STATIC_FILES:
@@ -439,13 +472,84 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"ok": False, "error": "internal_server_error"})
 
     def do_POST(self) -> None:
+        path = urlparse(self.path).path
+        if path == "/nodes/heartbeat":
+            if not self._require_sensor_node_auth():
+                return
+        elif path == "/events":
+            if not is_request_authorized(self) and not self._require_sensor_node_auth():
+                return
+        elif not self._require_auth():
+            return
+
         store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
         beat_sensor_api_heartbeat(
             store,
             metadata={"path": self.path, "method": "POST"},
         )
 
-        path = urlparse(self.path).path
+        if path == "/nodes/enroll":
+            payload = self._read_json_body()
+            if payload is None:
+                self._send_json(400, {"ok": False, "error": "invalid_json"})
+                return
+            node_id = payload.get("node_id")
+            room = payload.get("room")
+            display_name = payload.get("display_name", node_id)
+            if (
+                not isinstance(node_id, str)
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", node_id)
+                or not isinstance(room, str)
+                or not room.strip()
+                or len(room.strip()) > 80
+                or not isinstance(display_name, str)
+                or not display_name.strip()
+                or len(display_name.strip()) > 80
+            ):
+                self._send_json(400, {"ok": False, "error": "invalid_node_registration"})
+                return
+            try:
+                store.apply_schema()
+                user_id = self._get_user_id(store)
+                node, token = store.enroll_sensor_node(
+                    user_id, node_id, display_name.strip(), room.strip()
+                )
+                self._send_json(
+                    201,
+                    {
+                        "ok": True,
+                        "node": node,
+                        "token": token,
+                        "token_notice": "Copy this token to the node now; it is only returned during enrollment.",
+                    },
+                )
+            except Exception as exc:
+                print(f"[sensor-api] POST /nodes/enroll error: {exc}")
+                self._send_json(500, {"ok": False, "error": "internal_server_error"})
+            return
+
+        if path == "/nodes/revoke":
+            payload = self._read_json_body()
+            node_id = payload.get("node_id") if payload else None
+            if not isinstance(node_id, str) or not node_id.strip():
+                self._send_json(400, {"ok": False, "error": "missing_node_id"})
+                return
+            store.apply_schema()
+            user_id = self._get_user_id(store)
+            revoked = store.revoke_sensor_node(user_id, node_id.strip())
+            self._send_json(200 if revoked else 404, {"ok": revoked, "revoked": revoked})
+            return
+
+        if path == "/nodes/heartbeat":
+            node = self.authenticated_sensor_node
+            payload = self._read_json_body()
+            requested_node_id = payload.get("node_id") if payload else None
+            if requested_node_id != node["node_id"]:
+                self._send_json(403, {"ok": False, "error": "node_identity_mismatch"})
+                return
+            updated = store.touch_sensor_node(int(node["user_id"]), str(node["node_id"]))
+            self._send_json(200 if updated else 401, {"ok": updated, "node_id": node["node_id"]})
+            return
 
         if path == "/confirmations/respond":
             if not self._require_auth():
@@ -487,9 +591,6 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"ok": False, "error": "not_found"})
             return
 
-        if not self._require_auth():
-            return
-
         payload = self._read_json_body()
         if payload is None:
             self._send_json(400, {"ok": False, "error": "invalid_json"})
@@ -497,18 +598,42 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
         event_type = payload.get("event_type")
         event_summary = payload.get("event_summary")
-        if not event_type or not event_summary:
+        if (
+            not isinstance(event_type, str)
+            or not event_type.strip()
+            or not isinstance(event_summary, str)
+            or not event_summary.strip()
+        ):
             self._send_json(
                 400,
                 {"ok": False, "error": "missing_event_type_or_summary"},
             )
             return
 
+        event_uuid = payload.get("event_uuid")
+        if event_uuid is not None and (
+            not isinstance(event_uuid, str)
+            or not event_uuid.strip()
+            or len(event_uuid.strip()) > 128
+        ):
+            self._send_json(400, {"ok": False, "error": "invalid_event_uuid"})
+            return
+
+        node = getattr(self, "authenticated_sensor_node", None)
+        if node:
+            if not event_uuid:
+                self._send_json(400, {"ok": False, "error": "event_uuid_required_for_node"})
+                return
+            payload["source"] = node["node_id"]
+            payload["room"] = node["room"]
+
         try:
             store: AuraMemoryStore = self.server.aura_store  # type: ignore[attr-defined]
             store.apply_schema()
             user_id = self._get_user_id(store)
             result = process_sensor_event(store, user_id, payload)
+            if node:
+                store.touch_sensor_node(int(node["user_id"]), str(node["node_id"]))
             self._send_json(200, result)
         except Exception as exc:
             print(f"[sensor-api] POST /events error: {exc}")
@@ -517,8 +642,10 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
 def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
     load_env_file()
-    store = AuraMemoryStore()
+    db_path = Path(os.environ.get("AURA_DB_PATH", str(DEFAULT_DB_PATH))).expanduser().resolve()
+    store = AuraMemoryStore(db_path)
     store.apply_schema()
+    start_retry_worker()
 
     user_id = store.get_or_create_user(
         name=DEFAULT_USER_NAME,
@@ -535,6 +662,11 @@ def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
     print(f"AURA_SENSOR_API_STARTING")
     print(f"host={host}")
     print(f"port={port}")
+    if not get_sensor_api_token():
+        print(
+            "AURA_SENSOR_API_AUTH_REQUIRED: protected routes reject requests until "
+            "a 32-character AURA_SENSOR_API_TOKEN is configured."
+        )
 
     try:
         server.serve_forever()

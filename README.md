@@ -1,4 +1,14 @@
-﻿# AURA Companion
+# AURA Companion
+
+The existing AURA companion and sensor-event engine are being prepared for Raspberry Pi 5 deployment. See [`docs/raspberry_pi.md`](docs/raspberry_pi.md) for the hardware target, optional Supabase conversation/sensor sync with a local durable retry outbox, and what still requires the actual Pi and sensor modules. The current repository includes simulated sensor event handling; it does not yet contain GPIO drivers for physical gas, distance, fire, or water modules.
+
+## New Mac-compatible companion interface
+
+The additive [AURA application](aura-app/README.md) provides a React/Three.js interface, the original SQLite memory and Claude integration, and an optional native Mac ambient mode that listens locally for “Hey AURA”, direct questions, and explicit support phrases. External MCP actions remain opt-in with per-call approvals. Start with `cd aura-app`, `npm ci --ignore-scripts`, `npm run build`, and `npm start`. Open `http://127.0.0.1:8790`. The original Windows and sensor runtime below is preserved.
+
+## AURA companion interface
+
+The additive [AURA application](aura-app/README.md) provides a rebranded holographic interface, opt-in voice, the existing SQLite/personality/Claude engine, and an optional approval-gated MCP bridge. Start with its setup guide; the original console and sensor commands below remain available.
 
 ## Recommended dev runtime
 
@@ -45,7 +55,7 @@ Secrets live in `config/keys.env`. That file is ignored by git.
 ### Local config example (do not commit)
 
 ```env
-AURA_SENSOR_API_TOKEN=change_this_local_token
+AURA_SENSOR_API_TOKEN=replace_with_a_generated_token_of_at_least_32_characters
 AURA_ENABLE_VOICE_ACTIONS=0
 ```
 
@@ -135,7 +145,7 @@ python scripts/test_full_safety_action_flow.py
 
 Sensor Node API v0.1 exposes a local HTTP API so Raspberry Pi, camera, and sensor nodes can send events over Wi-Fi. Uses built-in `http.server` — no FastAPI yet. See [docs/sensor_node_api.md](docs/sensor_node_api.md) for endpoint details and example payloads.
 
-Sensor API Token Auth v0.2 adds optional shared-token protection for `GET /events/latest` and `POST /events`. `GET /health` stays open. If `AURA_SENSOR_API_TOKEN` is not set, the API remains open with a runtime warning. Keep the API on a trusted local network only.
+Sensor API v0.4 requires a strong hub token, supports individually enrolled sensor-node credentials, and deduplicates retried events. The hub stores only node-token hashes; node credentials can be revoked independently. Missing or weak hub-token configuration denies protected access; `GET /health` and static dashboard files remain public. Keep the API on a trusted local network only. See [docs/sensor_node_api.md](docs/sensor_node_api.md).
 
 ```powershell
 python scripts/generate_sensor_api_token.py

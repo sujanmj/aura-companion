@@ -19,6 +19,18 @@ CREATE TABLE IF NOT EXISTS conversation_logs (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- Retry metadata only. Message and event payloads are re-read from their source
+-- rows when sent, so clearing local conversation history also removes its queue.
+CREATE TABLE IF NOT EXISTS cloud_sync_outbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_type TEXT NOT NULL CHECK(record_type IN ('conversation', 'sensor_event', 'conversation_delete')),
+    local_id INTEGER NOT NULL,
+    device_id TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at REAL NOT NULL DEFAULT 0,
+    UNIQUE(record_type, local_id, device_id)
+);
+
 CREATE TABLE IF NOT EXISTS memory_facts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -29,6 +41,25 @@ CREATE TABLE IF NOT EXISTS memory_facts (
     last_seen_at TEXT DEFAULT CURRENT_TIMESTAMP,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, fact_key),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Forgetting an inferred summary also prevents automatic extraction from saving it again.
+CREATE TABLE IF NOT EXISTS forgotten_memory_facts (
+    user_id INTEGER NOT NULL,
+    fact_key TEXT NOT NULL,
+    forgotten_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(user_id, fact_key),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS companion_preferences (
+    user_id INTEGER PRIMARY KEY,
+    checkins_enabled INTEGER NOT NULL DEFAULT 0 CHECK (checkins_enabled IN (0, 1)),
+    quiet_start TEXT NOT NULL DEFAULT '22:00',
+    quiet_end TEXT NOT NULL DEFAULT '08:00',
+    checkin_interval_hours INTEGER NOT NULL DEFAULT 24 CHECK (checkin_interval_hours BETWEEN 4 AND 168),
+    last_checkin_at TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
@@ -62,6 +93,26 @@ CREATE TABLE IF NOT EXISTS routine_memory (
     last_seen_at TEXT DEFAULT CURRENT_TIMESTAMP,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, routine_key),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS routine_reminders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    local_time TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+    last_delivered_on TEXT,
+    dismissed_on TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS forgotten_memory_routines (
+    user_id INTEGER NOT NULL,
+    routine_key TEXT NOT NULL,
+    forgotten_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(user_id, routine_key),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
@@ -112,7 +163,22 @@ CREATE TABLE IF NOT EXISTS device_events (
     requires_action INTEGER DEFAULT 0,
     action_status TEXT DEFAULT 'none',
     metadata_json TEXT,
+    external_event_id TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS sensor_nodes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    node_id TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    room TEXT NOT NULL,
+    token_hash TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TEXT,
+    disabled INTEGER NOT NULL DEFAULT 0 CHECK (disabled IN (0, 1)),
+    UNIQUE(user_id, node_id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import time
+import uuid
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -168,6 +169,7 @@ def build_payload(
         "severity": severity,
         "confidence": event_confidence,
         "requires_action": requires_action,
+        "event_uuid": str(uuid.uuid4()),
         "metadata": {
             "simulator": True,
             "node": node,
@@ -185,23 +187,78 @@ def post_event(hub_url: str, payload: dict[str, Any], token: str | None) -> dict
         headers[AUTH_HEADER] = token
 
     data = json.dumps(payload).encode("utf-8")
+    for attempt in range(3):
+        request = urllib.request.Request(
+            f"{hub_url}/events",
+            data=data,
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                body = response.read().decode("utf-8")
+                return json.loads(body) if body else {}
+        except urllib.error.HTTPError as exc:
+            if exc.code == 401:
+                raise PermissionError("unauthorized") from exc
+            if exc.code < 500 or attempt == 2:
+                raise
+        except urllib.error.URLError as exc:
+            if attempt == 2:
+                raise ConnectionError("server not running") from exc
+        time.sleep(0.5 * (2**attempt))
+
+    raise ConnectionError("sensor event could not be delivered")
+
+
+def send_node_heartbeat(
+    node_id: str,
+    hub_url: str | None = None,
+    token: str | None = None,
+) -> int:
+    if token is None:
+        load_env_file()
+        token = os.environ.get("AURA_SENSOR_NODE_TOKEN", "")
+    token = token.strip()
+    if len(token) < 32:
+        print("AURA_PI_NODE_HEARTBEAT_ERROR: set AURA_SENSOR_NODE_TOKEN from enrollment")
+        return 1
+    base_url = (hub_url or get_hub_url()).rstrip("/")
     request = urllib.request.Request(
-        f"{hub_url}/events",
-        data=data,
-        headers=headers,
+        f"{base_url}/nodes/heartbeat",
+        data=json.dumps({"node_id": node_id}).encode("utf-8"),
+        headers={"Content-Type": "application/json", AUTH_HEADER: token},
         method="POST",
     )
-
-    try:
-        with urllib.request.urlopen(request, timeout=15) as response:
-            body = response.read().decode("utf-8")
-            return json.loads(body) if body else {}
-    except urllib.error.HTTPError as exc:
-        if exc.code == 401:
-            raise PermissionError("unauthorized") from exc
-        raise
-    except urllib.error.URLError as exc:
-        raise ConnectionError("server not running") from exc
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                body = response.read().decode("utf-8")
+                try:
+                    result = json.loads(body) if body else {}
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    result = {}
+                if (
+                    response.status != 200
+                    or not isinstance(result, dict)
+                    or result.get("ok") is not True
+                ):
+                    print("AURA_PI_NODE_HEARTBEAT_ERROR: hub rejected heartbeat")
+                    return 1
+                print(f"AURA_PI_NODE_HEARTBEAT_OK node_id={node_id}")
+                return 0
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+            exc.close()
+            if (status < 500 and status != 429) or attempt == 2:
+                print(f"AURA_PI_NODE_HEARTBEAT_ERROR: HTTP {status}")
+                return 1
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == 2:
+                print("AURA_PI_NODE_HEARTBEAT_ERROR: hub is unreachable")
+                return 1
+        time.sleep(0.5 * (2**attempt))
+    return 1
 
 
 def send_simulated_event(
@@ -214,12 +271,17 @@ def send_simulated_event(
 ) -> int:
     load_env_file()
     resolved_hub_url = (hub_url or get_hub_url()).rstrip("/")
-    token = os.environ.get("AURA_SENSOR_API_TOKEN")
+    token = os.environ.get("AURA_SENSOR_NODE_TOKEN") or os.environ.get("AURA_SENSOR_API_TOKEN")
 
     if token:
-        print(f"AURA_PI_NODE_TOKEN_PREFIX={token[:8]}")
+        token = token.strip()
+        if len(token) < 32:
+            print("AURA_PI_NODE_SIMULATOR_ERROR: API token must be at least 32 characters")
+            return 1
+        print("AURA_PI_NODE_AUTH_CONFIGURED")
     else:
-        print("AURA_PI_NODE_AUTH_WARNING: no AURA_SENSOR_API_TOKEN configured")
+        print("AURA_PI_NODE_SIMULATOR_ERROR: set AURA_SENSOR_API_TOKEN in config/keys.env")
+        return 1
 
     if node not in NODE_PRESETS:
         print(f"AURA_PI_NODE_SIMULATOR_ERROR: unknown node '{node}'")
@@ -272,6 +334,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--confidence", type=float, default=None, help="Override confidence")
     parser.add_argument("--source", default=None, help="Override source identifier")
     parser.add_argument("--summary", default=None, help="Override event summary")
+    parser.add_argument("--heartbeat", default=None, help="Send node heartbeat with its enrolled token")
     parser.add_argument("--loop", type=int, default=1, help="Send event N times")
     parser.add_argument("--delay", type=float, default=3.0, help="Delay between loop sends")
     parser.add_argument(
@@ -288,6 +351,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.list:
         print_supported_nodes()
         return 0
+
+    if args.heartbeat:
+        return send_node_heartbeat(args.heartbeat, hub_url=args.hub_url)
 
     if not args.node or not args.event_type:
         print("Usage: python scripts/pi_node_simulator.py <node> <event_type>")

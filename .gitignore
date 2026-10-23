@@ -24,3 +24,16 @@ keys.env
 data/*.db-wal
 data/*.db-shm
 data/*.db-journal
+
+# AURA application build and local automation configuration
+aura-app/node_modules/
+aura-app/dist/
+aura-app/.agent-work/
+aura-app/mcp.local.json
+aura-app/release/
+*.tsbuildinfo
+
+aura-app/macos/AURACompanion/.build/
+
+aura-app/test-results/
+aura-app/playwright-report/

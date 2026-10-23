@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import secrets
 import sqlite3
 from pathlib import Path
 from typing import Any
+from datetime import datetime, time, timedelta, timezone
+import re
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +26,16 @@ class AuraMemoryStore:
     def apply_schema(self) -> None:
         schema = SCHEMA_PATH.read_text(encoding="utf-8")
         self.conn.executescript(schema)
+        device_event_columns = {
+            row["name"]
+            for row in self.conn.execute("PRAGMA table_info(device_events)").fetchall()
+        }
+        if "external_event_id" not in device_event_columns:
+            self.conn.execute("ALTER TABLE device_events ADD COLUMN external_event_id TEXT")
+        self.conn.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS idx_device_events_external_id
+               ON device_events(user_id, source, external_event_id)"""
+        )
         self.conn.commit()
 
     def create_user(
@@ -51,6 +65,377 @@ class AuraMemoryStore:
 
         return self.create_user(name=name, preferred_name=preferred_name)
 
+    def enroll_sensor_node(
+        self,
+        user_id: int,
+        node_id: str,
+        display_name: str,
+        room: str,
+    ) -> tuple[dict[str, Any], str]:
+        token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        self.conn.execute(
+            """INSERT INTO sensor_nodes (user_id, node_id, display_name, room, token_hash)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(user_id, node_id) DO UPDATE SET
+                   display_name=excluded.display_name,
+                   room=excluded.room,
+                   token_hash=excluded.token_hash,
+                   last_seen_at=NULL,
+                   disabled=0""",
+            (user_id, node_id, display_name, room, token_hash),
+        )
+        self.conn.commit()
+        node = self.conn.execute(
+            """SELECT id, node_id, display_name, room, created_at, last_seen_at, disabled
+               FROM sensor_nodes WHERE user_id = ? AND node_id = ?""",
+            (user_id, node_id),
+        ).fetchone()
+        return dict(node), token
+
+    def get_sensor_node_by_token(self, token: str) -> dict[str, Any] | None:
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        row = self.conn.execute(
+            """SELECT id, user_id, node_id, display_name, room, created_at, last_seen_at
+               FROM sensor_nodes WHERE token_hash = ? AND disabled = 0""",
+            (token_hash,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def touch_sensor_node(self, user_id: int, node_id: str) -> bool:
+        cur = self.conn.execute(
+            """UPDATE sensor_nodes SET last_seen_at=CURRENT_TIMESTAMP
+               WHERE user_id = ? AND node_id = ? AND disabled = 0""",
+            (user_id, node_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def list_sensor_nodes(self, user_id: int) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            """SELECT id, node_id, display_name, room, created_at, last_seen_at,
+                      CASE WHEN last_seen_at >= datetime('now', '-90 seconds')
+                           THEN 1 ELSE 0 END AS online
+               FROM sensor_nodes WHERE user_id = ? AND disabled = 0
+               ORDER BY node_id""",
+            (user_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def revoke_sensor_node(self, user_id: int, node_id: str) -> bool:
+        cur = self.conn.execute(
+            "UPDATE sensor_nodes SET disabled=1 WHERE user_id = ? AND node_id = ?",
+            (user_id, node_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def export_user_memory(self, user_id: int) -> dict[str, Any]:
+        user = self.conn.execute(
+            "SELECT id, name, preferred_name, comfort_style, created_at FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        if not user:
+            raise ValueError("User not found")
+
+        tables = (
+            "companion_preferences",
+            "conversation_logs",
+            "memory_facts",
+            "forgotten_memory_facts",
+            "observations",
+            "mood_logs",
+            "routine_memory",
+            "forgotten_memory_routines",
+            "routine_reminders",
+            "safety_events",
+            "emergency_contacts",
+            "response_feedback",
+            "device_events",
+            "action_logs",
+            "known_people",
+            "person_events",
+            "escalation_plans",
+            "escalation_logs",
+            "confirmation_requests",
+            "incidents",
+            "service_heartbeats",
+        )
+        records: dict[str, list[dict[str, Any]]] = {}
+        for table in tables:
+            records[table] = [
+                dict(row)
+                for row in self.conn.execute(
+                    f"SELECT * FROM {table} WHERE user_id = ? ORDER BY rowid",
+                    (user_id,),
+                ).fetchall()
+            ]
+        records["incident_timeline_items"] = [
+            dict(row)
+            for row in self.conn.execute(
+                """SELECT item.* FROM incident_timeline_items AS item
+                   JOIN incidents ON incidents.id = item.incident_id
+                   WHERE incidents.user_id = ? ORDER BY item.rowid""",
+                (user_id,),
+            ).fetchall()
+        ]
+        return {
+            "format": "aura-memory-export",
+            "version": 1,
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "user": dict(user),
+            "records": records,
+        }
+
+    def get_companion_preferences(self, user_id: int) -> dict[str, Any]:
+        self.conn.execute(
+            "INSERT OR IGNORE INTO companion_preferences (user_id) VALUES (?)",
+            (user_id,),
+        )
+        self.conn.commit()
+        row = self.conn.execute(
+            """SELECT checkins_enabled, quiet_start, quiet_end,
+                      checkin_interval_hours, last_checkin_at
+               FROM companion_preferences WHERE user_id = ?""",
+            (user_id,),
+        ).fetchone()
+        result = dict(row)
+        result["checkins_enabled"] = bool(result["checkins_enabled"])
+        return result
+
+    def update_companion_preferences(
+        self,
+        user_id: int,
+        checkins_enabled: bool,
+        quiet_start: str,
+        quiet_end: str,
+        checkin_interval_hours: int,
+    ) -> dict[str, Any]:
+        if not isinstance(checkins_enabled, bool):
+            raise ValueError("checkins_enabled must be a boolean")
+        if not isinstance(quiet_start, str) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", quiet_start):
+            raise ValueError("Invalid quiet start time")
+        if not isinstance(quiet_end, str) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", quiet_end):
+            raise ValueError("Invalid quiet end time")
+        if (
+            not isinstance(checkin_interval_hours, int)
+            or isinstance(checkin_interval_hours, bool)
+            or not 4 <= checkin_interval_hours <= 168
+        ):
+            raise ValueError("Check-in interval must be between 4 and 168 hours")
+        self.conn.execute(
+            "INSERT OR IGNORE INTO companion_preferences (user_id) VALUES (?)",
+            (user_id,),
+        )
+        self.conn.execute(
+            """UPDATE companion_preferences
+               SET checkins_enabled = ?, quiet_start = ?, quiet_end = ?,
+                   checkin_interval_hours = ?
+               WHERE user_id = ?""",
+            (int(checkins_enabled), quiet_start, quiet_end, checkin_interval_hours, user_id),
+        )
+        self.conn.commit()
+        return self.get_companion_preferences(user_id)
+
+    def get_routine_reminders(self, user_id: int) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            """SELECT id, label, local_time, enabled, last_delivered_on,
+                      dismissed_on, created_at
+               FROM routine_reminders WHERE user_id=? ORDER BY local_time, id""",
+            (user_id,),
+        ).fetchall()
+        reminders = [dict(row) for row in rows]
+        for reminder in reminders:
+            reminder["enabled"] = bool(reminder["enabled"])
+        return reminders
+
+    def add_routine_reminder(
+        self, user_id: int, label: str, local_time: str
+    ) -> int:
+        label = label.strip() if isinstance(label, str) else ""
+        if not 1 <= len(label) <= 120:
+            raise ValueError("Reminder label must contain 1–120 characters")
+        try:
+            parsed_time = time.fromisoformat(local_time)
+        except (TypeError, ValueError):
+            raise ValueError("Reminder time must use HH:MM") from None
+        if parsed_time.second or parsed_time.microsecond or parsed_time.tzinfo:
+            raise ValueError("Reminder time must use HH:MM")
+        count = self.conn.execute(
+            "SELECT COUNT(*) FROM routine_reminders WHERE user_id=? AND enabled=1",
+            (user_id,),
+        ).fetchone()[0]
+        if count >= 20:
+            raise ValueError("A maximum of 20 active reminders is allowed")
+        cur = self.conn.execute(
+            """INSERT INTO routine_reminders (user_id, label, local_time, enabled)
+               VALUES (?, ?, ?, 1)""",
+            (user_id, label, parsed_time.strftime("%H:%M")),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def delete_routine_reminder(self, user_id: int, reminder_id: int) -> bool:
+        cur = self.conn.execute(
+            "DELETE FROM routine_reminders WHERE id=? AND user_id=?",
+            (reminder_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def set_routine_reminder_enabled(
+        self, user_id: int, reminder_id: int, enabled: bool
+    ) -> str | None:
+        if not isinstance(enabled, bool):
+            raise ValueError("Reminder enabled must be a boolean")
+        row = self.conn.execute(
+            "SELECT enabled FROM routine_reminders WHERE id=? AND user_id=?",
+            (reminder_id, user_id),
+        ).fetchone()
+        if not row:
+            return "not_found"
+        if enabled and not bool(row["enabled"]):
+            count = self.conn.execute(
+                "SELECT COUNT(*) FROM routine_reminders WHERE user_id=? AND enabled=1",
+                (user_id,),
+            ).fetchone()[0]
+            if count >= 20:
+                return "limit"
+        self.conn.execute(
+            "UPDATE routine_reminders SET enabled=? WHERE id=? AND user_id=?",
+            (int(enabled), reminder_id, user_id),
+        )
+        self.conn.commit()
+        return None
+
+    def dismiss_routine_reminder(
+        self,
+        user_id: int,
+        reminder_id: int,
+        now: datetime | None = None,
+    ) -> bool:
+        now = now or datetime.now().astimezone()
+        if now.tzinfo is None:
+            raise ValueError("Dismissal time must include a timezone")
+        cur = self.conn.execute(
+            """UPDATE routine_reminders SET dismissed_on=?
+               WHERE id=? AND user_id=? AND enabled=1""",
+            (now.date().isoformat(), reminder_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def create_due_routine_reminder(
+        self, user_id: int, now: datetime | None = None
+    ) -> dict[str, Any] | None:
+        """Deliver one user-entered local reminder at most once on each local date."""
+        now = now or datetime.now().astimezone()
+        if now.tzinfo is None:
+            raise ValueError("Reminder time must include a timezone")
+        local_now = now
+        today = local_now.date().isoformat()
+        rows = self.conn.execute(
+            """SELECT id, label FROM routine_reminders
+               WHERE user_id=? AND enabled=1 AND local_time<=?
+                 AND (last_delivered_on IS NULL OR last_delivered_on<>?)
+                 AND (dismissed_on IS NULL OR dismissed_on<>?)
+               ORDER BY local_time, id""",
+            (user_id, local_now.strftime("%H:%M"), today, today),
+        ).fetchall()
+        if not rows:
+            return None
+        reminder = rows[0]
+        profile = self.conn.execute(
+            "SELECT preferred_name FROM users WHERE id=?", (user_id,)
+        ).fetchone()
+        name = (profile["preferred_name"] or "").strip() if profile else ""
+        greeting = f"{name}, " if name else ""
+        response = (
+            f"{greeting}a reminder you set: {reminder['label']}. "
+            "I can’t tell whether you’ve done it; you can dismiss today’s reminder in Memory."
+        )
+        with self.conn:
+            claimed = self.conn.execute(
+                """UPDATE routine_reminders SET last_delivered_on=?
+                   WHERE id=? AND user_id=? AND enabled=1
+                     AND (last_delivered_on IS NULL OR last_delivered_on<>?)
+                     AND (dismissed_on IS NULL OR dismissed_on<>?)""",
+                (today, reminder["id"], user_id, today, today),
+            )
+            if claimed.rowcount != 1:
+                return None
+            message_id = self.conn.execute(
+                """INSERT INTO conversation_logs (user_id, role, message, emotion_tag)
+                   VALUES (?, 'assistant', ?, 'routine_reminder')""",
+                (user_id, response),
+            ).lastrowid
+        return {
+            "id": int(message_id),
+            "reminder_id": int(reminder["id"]),
+            "response": response,
+            "provider": "local",
+            "reminder": True,
+        }
+
+    def create_checkin_if_due(
+        self, user_id: int, now: datetime | None = None
+    ) -> dict[str, Any] | None:
+        now = now or datetime.now().astimezone()
+        if now.tzinfo is None:
+            raise ValueError("Check-in time must include a timezone")
+        preferences = self.get_companion_preferences(user_id)
+        if not preferences["checkins_enabled"]:
+            return None
+
+        current = now.timetz().replace(tzinfo=None)
+        quiet_start = time.fromisoformat(preferences["quiet_start"])
+        quiet_end = time.fromisoformat(preferences["quiet_end"])
+        if quiet_start != quiet_end:
+            is_quiet = (
+                quiet_start <= current < quiet_end
+                if quiet_start < quiet_end
+                else current >= quiet_start or current < quiet_end
+            )
+            if is_quiet:
+                return None
+
+        last_user = self.conn.execute(
+            """SELECT created_at FROM conversation_logs
+               WHERE user_id = ? AND role = 'user' ORDER BY id DESC LIMIT 1""",
+            (user_id,),
+        ).fetchone()
+        if not last_user:
+            return None
+        last_activity = datetime.fromisoformat(last_user["created_at"]).replace(
+            tzinfo=timezone.utc
+        )
+        if preferences["last_checkin_at"]:
+            last_checkin = datetime.fromisoformat(preferences["last_checkin_at"])
+            if last_checkin.tzinfo is None:
+                last_checkin = last_checkin.replace(tzinfo=timezone.utc)
+            last_activity = max(last_activity, last_checkin.astimezone(timezone.utc))
+        interval = preferences["checkin_interval_hours"]
+        if now.astimezone(timezone.utc) - last_activity < timedelta(hours=interval):
+            return None
+
+        profile = self.conn.execute(
+            "SELECT name, preferred_name FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        name = (profile["preferred_name"] or "").strip()
+        greeting = f"{name}, just checking in. How are you doing today? No need to reply unless you feel like it." if name else "Just checking in. How are you doing today? No need to reply unless you feel like it."
+        now_utc = now.astimezone(timezone.utc).isoformat()
+        with self.conn:
+            cur = self.conn.execute(
+                """INSERT INTO conversation_logs (user_id, role, message, emotion_tag)
+                   VALUES (?, 'assistant', ?, 'check_in')""",
+                (user_id, greeting),
+            )
+            self.conn.execute(
+                "UPDATE companion_preferences SET last_checkin_at = ? WHERE user_id = ?",
+                (now_utc, user_id),
+            )
+        return {"id": int(cur.lastrowid), "response": greeting, "provider": "local", "check_in": True}
+
     def add_conversation(
         self,
         user_id: int,
@@ -71,6 +456,14 @@ class AuraMemoryStore:
         self.conn.commit()
         return int(cur.lastrowid)
 
+    def clear_conversation_history(self, user_id: int) -> int:
+        cur = self.conn.execute(
+            "DELETE FROM conversation_logs WHERE user_id = ?",
+            (user_id,),
+        )
+        self.conn.commit()
+        return cur.rowcount
+
     def remember_fact(
         self,
         user_id: int,
@@ -79,6 +472,17 @@ class AuraMemoryStore:
         confidence: float = 0.7,
         source: str = "conversation",
     ) -> None:
+        suppressed = self.conn.execute(
+            "SELECT 1 FROM forgotten_memory_facts WHERE user_id=? AND fact_key=?",
+            (user_id, fact_key),
+        ).fetchone()
+        if suppressed and source == "conversation":
+            return
+        if source != "conversation":
+            self.conn.execute(
+                "DELETE FROM forgotten_memory_facts WHERE user_id=? AND fact_key=?",
+                (user_id, fact_key),
+            )
         self.conn.execute(
             """
             INSERT INTO memory_facts (user_id, fact_key, fact_value, confidence, source)
@@ -112,6 +516,69 @@ class AuraMemoryStore:
         self.conn.commit()
         return int(cur.lastrowid)
 
+    def add_ambient_scene_observation(
+        self,
+        user_id: int,
+        labels: list[str],
+        human_present: bool,
+        confidence: float,
+    ) -> dict[str, Any]:
+        """Save a rate-limited, derived scene summary; never save camera frames."""
+        if (
+            not isinstance(labels, list)
+            or len(labels) > 4
+            or any(
+                not isinstance(label, str)
+                or not label.strip()
+                or len(label.strip()) > 64
+                or not re.fullmatch(r"[A-Za-z0-9 _-]+", label.strip())
+                for label in labels
+            )
+        ):
+            raise ValueError("Invalid scene labels")
+        if not isinstance(human_present, bool):
+            raise ValueError("Invalid person-presence signal")
+        if (
+            not isinstance(confidence, (int, float))
+            or isinstance(confidence, bool)
+            or not 0.0 <= confidence <= 1.0
+        ):
+            raise ValueError("Invalid scene confidence")
+        clean_labels = [label.strip() for label in labels]
+        if not clean_labels and not human_present:
+            return {"saved": False, "reason": "no_scene_signal"}
+
+        latest = self.conn.execute(
+            """SELECT event_summary FROM observations
+               WHERE user_id=? AND source='mac_local_vision'
+               ORDER BY id DESC LIMIT 1""",
+            (user_id,),
+        ).fetchone()
+        summary = (
+            "On-device scene estimate: "
+            + (", ".join(clean_labels) if clean_labels else "no clear objects")
+            + f". Human-shaped figure detected: {'yes' if human_present else 'no'}."
+        )
+        if latest and latest["event_summary"] == summary:
+            return {"saved": False, "reason": "unchanged"}
+        recent = self.conn.execute(
+            """SELECT 1 FROM observations
+               WHERE user_id=? AND source='mac_local_vision'
+                 AND created_at >= datetime('now', '-60 seconds')
+               LIMIT 1""",
+            (user_id,),
+        ).fetchone()
+        if recent:
+            return {"saved": False, "reason": "rate_limited"}
+        observation_id = self.add_observation(
+            user_id,
+            event_type="ambient_visual_context",
+            event_summary=summary,
+            confidence=float(confidence),
+            source="mac_local_vision",
+        )
+        return {"saved": True, "observation_id": observation_id}
+
     def add_mood_log(
         self,
         user_id: int,
@@ -135,7 +602,19 @@ class AuraMemoryStore:
         routine_key: str,
         routine_value: str,
         confidence: float = 0.5,
+        source: str = "conversation",
     ) -> None:
+        suppressed = self.conn.execute(
+            "SELECT 1 FROM forgotten_memory_routines WHERE user_id=? AND routine_key=?",
+            (user_id, routine_key),
+        ).fetchone()
+        if suppressed and source == "conversation":
+            return
+        if source != "conversation":
+            self.conn.execute(
+                "DELETE FROM forgotten_memory_routines WHERE user_id=? AND routine_key=?",
+                (user_id, routine_key),
+            )
         self.conn.execute(
             """
             INSERT INTO routine_memory (user_id, routine_key, routine_value, confidence)
@@ -163,10 +642,42 @@ class AuraMemoryStore:
         )
         return [dict(row) for row in cur.fetchall()]
 
+    def update_memory_routine(self, user_id: int, routine_id: int, routine_value: str) -> bool:
+        value = routine_value.strip()
+        if not value or len(value) > 2000:
+            raise ValueError("routine value must contain 1–2000 characters")
+        cur = self.conn.execute(
+            """UPDATE routine_memory SET routine_value=?, confidence=1.0,
+               last_seen_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?""",
+            (value, routine_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def delete_memory_routine(self, user_id: int, routine_id: int) -> bool:
+        row = self.conn.execute(
+            "SELECT routine_key FROM routine_memory WHERE id=? AND user_id=?",
+            (routine_id, user_id),
+        ).fetchone()
+        if not row:
+            return False
+        with self.conn:
+            self.conn.execute(
+                """INSERT INTO forgotten_memory_routines (user_id, routine_key)
+                   VALUES (?, ?) ON CONFLICT(user_id, routine_key)
+                   DO UPDATE SET forgotten_at=CURRENT_TIMESTAMP""",
+                (user_id, row["routine_key"]),
+            )
+            self.conn.execute(
+                "DELETE FROM routine_memory WHERE id=? AND user_id=?",
+                (routine_id, user_id),
+            )
+        return True
+
     def get_memory_facts(self, user_id: int) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """
-            SELECT fact_key, fact_value, confidence, source, last_seen_at
+            SELECT id, fact_key, fact_value, confidence, source, last_seen_at
             FROM memory_facts
             WHERE user_id = ?
             ORDER BY last_seen_at DESC
@@ -175,16 +686,85 @@ class AuraMemoryStore:
         )
         return [dict(row) for row in cur.fetchall()]
 
+    def update_memory_fact(self, user_id: int, fact_id: int, fact_value: str) -> bool:
+        value = fact_value.strip()
+        if not value or len(value) > 2000:
+            raise ValueError("fact value must contain 1–2000 characters")
+        cur = self.conn.execute(
+            """UPDATE memory_facts
+               SET fact_value=?, source='user_correction', last_seen_at=CURRENT_TIMESTAMP
+               WHERE id=? AND user_id=?""",
+            (value, fact_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def delete_memory_fact(self, user_id: int, fact_id: int) -> bool:
+        row = self.conn.execute(
+            "SELECT fact_key FROM memory_facts WHERE id=? AND user_id=?",
+            (fact_id, user_id),
+        ).fetchone()
+        if not row:
+            return False
+        with self.conn:
+            self.conn.execute(
+                "INSERT INTO forgotten_memory_facts (user_id, fact_key) VALUES (?, ?) "
+                "ON CONFLICT(user_id, fact_key) DO UPDATE SET forgotten_at=CURRENT_TIMESTAMP",
+                (user_id, row["fact_key"]),
+            )
+            self.conn.execute(
+                "DELETE FROM memory_facts WHERE id=? AND user_id=?", (fact_id, user_id)
+            )
+        return True
+
     def get_latest_observations(self, user_id: int, limit: int = 10) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """
-            SELECT event_type, event_summary, confidence, source, created_at
+            SELECT id, event_type, event_summary, confidence, source, created_at
             FROM observations
             WHERE user_id = ?
             ORDER BY id DESC
             LIMIT ?
             """,
             (user_id, limit),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+    def delete_observation(self, user_id: int, observation_id: int) -> bool:
+        cur = self.conn.execute(
+            "DELETE FROM observations WHERE id=? AND user_id=?",
+            (observation_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def clear_observations(self, user_id: int) -> int:
+        """Forget all saved observation notes for one user, preserving other memory."""
+        cur = self.conn.execute(
+            "DELETE FROM observations WHERE user_id=?", (user_id,)
+        )
+        self.conn.commit()
+        return cur.rowcount
+
+    def correct_observation(self, user_id: int, observation_id: int, value: str) -> bool:
+        """Replace a saved observation with an explicit, user-authored correction."""
+        if not isinstance(value, str) or not value.strip() or len(value.strip()) > 500:
+            raise ValueError("Observation correction must contain 1–500 characters")
+        cur = self.conn.execute(
+            """UPDATE observations
+               SET event_type='user_corrected_observation', event_summary=?,
+                   confidence=1.0, source='user_correction', created_at=CURRENT_TIMESTAMP
+               WHERE id=? AND user_id=?""",
+            ("User correction: " + value.strip(), observation_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def get_routine_memory(self, user_id: int) -> list[dict[str, Any]]:
+        cur = self.conn.execute(
+            """SELECT id, routine_key, routine_value, confidence, last_seen_at, created_at
+               FROM routine_memory WHERE user_id = ? ORDER BY last_seen_at DESC""",
+            (user_id,),
         )
         return [dict(row) for row in cur.fetchall()]
 
@@ -265,6 +845,70 @@ class AuraMemoryStore:
         )
         self.conn.commit()
         return int(cur.lastrowid)
+
+    def add_device_event_once(
+        self,
+        user_id: int,
+        event_type: str,
+        event_summary: str,
+        source: str,
+        external_event_id: str,
+        room: str | None = None,
+        severity: str = "low",
+        confidence: float = 0.5,
+        requires_action: bool = False,
+        metadata: dict | None = None,
+    ) -> tuple[int, bool]:
+        allowed_severities = {"low", "medium", "high", "critical"}
+        if severity not in allowed_severities:
+            raise ValueError(f"severity must be one of: {', '.join(sorted(allowed_severities))}")
+        event_key = external_event_id.strip()
+        if not event_key or len(event_key) > 128:
+            raise ValueError("external_event_id must contain 1–128 characters")
+
+        metadata_json = json.dumps(metadata) if metadata is not None else None
+        cur = self.conn.execute(
+            """INSERT INTO device_events (
+                   user_id, event_type, event_summary, source, room, severity,
+                   confidence, requires_action, metadata_json, external_event_id
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(user_id, source, external_event_id) DO NOTHING""",
+            (
+                user_id,
+                event_type,
+                event_summary,
+                source,
+                room,
+                severity,
+                confidence,
+                int(requires_action),
+                metadata_json,
+                event_key,
+            ),
+        )
+        inserted = cur.rowcount == 1
+        if inserted:
+            event_id = int(cur.lastrowid)
+        else:
+            row = self.conn.execute(
+                """SELECT id FROM device_events
+                   WHERE user_id = ? AND source = ? AND external_event_id = ?""",
+                (user_id, source, event_key),
+            ).fetchone()
+            if row is None:
+                raise RuntimeError("Idempotent event insert did not return an event")
+            event_id = int(row["id"])
+        self.conn.commit()
+        return event_id, inserted
+
+    def get_device_event(self, event_id: int) -> dict[str, Any] | None:
+        row = self.conn.execute(
+            """SELECT id, event_type, event_summary, source, room, severity,
+                      confidence, requires_action, action_status, metadata_json, created_at
+               FROM device_events WHERE id = ?""",
+            (event_id,),
+        ).fetchone()
+        return dict(row) if row else None
 
     def get_recent_device_events(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
         cur = self.conn.execute(
@@ -420,6 +1064,25 @@ class AuraMemoryStore:
             (user_id,),
         )
         return [dict(row) for row in cur.fetchall()]
+
+    def forget_known_person(self, user_id: int, person_id: int) -> bool:
+        """Forget one person's profile and its related timeline, scoped to its owner."""
+        person = self.conn.execute(
+            "SELECT id FROM known_people WHERE id=? AND user_id=?",
+            (person_id, user_id),
+        ).fetchone()
+        if not person:
+            return False
+        with self.conn:
+            self.conn.execute(
+                "DELETE FROM person_events WHERE person_id=? AND user_id=?",
+                (person_id, user_id),
+            )
+            self.conn.execute(
+                "DELETE FROM known_people WHERE id=? AND user_id=?",
+                (person_id, user_id),
+            )
+        return True
 
     def find_known_person(self, user_id: int, display_name: str) -> dict[str, Any] | None:
         cur = self.conn.execute(

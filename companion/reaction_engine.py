@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from brain.llm_provider import LLMProvider
 from brain.prompt_builder import PromptBuilder
 from companion.context_relevance import ContextRelevanceFilter
 from companion.style_policy import StylePolicy
+from companion.text_signals import contains_signal, negates_signal, uncertain_signal
 from memory.sqlite_store import AuraMemoryStore
 
 
@@ -31,6 +33,16 @@ class CompanionReactionEngine:
         conversations = context.get("conversations", [])
 
         latest_user_message = self._latest_user_message(conversations)
+        anxiety_terms = ("nervous", "anxious", "anxiety", "stress", "stressed", "worried", "worry", "tension")
+        low_mood_terms = ("sad", "lonely", "alone", "low", "heavy", "down")
+        denies_anxiety = (
+            negates_signal(latest_user_message, anxiety_terms)
+            and not contains_signal(latest_user_message, anxiety_terms)
+        ) or uncertain_signal(latest_user_message, anxiety_terms)
+        denies_low_mood = (
+            negates_signal(latest_user_message, low_mood_terms)
+            and not contains_signal(latest_user_message, low_mood_terms)
+        ) or uncertain_signal(latest_user_message, low_mood_terms)
         latest_observation = observations[0].get("event_summary") if observations else None
         preferred_name = self._preferred_name(facts)
 
@@ -66,11 +78,8 @@ class CompanionReactionEngine:
         has_low_mood_signal = False
         has_work_event_signal = False
 
-        anxiety_terms = ("nervous", "anxious", "anxiety", "stress", "stressed", "worried", "worry", "tension")
         presentation_terms = ("presentation", "present", "speak", "talk", "meeting", "interview")
         work_mode_terms = ("office", "work", "formal", "dressed", "professional")
-        low_mood_terms = ("sad", "lonely", "alone", "low", "heavy", "down")
-        quiet_observation_terms = ("quiet", "still", "sitting", "silent")
 
         anxiety_fact_keys = {"recent_anxiety", "presentation_anxiety"}
         work_event_fact_keys = {"important_work_event", "presentation_anxiety"}
@@ -87,7 +96,10 @@ class CompanionReactionEngine:
             blob = f"{fact_key} {fact.get('fact_value', '')}".lower()
             score = float(fact.get("confidence", 0.7))
 
-            if fact_key in anxiety_fact_keys or any(term in blob for term in anxiety_terms):
+            if not denies_anxiety and (
+                fact_key in anxiety_fact_keys
+                or contains_signal(blob, anxiety_terms)
+            ):
                 has_anxiety_signal = True
                 add_reason(f"Memory notes anxiety: {fact_key}", score)
 
@@ -96,28 +108,43 @@ class CompanionReactionEngine:
                 has_work_event_signal = True
                 add_reason(f"Memory mentions work event: {fact_key}", score)
 
-            if fact_key in low_mood_fact_keys or any(term in blob for term in low_mood_terms):
+            if not denies_low_mood and (
+                fact_key in low_mood_fact_keys
+                or contains_signal(blob, low_mood_terms)
+            ):
                 has_low_mood_signal = True
                 add_reason(f"Memory notes low mood: {fact_key}", score)
 
-            if any(term in blob for term in ("stress", "stressed")):
+            if not denies_anxiety and contains_signal(blob, ("stress", "stressed")):
                 has_stress_signal = True
 
-        for conv in conversations:
-            if conv.get("role") != "user":
-                continue
-            blob = f"{conv.get('message', '')} {conv.get('emotion_tag') or ''}".lower()
-            if any(term in blob for term in anxiety_terms):
+        # Emotional cues describe the current turn. Older user messages remain
+        # available as relevant memory, but must not make unrelated requests
+        # sound anxious or sad.
+        current_turn = next(
+            (conv for conv in conversations if conv.get("role") == "user"),
+            None,
+        )
+        if current_turn:
+            message = str(current_turn.get('message', '')).lower()
+            emotion_tag = str(current_turn.get('emotion_tag') or '').lower()
+            if not denies_anxiety and (
+                contains_signal(message, anxiety_terms)
+                or contains_signal(emotion_tag, anxiety_terms)
+            ):
                 has_anxiety_signal = True
                 add_reason("Recent conversation suggests some nervousness.", 0.8)
-            if any(term in blob for term in presentation_terms):
+            if contains_signal(message, presentation_terms):
                 has_presentation_signal = True
                 has_work_event_signal = True
                 add_reason("Recent conversation mentions a work-related event.", 0.85)
-            if any(term in blob for term in low_mood_terms):
+            if not denies_low_mood and (
+                contains_signal(message, low_mood_terms)
+                or contains_signal(emotion_tag, low_mood_terms)
+            ):
                 has_low_mood_signal = True
                 add_reason("Recent conversation suggests feeling low or alone.", 0.8)
-            if any(term in blob for term in ("stress", "stressed")):
+            if not denies_anxiety and contains_signal(message, ("stress", "stressed")):
                 has_stress_signal = True
 
         for obs in observations:
@@ -129,13 +156,6 @@ class CompanionReactionEngine:
                     f"Observation suggests work/office mode: {obs.get('event_summary')}",
                     score,
                 )
-            if any(term in blob for term in quiet_observation_terms):
-                has_low_mood_signal = True
-                add_reason(
-                    f"Observation suggests quiet or stillness: {obs.get('event_summary')}",
-                    score,
-                )
-
         if has_low_mood_signal:
             situation = "User may need quiet emotional support."
             emotional_need = "comfort"
@@ -152,7 +172,7 @@ class CompanionReactionEngine:
             situation = "User has an important work event coming up and seems to be carrying some nerves."
             emotional_need = "encouragement"
             tone = "warm_confident"
-        elif has_anxiety_signal or has_presentation_signal or has_stress_signal:
+        elif has_anxiety_signal or has_stress_signal:
             situation = "User seems to have something weighing on them, possibly a presentation or stressful moment."
             emotional_need = "encouragement"
             tone = "warm_confident"
@@ -187,6 +207,32 @@ class CompanionReactionEngine:
         latest_user_message = self._latest_user_message(context.get("conversations", []))
         inference = self.infer_situation(context)
         style_context = self.style_policy.build_style_context(user_id)
+
+        remembered_location = self._remembered_location_reply(
+            latest_user_message,
+            context.get("observations", []),
+        )
+        if remembered_location:
+            return {
+                "situation": "The user asked about a previously noted item's location.",
+                "emotional_need": "practical_help",
+                "tone": "warm_practical",
+                "response": remembered_location,
+                "confidence": 0.95,
+                "reasons": ["Recalled a matching user-provided note locally."],
+            }
+
+        remembered_routine = self._remembered_routine_reply(user_id, latest_user_message)
+        if remembered_routine:
+            return {
+                "situation": "The user asked about a saved routine memory.",
+                "emotional_need": "practical_help",
+                "tone": "warm_practical",
+                "response": remembered_routine,
+                "confidence": 0.85,
+                "reasons": ["Recalled a relevant routine memory locally."],
+            }
+
         raw_response = self._compose_response(inference, context, style_context)
         fallback_response = self.style_policy.polish_response(raw_response, style_context)
 
@@ -219,6 +265,66 @@ class CompanionReactionEngine:
             "confidence": inference["confidence"],
             "reasons": reasons,
         }
+
+    def _remembered_routine_reply(self, user_id: int, message: str) -> str | None:
+        if not re.search(
+            r"\b(routine|habit|usually|exercise|workout|gym|meal|bedtime|sleep)\b",
+            message,
+            re.IGNORECASE,
+        ):
+            return None
+
+        routines = [
+            {
+                "fact_key": item.get("routine_key", ""),
+                "fact_value": item.get("routine_value", ""),
+                "confidence": item.get("confidence", 0.5),
+            }
+            for item in self.store.get_routine_memory(user_id)
+        ]
+        relevant = self.relevance_filter.filter_facts(message, None, routines)
+        if not relevant:
+            return None
+
+        selected = max(relevant, key=lambda item: item.get("relevance_score", 0.0))
+        routine_value = str(selected.get("fact_value", "")).strip().rstrip(".!? ")
+        if not routine_value:
+            return None
+        return f"The routine memory I have says: {routine_value}. It may be incomplete or out of date."
+
+    def _remembered_location_reply(
+        self,
+        message: str,
+        observations: list[dict[str, Any]],
+    ) -> str | None:
+        normalized = message.lower().replace("’", "'")
+        location_question = re.search(
+            r"\b(where|where's|wheres|where is|where are|where did|where have|where can)\b",
+            normalized,
+        )
+        if not location_question:
+            return None
+
+        message_keywords = self.relevance_filter.extract_keywords(message)
+        if not message_keywords:
+            return None
+
+        for item in observations:
+            if item.get("source") not in {"user_explicit", "user_correction"}:
+                continue
+            note = str(item.get("event_summary", "")).strip().rstrip(".!? ")
+            note_keywords = self.relevance_filter.extract_keywords(note)
+            if not (message_keywords & note_keywords):
+                continue
+
+            created_at = item.get("created_at")
+            if created_at:
+                age_context = f" It was saved {created_at} and may be out of date."
+            else:
+                age_context = " I don't know when it was saved, so it may be out of date."
+            return f"The last note I have says: {note}.{age_context}"
+
+        return None
 
     def _latest_user_message(self, conversations: list[dict[str, Any]]) -> str:
         for conv in conversations:

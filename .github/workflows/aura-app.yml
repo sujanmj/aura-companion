@@ -1,0 +1,47 @@
+name: AURA application
+on:
+  push:
+    paths: ['aura-app/**', 'brain/**', 'companion/**', 'memory/**', 'cloud/**', 'config/**', 'scripts/test_openai_provider.py', 'scripts/test_cloud_sync.py', '.github/workflows/aura-app.yml']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: aura-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: aura-app/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - if: runner.os == 'macOS'
+        run: npm run macos:app
+      - if: runner.os == 'macOS'
+        run: npm run test:native
+      - run: npm run lint
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: python3 ../scripts/test_openai_provider.py
+      - run: python3 ../scripts/test_cloud_sync.py
+      - run: python3 ../scripts/test_pi_node_heartbeat.py
+      - run: python3 ../scripts/test_pi_node_heartbeat_service.py
+      - run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - run: npm run bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AURA-Companion-0.3.0-preview-${{ matrix.os }}
+          path: aura-app/release/*

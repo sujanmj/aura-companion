@@ -2,7 +2,7 @@
 
 Local HTTP API for Raspberry Pi, camera, and sensor nodes to send events to the AURA hub over Wi-Fi.
 
-Current version: **v0.2** (shared token auth)
+Current version: **v0.4** (enrolled node credentials and retry-safe events)
 
 ## Start the AURA hub API
 
@@ -27,9 +27,12 @@ python scripts/test_sensor_api_client.py
 python scripts/test_sensor_api_auth.py
 ```
 
-## Authentication (v0.2)
+## Authentication (v0.4)
 
-Protected routes require a shared token when `AURA_SENSOR_API_TOKEN` is set in `config/keys.env`.
+Protected data routes require a strong token. The hub's `AURA_SENSOR_API_TOKEN`
+must be at least 32 characters. Missing or short tokens deny access; the API
+never falls back to open event ingestion. `/health` remains public and contains
+no user or device data.
 
 Generate a token:
 
@@ -46,10 +49,39 @@ X-AURA-API-Token: <token>
 ```
 
 - `GET /health` — always open (no token required)
-- `GET /events/latest` — requires token when configured
-- `POST /events` — requires token when configured
+- `GET /events/latest` — requires the token
+- `POST /events` — requires the hub token, or the credential for one enrolled node
+- `POST /nodes/enroll` and `POST /nodes/revoke` — require the hub token
+- `GET /nodes/status` — requires the hub token
+- `POST /nodes/heartbeat` — requires an enrolled node token
 
-If `AURA_SENSOR_API_TOKEN` is not set, the API allows all requests but prints a warning at runtime.
+If the token is missing or shorter than 32 characters, protected routes return
+`401 unauthorized`.
+
+Enroll each node on the hub with a stable ID and assigned room:
+
+```powershell
+python scripts/enroll_sensor_node.py pi_bedroom_node bedroom --name "Bedroom Pi"
+```
+
+The command returns a one-time `AURA_SENSOR_NODE_TOKEN`. Copy it to that node's
+private `config/keys.env`; never place the hub token on sensor nodes. The hub
+stores only a SHA-256 hash of each random node token. Enrolling the same ID again
+rotates its credential. Revoke a node with an authenticated `POST /nodes/revoke`
+request containing `{"node_id":"pi_bedroom_node"}`. The hub's `GET /nodes/status`
+lists enrolled nodes and reports them online for 90 seconds after their last
+heartbeat or event. The node heartbeat command makes up to three attempts for
+temporary network and server failures and stops immediately when the hub rejects
+the enrolled credential.
+
+Node credentials are limited to event ingestion and their own heartbeat. A node
+event must include `event_uuid`; AURA assigns its registered node ID and room,
+ignoring source and room values supplied by the node. The simulator uses
+`AURA_SENSOR_NODE_TOKEN` when present and can send a heartbeat with:
+
+```powershell
+python scripts/pi_node_simulator.py --heartbeat pi_bedroom_node
+```
 
 ### PowerShell example
 
@@ -78,7 +110,7 @@ import json
 import urllib.request
 
 url = "http://<hub-ip>:8787/events"
-token = "your_token"
+token = "<copy this node's enrollment token from its private config>"
 payload = {
     "event_type": "fall_detected",
     "event_summary": "Possible fall detected in bedroom.",
@@ -87,6 +119,7 @@ payload = {
     "severity": "high",
     "confidence": 0.85,
     "requires_action": True,
+    "event_uuid": "client-generated-unique-id",
 }
 
 data = json.dumps(payload).encode("utf-8")
@@ -104,7 +137,38 @@ with urllib.request.urlopen(request, timeout=10) as response:
     print(response.read().decode("utf-8"))
 ```
 
-v0.2 supports simple shared token auth. Keep the API on a **trusted LAN only**. Do not expose it directly to the internet.
+For an enrolled node, use `AURA_SENSOR_NODE_TOKEN` and omit `source`/`room`;
+the hub takes both values from its node registration.
+
+### Persistent Pi node presence service
+
+`deploy/systemd/aura-pi-node-heartbeat.service` keeps an enrolled node's online
+status fresh after reboot. It sends heartbeats only; it does not read sensors,
+capture audio/video, or act as the Pi companion runtime. Install the checkout at
+`/opt/aura-companion`, create a dedicated `aura-node` system account, and copy
+the unit into `/etc/systemd/system/`. Create `/etc/aura/aura-node.env` with the
+node ID and one-time enrollment token from this node's private configuration:
+
+```env
+AURA_SENSOR_NODE_ID=pi_bedroom_node
+AURA_SENSOR_NODE_TOKEN=YOUR_NODE_TOKEN
+AURA_SENSOR_API_URL=http://aura-hub.local:8787
+AURA_SENSOR_NODE_HEARTBEAT_INTERVAL_SECONDS=30
+```
+
+Keep the file root-owned with mode `0600`. The startup check rejects missing or
+weak tokens, invalid IDs and URLs, and heartbeat intervals outside 5–60 seconds.
+Enable the service with `systemctl enable --now aura-pi-node-heartbeat.service`.
+Use HTTPS with a trusted certificate when available; plain HTTP exposes the
+node credential on the LAN and should be limited to a trusted isolated network.
+The unit runs as `aura-node` with a read-only filesystem view and does not write
+application state. It is tested on CI only and has not been installed on Pi
+hardware.
+
+v0.4 uses one hub token for administration and separate revocable node tokens for
+each enrolled sensor. Keep the API on a **trusted LAN only**; do not expose it
+directly to the internet. HTTP on a LAN does not encrypt credentials, so use a
+trusted network and protect access to each node's private config.
 
 ## Endpoints
 
@@ -116,7 +180,7 @@ Returns service status.
 {
   "ok": true,
   "service": "aura-sensor-api",
-  "version": "0.2"
+  "version": "0.4"
 }
 ```
 
@@ -131,6 +195,28 @@ Returns the 10 most recent device events for the default user.
 }
 ```
 
+### `GET /nodes/status`
+
+Returns enrolled nodes and their last heartbeat. A node is online for 90 seconds
+after its latest authenticated heartbeat or event.
+
+### `POST /nodes/enroll`
+
+Requires the hub token. Provide `node_id`, `room`, and optional `display_name`.
+The response includes a random node token once; re-enrolling the same ID rotates
+the old token.
+
+### `POST /nodes/heartbeat`
+
+Requires that node's own token and a JSON body containing its registered
+`node_id`. Returns 401 for a revoked or unknown token and 403 if the ID does not
+match the credential.
+
+### `POST /nodes/revoke`
+
+Requires the hub token and a JSON body such as `{"node_id":"pi_bedroom_node"}`.
+The revoked credential stops working immediately.
+
 ### `POST /events`
 
 Accepts a JSON sensor event. AURA publishes it through the device event bus, evaluates safety, builds escalation plans when needed, and dispatches **simulated/logged** actions only.
@@ -143,11 +229,17 @@ Required fields:
 Optional fields:
 
 - `source` (default: `sensor_api`)
+- `event_uuid` (client-generated identifier, recommended for retries; max 128 characters)
 - `room`
 - `severity` (default: `low`)
 - `confidence` (default: `0.5`)
 - `requires_action` (default: `false`)
 - `metadata` (object)
+
+When an `event_uuid` is supplied, AURA stores at most one event for that identifier
+and source. Repeating the request returns the original event with `duplicate: true`
+and does not repeat observations, safety evaluation, or escalation processing.
+Clients should reuse the same `event_uuid` for every retry of one event.
 
 Send from another device on your network:
 
@@ -247,6 +339,6 @@ Content-Type: application/json
 
 ## Safety notes
 
-- v0.2 supports simple shared token auth when `AURA_SENSOR_API_TOKEN` is configured.
+- v0.4 requires `AURA_SENSOR_API_TOKEN` for administration and denies access by default.
 - Keep the API on a trusted local network only. Do not expose directly to the internet.
 - **No real emergency calls** happen in v0.1/v0.2 — police, ambulance, SMS, Telegram, siren, and water pump actions are simulated and logged only.

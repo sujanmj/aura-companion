@@ -4,12 +4,16 @@ Simulates future Raspberry Pi, camera, and sensor nodes sending events to the AU
 
 ## Prerequisites
 
-1. Set `AURA_SENSOR_API_TOKEN` in `config/keys.env` (generate with `python scripts/generate_sensor_api_token.py`).
-2. Start the AURA hub API:
+1. Set a 32-character-or-longer hub token in `config/keys.env` (generate with `python scripts/generate_sensor_api_token.py`).
+2. Start the AURA hub API and enroll the node:
 
 ```powershell
 python scripts/run_sensor_api.py
+python scripts/enroll_sensor_node.py pi_bedroom_node bedroom --name "Bedroom Pi"
 ```
+
+Copy the one-time `AURA_SENSOR_NODE_TOKEN` output into the Pi's private
+`config/keys.env`. The hub token stays on the hub only.
 
 ## Basic usage
 
@@ -19,6 +23,13 @@ python scripts/pi_node_simulator.py kitchen smoke_detected
 python scripts/pi_node_simulator.py balcony plant_moisture_low
 python scripts/pi_node_simulator.py front_door unknown_person_detected
 python scripts/pi_node_simulator.py medicine pill_missed
+```
+
+The simulator uses the enrolled node token when configured. A background Pi
+service should send a heartbeat every 30 seconds; test one with:
+
+```powershell
+python scripts/pi_node_simulator.py --heartbeat pi_bedroom_node
 ```
 
 List supported nodes and events:
@@ -88,4 +99,5 @@ python scripts/list_action_logs.py
 - This simulates future Raspberry Pi nodes — **no real sensors are required**.
 - **No real emergency calls, SMS, siren, or water pump** actions happen.
 - Keep the API on a **trusted LAN only**.
-- Token must be in `config/keys.env` as `AURA_SENSOR_API_TOKEN` when auth is enabled.
+- Configure `AURA_SENSOR_NODE_TOKEN` on an enrolled node, or the hub token for hub-side simulation; the simulator refuses to send without a strong token and never prints token contents.
+- Each simulated event includes a stable UUID and retries transient connection or server errors up to three times. AURA deduplicates those retries, so event observations and safety handling run once.

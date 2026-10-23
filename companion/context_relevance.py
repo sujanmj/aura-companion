@@ -6,6 +6,7 @@ import string
 STOPWORDS = {
     "the", "a", "an", "i", "you", "are", "is", "am", "how", "hello", "hi", "hey",
     "today", "now", "me", "my", "to", "for", "of", "in", "on", "and",
+    "where", "left", "put", "find", "location", "last", "seen",
 }
 
 GREETING_PHRASES = (
@@ -52,7 +53,22 @@ class ContextRelevanceFilter:
 
     def extract_keywords(self, text: str) -> set[str]:
         normalized = self.normalize_text(text)
-        return {word for word in normalized.split() if word and word not in STOPWORDS}
+        return {
+            self._singularize(word)
+            for word in normalized.split()
+            if word and word not in STOPWORDS
+        }
+
+    @staticmethod
+    def _singularize(word: str) -> str:
+        """Normalize common English plurals for short memory searches."""
+        if len(word) > 4 and word.endswith("ies"):
+            return f"{word[:-3]}y"
+        if len(word) > 4 and word.endswith(("ches", "shes", "xes", "zes")):
+            return word[:-2]
+        if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+            return word[:-1]
+        return word
 
     def is_generic_greeting(self, text: str) -> bool:
         normalized = self.normalize_text(text)
