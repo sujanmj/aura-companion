@@ -315,6 +315,15 @@ Status: in progress; this is the current phase.
   The temporary app, pairing, isolated service and database were removed. This
   confirms the current ad-hoc test identity cannot complete the clean permission
   path on this Mac; a stable signing identity is still needed for acceptance.
+- Repository-build retest (2026-10-23): the rebuilt helper paired to an isolated
+  SQLite service and remained PAUSED while requesting microphone access.
+  System Settings showed AURA enabled for both Microphone and Speech
+  Recognition, but no Allow prompt appeared. The 60-second watchdog returned
+  AURA to PAUSED with both sensors off. The test pairing, service and database
+  were cleared. A valid Developer ID identity is still needed to verify the
+  clean permission flow. Startup now reports each modern on-device speech
+  preparation stage so later attempts can distinguish model setup stalls from
+  system permission stalls.
 - Remaining: hardware sleep/wake, automatic clean-install permission prompt
   recovery, multi-hour stability of the rebuilt audio-queue version, and
   calibrated acoustic loudness/feedback testing on Mac. Live Claude behavior

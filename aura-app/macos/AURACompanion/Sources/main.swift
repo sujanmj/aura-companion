@@ -269,7 +269,15 @@ struct AURAAmbientApp: App {
 #if compiler(>=6.4)
             if #available(macOS 27.0, *) {
                 status = "Preparing private on-device English speech recognition…"
-                self.transcriber = try await SpeechAnalyzerTranscriber.make(onFinal: onFinal)
+                self.transcriber = try await SpeechAnalyzerTranscriber.make(
+                    onFinal: onFinal,
+                    onStage: { [weak self] stage in
+                        Task { @MainActor in
+                            guard let self, self.lifecycle.contains(generation) else { return }
+                            self.status = stage
+                        }
+                    }
+                )
             } else {
                 status = "Checking Speech Recognition permission…"
                 let authorization = SFSpeechRecognizer.authorizationStatus()
@@ -1042,15 +1050,22 @@ private final class SpeechAnalyzerTranscriber: AmbientTranscriber, @unchecked Se
         self.onFinal = onFinal
     }
 
-    static func make(onFinal: @escaping @Sendable (String) -> Void) async throws -> SpeechAnalyzerTranscriber {
+    static func make(
+        onFinal: @escaping @Sendable (String) -> Void,
+        onStage: @escaping @Sendable (String) -> Void
+    ) async throws -> SpeechAnalyzerTranscriber {
+        onStage("Checking on-device English speech support…")
         guard SpeechTranscriber.isAvailable,
               let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-US")) else {
             throw SpeechPipelineError.onDeviceEnglishUnavailable
         }
         let module = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
+        onStage("Checking on-device English speech assets…")
         if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
+            onStage("Downloading on-device English speech assets…")
             try await request.downloadAndInstall()
         }
+        onStage("Selecting a compatible local speech format…")
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
             throw SpeechPipelineError.onDeviceEnglishUnavailable
         }
@@ -1060,6 +1075,7 @@ private final class SpeechAnalyzerTranscriber: AmbientTranscriber, @unchecked Se
             of: AnalyzerInput.self,
             bufferingPolicy: .bufferingNewest(maximumBufferedInputs)
         )
+        onStage("Starting the on-device speech analyzer…")
         try await analyzer.start(inputSequence: inputSequence)
         let pipeline = SpeechAnalyzerTranscriber(
             analyzer: analyzer,
