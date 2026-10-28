@@ -4,6 +4,27 @@ import Security
 struct LifecycleTests {
     @MainActor
     static func main() async {
+        var turns = ConversationTurnGate()
+        for phrase in ["I need help", "what do you think", "I talked to Aura yesterday", "aural music", ""] {
+            precondition(!turns.accepts(phrase, now: 0), "Overheard speech must not be submitted by default")
+        }
+        precondition(turns.accepts("Hey AURA, help me plan", now: 0))
+        turns.replyFinished(generation: turns.generation, now: 0)
+        precondition(!turns.accepts("and tomorrow?", now: 1), "Follow-ups default off")
+        turns.configure(true)
+        let oldTurn = turns.generation
+        turns.replyFinished(generation: oldTurn, now: 10)
+        precondition(turns.accepts("and tomorrow?", now: 39))
+        precondition(!turns.accepts("unrelated nearby speech", now: 39), "A window admits only one phrase")
+        turns.replyFinished(generation: oldTurn, now: 40)
+        precondition(!turns.accepts("too late", now: 70), "Deadline is exclusive")
+        turns.configure(false)
+        turns.configure(true)
+        turns.replyFinished(generation: oldTurn, now: 100)
+        precondition(!turns.accepts("stale response", now: 101), "A late reply cannot reopen a revoked invitation")
+        turns.configure(false)
+        precondition(turns.accepts("AURA, are you there?", now: 102))
+
         var state = AmbientLifecycle()
         precondition(state.phase == .paused)
         let first = state.begin()!

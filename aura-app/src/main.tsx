@@ -213,6 +213,10 @@ function App() {
     [editingObservation, setEditingObservation] = useState<number | null>(null),
     [observationDraft, setObservationDraft] = useState(""),
     [retentionDays, setRetentionDays] = useState("30"),
+    [sharedQuestion, setSharedQuestion] = useState(""),
+    [sharedConsent, setSharedConsent] = useState(false),
+    [sharedBusy, setSharedBusy] = useState(false),
+    [sharedReply, setSharedReply] = useState<{ response: string; provider: string } | null>(null),
     [personName, setPersonName] = useState(""),
     [personRelation, setPersonRelation] = useState(""),
     [personConsent, setPersonConsent] = useState(false),
@@ -625,6 +629,28 @@ function App() {
               </div>
             ) : tab === "conversation" ? (
               <>
+                <details className="memory-review">
+                  <summary>Invite AURA to answer a shared question</summary>
+                  <p>Review and type only what everyone agrees to share. This sends the question to the configured provider ({status.provider}), without your private memories. AURA does not save this question or reply; the provider may retain requests under its own policy. No microphone, camera, tools or online lookup are started.</p>
+                  <form onSubmit={async event => {
+                    event.preventDefault();
+                    if (!sharedConsent || sharedBusy) return;
+                    setSharedBusy(true);
+                    setSharedReply(null);
+                    try {
+                      const reply = await api<{ response: string; provider: string }>("shared", { message: sharedQuestion, consent: true });
+                      setSharedReply(reply);
+                      setSharedQuestion("");
+                    } catch (e) { setError(String(e)); }
+                    finally { setSharedBusy(false); setSharedConsent(false); }
+                  }}>
+                    <label htmlFor="shared-question">Reviewed shared question</label>
+                    <textarea id="shared-question" maxLength={4000} value={sharedQuestion} onChange={event => { setSharedQuestion(event.target.value); setSharedConsent(false); }} disabled={sharedBusy} required />
+                    <label><input type="checkbox" checked={sharedConsent} onChange={event => setSharedConsent(event.target.checked)} disabled={sharedBusy} />Everyone agrees to send this question to the configured provider.</label>
+                    <button disabled={!sharedConsent || sharedBusy || !sharedQuestion.trim()}>{sharedBusy ? "Waiting for contribution…" : "Invite one contribution"}</button>
+                  </form>
+                  {sharedReply && <article><small>{sharedReply.provider} · not saved · online sources not checked</small><p>{sharedReply.response}</p><button onClick={() => setSharedReply(null)}>Clear shared reply</button></article>}
+                </details>
                 <div className="panel-heading">
                   <h3>Our conversation</h3>
                   <span>JUST YOU & AURA</span>

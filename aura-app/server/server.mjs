@@ -466,7 +466,7 @@ const server = http.createServer(async (req, res) => {
             note: data.note,
           }),
         );
-      if (!["/api/chat", "/api/ambient", "/api/task"].includes(url.pathname))
+      if (!["/api/chat", "/api/ambient", "/api/shared", "/api/task"].includes(url.pathname))
         return json(res, 404, { error: "Not found" });
       if (
         typeof data.message !== "string" ||
@@ -478,6 +478,14 @@ const server = http.createServer(async (req, res) => {
         });
       if (busy)
         return json(res, 409, { error: "AURA is finishing another request." });
+      if (url.pathname === "/api/shared") {
+        if (data.consent !== true || data.message.trim().length > 4000)
+          return json(res, 400, { error: "Review the shared question and confirm participants agree." });
+        busy = true;
+        try {
+          return json(res, 200, await memory("shared_chat", { message: data.message, consent: true }));
+        } finally { busy = false; }
+      }
       if (["/api/chat", "/api/ambient"].includes(url.pathname)) {
         busy = true;
         try {

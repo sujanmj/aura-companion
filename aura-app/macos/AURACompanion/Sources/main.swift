@@ -73,6 +73,8 @@ struct AURAAmbientApp: App {
     @Published var code = ""
     @Published var recentResponse = ""
     @Published var scene = ""
+    @Published private(set) var followupsEnabled = false
+    private var conversationTurns = ConversationTurnGate()
 
     private var camera: LocalCamera?
     private var lifecycle = AmbientLifecycle()
@@ -376,7 +378,7 @@ struct AURAAmbientApp: App {
             observeAudioConfigurationChange(generation: generation)
             isActive = true; microphoneOn = true; microphoneStopping = false; cameraOn = true; cameraStopping = false
             updateSleepPreventionActivity()
-            status = "Listening locally. Direct replies are phrase-triggered; check-ins and daily reminders follow your Setup choices."
+            status = "Listening locally. Say Hey AURA for a direct reply; check-ins and daily reminders follow your Setup choices."
         } catch {
             guard lifecycle.contains(generation) else { return }
             stop(); status = "Couldn’t start the local microphone and camera: \(error.localizedDescription)"
@@ -548,27 +550,23 @@ struct AURAAmbientApp: App {
     private func handle(_ transcript: String) {
         guard isActive, replyTask == nil, !synthesizer.isSpeaking else { return }
         let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard shouldRespond(text) else { return }
+        guard conversationTurns.accepts(text, now: ProcessInfo.processInfo.systemUptime) else { return }
+        let turnGeneration = conversationTurns.generation
         status = "AURA heard a direct request. Preparing a reply."
         let generation = lifecycle.generation
         replyTask = Task { [weak self] in
             guard let self else { return }
-            await self.sendToCompanion(text, generation: generation)
+            await self.sendToCompanion(text, generation: generation, turnGeneration: turnGeneration)
             if self.lifecycle.contains(generation) { self.replyTask = nil }
         }
     }
 
-    private func shouldRespond(_ text: String) -> Bool {
-        let s = text.lowercased()
-        let addressed = s.range(of: #"\b(hey\s+)?aura\b"#, options: .regularExpression) != nil
-        let support = ["i need help", "i need support", "i feel overwhelmed", "i'm overwhelmed", "im overwhelmed", "i feel panicked", "i'm panicking", "im panicking", "i feel unsafe", "i'm scared", "im scared"]
-            .contains { s.contains($0) }
-        let direct = ["can you help", "what do you think", "are you there", "talk to me", "please listen"]
-            .contains { s.contains($0) }
-        return addressed || support || direct
+    func setFollowups(_ enabled: Bool) {
+        followupsEnabled = enabled && isActive
+        conversationTurns.configure(followupsEnabled)
     }
 
-    private func sendToCompanion(_ transcript: String, generation: UInt64) async {
+    private func sendToCompanion(_ transcript: String, generation: UInt64, turnGeneration: UInt64) async {
         guard lifecycle.contains(generation), !Task.isCancelled else { return }
         guard let cookie, let url = URL(string: "http://127.0.0.1:8790/api/ambient") else { return }
         let label = contextLabels.prefix(5).joined(separator: ", ")
@@ -589,14 +587,14 @@ struct AURAAmbientApp: App {
                 return
             }
             let response = try JSONDecoder().decode(CompanionResponse.self, from: data)
-            await MainActor.run { speakLocally(response.response, generation: generation) }
+            await MainActor.run { speakLocally(response.response, generation: generation, turnGeneration: turnGeneration) }
         } catch {
             guard lifecycle.contains(generation), !Task.isCancelled else { return }
             status = "AURA’s reply was interrupted. Check the conversation before retrying; it may already be saved."
         }
     }
 
-    private func speakLocally(_ text: String, generation: UInt64) {
+    private func speakLocally(_ text: String, generation: UInt64, turnGeneration: UInt64? = nil) {
         guard lifecycle.acceptsCaptureEvent(generation), isActive,
               !text.isEmpty, !synthesizer.isSpeaking else { return }
         recentResponse = text
@@ -616,11 +614,17 @@ struct AURAAmbientApp: App {
             guard speechOutputSuppression.finish(outputGeneration) else { return }
             transcriber?.setOutputSuppressed(false)
             guard lifecycle.contains(sessionGeneration) else { return }
-            status = "AURA finished speaking. Listening locally."
+            if let turnGeneration {
+                conversationTurns.replyFinished(generation: turnGeneration, now: ProcessInfo.processInfo.systemUptime)
+            }
+            status = followupsEnabled && turnGeneration != nil
+                ? "Listening for one follow-up for up to 30 seconds. Pause ends the conversation."
+                : "Listening locally. Say Hey AURA to address me."
         }
     }
 
     func stop(preservingWakeResume: Bool = false) {
+        setFollowups(false)
         startupTimeoutTask?.cancel()
         startupTimeoutTask = nil
         speechOutputSuppression.cancel()
@@ -1228,6 +1232,10 @@ private struct MenuView: View {
                 }
             } else {
                 Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: []).disabled(monitor.cameraStopping || monitor.microphoneStopping)
+                Toggle("Allow solo follow-ups for this session", isOn: Binding(get: { monitor.followupsEnabled }, set: { monitor.setFollowups($0) }))
+                    .disabled(!monitor.isActive)
+                Text("Only enable when everyone nearby agrees. After a direct reply, the next phrase within 30 seconds is sent to your configured companion and saved in your conversation. AURA cannot identify the speaker. Pause, sleep or closing the window clears this choice.")
+                    .font(.system(size: 10)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Text("Paired, opted-in reminders are checked every five minutes while AURA is running. They can speak while the microphone and camera are off; Pause controls capture.")
                     .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if !monitor.recentResponse.isEmpty { Divider(); Text("AURA").font(.caption).foregroundStyle(.secondary); Text(monitor.recentResponse).font(.system(size: 12)).textSelection(.enabled) }

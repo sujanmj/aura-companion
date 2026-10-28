@@ -1,3 +1,4 @@
+import Foundation
 import Security
 
 enum StartupWatchdog {
@@ -262,5 +263,30 @@ enum PermissionSettings {
     static func fallbackMessage(for status: String) -> String? {
         guard target(for: status) != nil else { return nil }
         return "\(status) Open System Settings > Privacy & Security and allow AURA Companion to use the denied service."
+    }
+}
+
+// No speaker identity is inferred. Follow-ups require a fresh, per-session opt-in.
+struct ConversationTurnGate {
+    private(set) var enabled = false
+    private(set) var generation: UInt64 = 0
+    private var deadline: TimeInterval?
+
+    mutating func configure(_ enabled: Bool) {
+        self.enabled = enabled
+        generation &+= 1
+        deadline = nil
+    }
+
+    mutating func accepts(_ text: String, now: TimeInterval) -> Bool {
+        let addressed = text.range(of: #"^\s*(?:hey\s+)?aura\b"#, options: [.caseInsensitive, .regularExpression]) != nil
+        let followup = enabled && deadline.map { now < $0 } == true
+        deadline = nil // At most one turn per window, even after silence/expiry.
+        return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (addressed || followup)
+    }
+
+    mutating func replyFinished(generation token: UInt64, now: TimeInterval) {
+        guard enabled, token == generation else { return }
+        deadline = now + 30
     }
 }

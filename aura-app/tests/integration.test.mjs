@@ -95,6 +95,15 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       403,
     );
     let cookie = await login();
+    assert.equal((await post("shared", { message: "hello", consent: true })).status, 401);
+    assert.equal((await post("shared", { message: "hello", consent: true }, cookie, "https://evil.test")).status, 403);
+    assert.equal((await post("shared", { message: "hello" }, cookie)).status, 400);
+    const beforeShared = await (await fetch(base + "/api/memory/export", { headers: { Cookie: cookie } })).json();
+    const shared = await post("shared", { message: "Our private shared question", consent: true }, cookie);
+    assert.equal(shared.status, 200);
+    assert.equal((await shared.json()).saved, false);
+    const afterShared = await (await fetch(base + "/api/memory/export", { headers: { Cookie: cookie } })).json();
+    assert.deepEqual(afterShared.records, beforeShared.records, "Shared contributions must not read into or mutate personal memory");
     assert.equal((await post("observations/retention", { days: 30, confirmed: true })).status, 401);
     assert.equal((await post("observations/retention", { days: 30, confirmed: true }, cookie, "https://evil.test")).status, 403);
     assert.equal((await post("observations/retention", { days: 30 }, cookie)).status, 400);

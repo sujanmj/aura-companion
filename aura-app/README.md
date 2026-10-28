@@ -165,3 +165,19 @@ Check-ins are separate from voice listening. They are off unless you opt in unde
 **Setup**, wait for the selected idle interval, respect quiet hours in the AURA
 device's local time, and appear only while the web companion is open. They use a
 short local message and do not start Claude, MCP tools, camera, or microphone.
+
+## Invited turns and shared questions
+
+Native ambient replies now require a leading “AURA” or “Hey AURA”. While live,
+you can enable solo follow-ups for this session: the next phrase within 30 seconds
+of a direct reply is accepted without another wake phrase. This admits nearby
+speech without identifying its speaker, so obtain agreement first. Accepted solo
+turns enter your normal companion history. Pause, sleep and closing the window
+clear the toggle.
+
+For a group, pause the native helper and open “Invite AURA to answer a shared
+question” in the web Conversation view. Review the text with participants and
+confirm agreement for each question. Only that text goes to the configured
+provider, without personal memory or tool access. AURA does not store it; provider
+retention policies still apply. The reply is not online-verified. This form does
+not stop a separately running native helper or implement continuous group audio.

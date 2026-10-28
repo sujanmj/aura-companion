@@ -24,7 +24,7 @@ iPhone/wearables and emergency-response acceptance are not established.
 
 Baseline: macOS and Ubuntu workflow 39900633505 passed at 0a121ba9.
 New milestone: local Python 61/61, Node 12/12, native lifecycle/speech checks,
-frontend build/lint, and ad-hoc Mac build passed. Browser tests passed 14/14. New-commit CI remains pending. No hardware acceptance is implied by these checks.
+frontend build/lint, and ad-hoc Mac build passed. Browser tests passed 14/14. Expiry commit a451ef5 passed macOS and Ubuntu CI run 40680587802, with both preview artifacts uploaded. No hardware acceptance is implied by these checks.
 
 ## Upgrade and rollback
 
@@ -34,3 +34,18 @@ Point AURA_DB_PATH at the same database. Rolling source back to 0a121ba9 leaves
 the new retention table unused; it does not recover notes already expired.
 Recover any required notes from a separately preserved backup with the service
 stopped; never overwrite a running database or publish a private backup.
+
+## Invited turns
+
+Direct native requests now begin with AURA/Hey AURA. Optional solo follow-ups
+admit one phrase within 30 seconds of the prior reply, default off and cleared by
+Pause/sleep/close. The app does not identify speakers. Use this mode only with
+nearby people's agreement; accepted solo turns enter the owner's normal memory.
+
+A separate web form accepts one reviewed group question with fresh agreement.
+It includes no saved personal context, starts no tools or sensors, and stores no
+question/reply. Provider retention still applies. Pause the separate native
+ambient helper before a group session. Automatic group capture is not included.
+
+Local validation: Python 64/64, Node 12/12, browser 15/15, native tests, build/lint
+and Mac ad-hoc build passed; this milestone's CI remains pending.

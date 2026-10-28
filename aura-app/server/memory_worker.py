@@ -21,6 +21,7 @@ from cloud.supabase_sync import (
     sync_conversation,
 )
 from readiness import brain_readiness, test_provider_connection
+from shared_conversation import shared_contribution
 
 
 def main():
@@ -238,6 +239,8 @@ def main():
                         req.get('human_present'),
                         req.get('confidence'),
                     )
+                elif op == 'shared_chat':
+                    result = shared_contribution(req.get('message'), req.get('consent'))
                 elif op == 'chat':
                     message = req['message']
                     if not isinstance(message, str) or not 0 < len(message.strip()) <= 8000:

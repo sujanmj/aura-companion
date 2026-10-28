@@ -621,3 +621,29 @@ Local validation: 61 Python tests, 12 Node tests, frontend build/lint and native
 lifecycle/speech tests passed; the ad-hoc Mac preview built successfully. Browser
 validation and new-commit CI are recorded in the accompanying release evidence.
 No live sensor, provider, acoustic, Pi or health integration acceptance was run.
+
+## 2026-10-28 continuation — invited turns (Phases 3, 9, 10)
+
+Observation expiry commit `a451ef5` passed macOS and Ubuntu CI in
+[40680587802](https://github.com/sujanmj/aura-companion/actions/runs/40680587802),
+including preview artifacts for both platforms.
+
+Native direct requests now require a leading “AURA” or “Hey AURA”. Generic
+nearby phrases such as “I need help” or “what do you think” no longer trigger a
+reply by themselves. A fresh per-session solo-follow-up toggle allows one phrase
+within 30 seconds after a direct reply finishes. Pause, sleep and close revoke
+it; stale replies cannot reopen a revoked window. This is not speaker recognition
+or acoustic acceptance, and nearby consenting speech may still be attributed to
+the owner's conversation when this explicitly enabled solo mode is used.
+
+The web conversation offers a separate reviewed shared question. Each submission
+requires participant agreement; editing the question clears that agreement. This
+path uses no private-memory context, saves neither question nor reply, invokes no
+tools and does not claim online verification. Configured providers may retain
+requests under their own policies. It is a one-question contribution, not ambient
+group capture. Pause any separately running native ambient helper before a group
+session; this web form does not control that helper's sensors.
+
+Local validation: 64 Python tests, 12 Node tests, 15 browser tests, native tests,
+frontend build/lint and ad-hoc Mac build passed. New-commit CI pending. No live
+speech, participant, provider or hardware test is claimed.
