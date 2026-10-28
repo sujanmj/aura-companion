@@ -6,6 +6,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { MemoryClient } from "./memory-client.mjs";
 import { ApprovalGate, permittedOrigin } from "./policy.mjs";
+import { lookupWikipedia } from "./online-lookup.mjs";
+let onlineBusy = false;
+let nextOnlineLookup = 0;
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const port = Number(process.env.AURA_PORT || 8790);
@@ -254,6 +257,27 @@ const server = http.createServer(async (req, res) => {
         } catch {
           return json(res, 503, { error: "Observation retention is unavailable." });
         }
+      }
+      if (url.pathname === "/api/online/lookup") {
+        if (data.approved !== true || typeof data.query !== "string" || !data.query.trim() || data.query.length > 300)
+          return json(res, 400, { error: "Review and approve a query of 1–300 characters." });
+        if (onlineBusy || Date.now() < nextOnlineLookup)
+          return json(res, 429, { error: "Wait a moment before another lookup." });
+        onlineBusy = true;
+        const controller = new AbortController();
+        const disconnect = () => { if (!res.writableEnded) controller.abort(); };
+        res.on("close", disconnect);
+        try {
+          const result = await lookupWikipedia(data.query, true, { signal: controller.signal });
+          if (!res.destroyed) return json(res, 200, result);
+        } catch {
+          if (!res.destroyed) return json(res, 502, { error: "Wikipedia could not be checked. No answer has been verified; try again later." });
+        } finally {
+          res.off("close", disconnect);
+          onlineBusy = false;
+          nextOnlineLookup = Date.now() + 2000;
+        }
+        return;
       }
       if (url.pathname === "/api/ambient/observation") {
         if (

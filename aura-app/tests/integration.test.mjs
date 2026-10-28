@@ -3,7 +3,7 @@ import http from "node:http";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm, readdir } from "node:fs/promises";
+import { mkdtemp, rm, readdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { once } from "node:events";
@@ -11,7 +11,7 @@ const token = "test-only-session-code-123456789";
 const port = 18790,
   base = `http://127.0.0.1:${port}`;
 let proc;
-async function start(db) {
+async function start(db, extraEnv = {}) {
   proc = spawn(process.execPath, ["server/server.mjs"], {
     env: {
       ...process.env,
@@ -20,6 +20,7 @@ async function start(db) {
       AURA_SESSION_TOKEN: token,
       AURA_BRAIN_PROVIDER: "local",
       AURA_ENABLE_ACTIONS: "0",
+      ...extraEnv,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -714,4 +715,31 @@ test("people memory is private and forget removes its associated timeline", asyn
     await stop();
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+
+test("online route needs approval, isolates memory and bounds repeated requests", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "aura-online-test-"));
+  const fixture = path.join(dir, "online-fixture.mjs");
+  await writeFile(fixture, `globalThis.fetch = async (url, options) => {
+    if (url.origin !== "https://en.wikipedia.org" || options.redirect !== "error") throw new Error("Unexpected destination");
+    const body = url.pathname === "/w/api.php"
+      ? {query:{search:[{pageid:42,title:"Test article"}]}}
+      : {pageid:42,type:"standard",extract:"A test source excerpt."};
+    return new Response(JSON.stringify(body), {headers:{"content-type":"application/json"}});
+  };`);
+  try {
+    await start(path.join(dir, "memory.db"), { NODE_OPTIONS: `--import=${JSON.stringify(fixture)}` });
+    assert.equal((await post("online/lookup", { query: "test", approved: true })).status, 401);
+    const cookie = await login();
+    assert.equal((await post("online/lookup", { query: "test", approved: true }, cookie, "https://evil.test")).status, 403);
+    assert.equal((await post("online/lookup", { query: "test" }, cookie)).status, 400);
+    const before = await (await fetch(base + "/api/memory/export", { headers: { Cookie: cookie } })).json();
+    const response = await post("online/lookup", { query: "test", approved: true }, cookie);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).sources[0].url, "https://en.wikipedia.org/?curid=42");
+    assert.equal((await post("online/lookup", { query: "again", approved: true }, cookie)).status, 429);
+    const after = await (await fetch(base + "/api/memory/export", { headers: { Cookie: cookie } })).json();
+    assert.deepEqual(after.records, before.records);
+  } finally { await stop(); await rm(dir, { recursive: true, force: true }); }
 });

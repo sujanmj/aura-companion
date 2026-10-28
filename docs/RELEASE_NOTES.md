@@ -68,4 +68,27 @@ Native settings scroll with a fixed capture control; sensor acceptance is unchan
 
 Local verification: Python 73/73, Node 12/12, browser 15/15, native tests, build/lint
 and local ad-hoc Mac build passed. Nine packaging tests exercise actual archives
-in temporary repositories. Release packaging and new-commit CI are pending.
+in temporary repositories. Release-integrity commit b3f3b58 passed both platform jobs in CI run 40683350586; both platform archives, checksums and manifests were uploaded.
+
+## 2026-10-29 — reviewed online source checks
+
+Conversation now includes “Check an online source”. Review a query, approve that
+exact text and retrieve up to three English Wikipedia summaries with source
+links, attribution and retrieval time. Editing clears approval. AURA sends no
+saved memory, ambient transcript or provider credentials and saves no results.
+The query is disclosed to Wikipedia, which may log requests. Cancel stops local
+waiting but cannot retract data already sent. Clear removes displayed results.
+
+This first adapter displays source excerpts, not independently verified facts or
+a model-generated factual answer. It is not general web search or a live news,
+medical or emergency service. Source failures do not produce an invented answer.
+Network destinations are fixed, redirects refused, bodies/time bounded, and
+source content cannot run code or tools. Optional conversation panels now have
+bounded scrolling and open one at a time to preserve the main conversation.
+
+Local tests: 73 Python, 20 Node, 17 browser; build/lint passed. One real public
+Raspberry Pi query returned three cited summaries on 2026-10-29 IST. New CI is
+pending. Source APIs follow the official
+[MediaWiki search](https://www.mediawiki.org/wiki/API:Search) and
+[Page Content Service](https://www.mediawiki.org/wiki/Page_Content_Service)
+documentation and use an identifying User-Agent.

@@ -4,6 +4,7 @@ import { Scene } from "./scene/Scene";
 import { api } from "./lib/api";
 import { listen, speak, silence } from "./lib/voice";
 import "./style.css";
+import { OnlineLookup } from "./OnlineLookup";
 type Message = {
   id?: number;
   role: string;
@@ -629,7 +630,8 @@ function App() {
               </div>
             ) : tab === "conversation" ? (
               <>
-                <details className="memory-review">
+                <OnlineLookup />
+                <details className="memory-review" name="conversation-extras">
                   <summary>Invite AURA to answer a shared question</summary>
                   <p>Review and type only what everyone agrees to share. This sends the question to the configured provider ({status.provider}), without your private memories. AURA does not save this question or reply; the provider may retain requests under its own policy. No microphone, camera, tools or online lookup are started.</p>
                   <form onSubmit={async event => {

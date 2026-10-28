@@ -583,3 +583,58 @@ test("a shared contribution needs fresh agreement and stays out of memory", asyn
   await page.getByRole("button", { name: "Clear shared reply" }).click();
   await expect(page.getByText("local · not saved · online sources not checked")).toHaveCount(0);
 });
+
+
+test("online lookup requires exact-query approval and renders inert attributed excerpts", async ({ page }) => {
+  await connect(page);
+  let calls = 0;
+  await page.route("**/api/online/lookup", async route => {
+    calls++;
+    expect(route.request().postDataJSON()).toEqual({ query: "Raspberry Pi computers", approved: true });
+    await route.fulfill({ json: { query: "Raspberry Pi computers", retrieved_at: "2026-10-29T00:00:00Z", unavailable: 0,
+      sources: [{ id: 42, title: "Raspberry Pi", url: "https://en.wikipedia.org/?curid=42",
+        excerpt: '<img src=x onerror="window.injectionRan=true">Test source text.', truncated: false, ambiguous: false }] } });
+  });
+  await page.getByText("Check an online source", { exact: true }).click();
+  const query = page.getByLabel("Query to send to Wikipedia");
+  const approval = page.getByLabel("Approve this exact Wikipedia query.");
+  const submit = page.getByRole("button", { name: "Look up approved query" });
+  await query.fill("Raspberry Pi");
+  await expect(submit).toBeDisabled();
+  await approval.check();
+  await query.fill("Raspberry Pi computers");
+  await expect(approval).not.toBeChecked();
+  expect(calls).toBe(0);
+  await approval.check();
+  await submit.click();
+  await expect(page.getByRole("region", { name: "Online source results" })).toContainText("not independently verified facts");
+  await expect(page.getByRole("link", { name: "Raspberry Pi — Wikipedia" })).toHaveAttribute("href", "https://en.wikipedia.org/?curid=42");
+  expect(await page.evaluate(() => window.injectionRan)).toBeUndefined();
+  await expect(approval).not.toBeChecked();
+  await expect(submit).toBeDisabled();
+  await page.screenshot({ path: "test-results/online-lookup.png", fullPage: true });
+  await page.getByRole("button", { name: "Clear online results" }).click();
+  await expect(page.getByRole("region", { name: "Online source results" })).toHaveCount(0);
+});
+
+
+test("online cancellation clears approval and does not display a late answer", async ({ page }) => {
+  await connect(page);
+  let release;
+  const released = new Promise(resolve => { release = resolve; });
+  await page.route("**/api/online/lookup", async route => {
+    await released;
+    await route.fulfill({ json: { query: "test", retrieved_at: "2026-10-29T00:00:00Z", sources: [], unavailable: 0 } }).catch(() => {});
+  });
+  await page.getByText("Check an online source", { exact: true }).click();
+  await page.getByLabel("Query to send to Wikipedia").fill("test");
+  await page.getByLabel("Approve this exact Wikipedia query.").check();
+  const sent = page.waitForRequest("**/api/online/lookup");
+  await page.getByRole("button", { name: "Look up approved query" }).click();
+  await sent;
+  await page.getByRole("button", { name: "Cancel lookup" }).click();
+  release();
+  await expect(page.getByRole("status")).toContainText("query may already have reached Wikipedia");
+  await expect(page.getByRole("region", { name: "Online source results" })).toHaveCount(0);
+  await expect(page.getByLabel("Approve this exact Wikipedia query.")).not.toBeChecked();
+});

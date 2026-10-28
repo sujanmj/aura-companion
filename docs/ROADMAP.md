@@ -670,3 +670,34 @@ Local checks passed: Python 73/73 (including nine real-archive packaging tests),
 Node 12/12, browser 15/15, native lifecycle/speech tests, frontend build/lint and
 ad-hoc Mac build. Archive creation is checked after committing; new CI pending.
 No clean-install, live sensor, acoustic or distribution-signing claim is added.
+
+## 2026-10-29 continuation — explicit online sources (Phase 10)
+
+Release-integrity commit `b3f3b58` passed macOS and Ubuntu CI in
+[40683350586](https://github.com/sujanmj/aura-companion/actions/runs/40683350586),
+with both platform ZIPs, checksums and release manifests uploaded.
+
+The web Conversation view now offers a separate Wikipedia source check. Each
+exact query requires fresh approval, and editing cancels that approval. The
+server sends only the reviewed text to fixed English Wikipedia API endpoints;
+it sends no personal memory, ambient transcript, provider key or session cookie.
+Sources are plain-text excerpts with direct citations, attribution, retrieval
+time, ambiguity/truncation notices and explicit uncertainty. The source's claims
+are not independently verified, and no model-generated synthesis is presented.
+This is the first public-knowledge source adapter, not general web search, live
+news, medical advice, or complete conversational grounding across all providers.
+
+Requests have an eight-second deadline, bounded response bodies, at most three
+source summaries, no redirects, cancellation, and a short cooldown. Source data
+cannot select arbitrary URLs or invoke tools. The lookup does not touch SQLite
+and results can be cleared. Cancellation cannot retract a query already sent to
+Wikipedia. The feature never activates automatically from ambient speech.
+
+Local evidence: Python 73/73, Node 20/20, browser 17/17, frontend build and lint
+passed. Browser tests cover fresh approval, edited queries, inert rendering of
+malicious-looking text, clear, and cancellation. An authenticated API test with
+mocked source transport verifies no memory changes. A real public query for
+“Raspberry Pi” on 2026-10-29 IST returned Raspberry Pi, Raspberry Pi OS and
+Raspberry Pi 4 summaries with no unavailable sources (retrieved UTC
+2026-10-28T21:28:39.588Z). This verifies that single public-source path, not answer
+accuracy or ongoing availability. New-commit CI remains pending.

@@ -800,3 +800,33 @@ footer {
   opacity: 0.65;
   font-size: 11px;
 }
+
+/* Optional conversation tools stay bounded so the main conversation remains usable. */
+.panel > details.memory-review {
+  margin: 0;
+  padding: 14px 24px;
+  border-bottom: 1px solid #ffffff12;
+  font-size: 12px;
+  line-height: 1.6;
+  flex: 0 0 auto;
+  max-height: 340px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.panel > details.memory-review summary { cursor: pointer; color: var(--accent); }
+.panel > details.memory-review p { color: #b6becf; }
+.panel > details.memory-review form { display: grid; gap: 10px; }
+.panel > details.memory-review input:not([type="checkbox"]),
+.panel > details.memory-review textarea {
+  width: 100%;
+  color: inherit;
+  background: #0d141c;
+  border: 1px solid #ffffff25;
+  border-radius: 8px;
+  padding: 10px;
+}
+.panel > details.memory-review textarea { min-height: 80px; resize: vertical; }
+.panel > details.memory-review input[type="checkbox"] { accent-color: var(--accent); margin-right: 8px; }
+.panel > details.memory-review a { color: var(--accent); text-decoration: underline; }
+.panel > details.memory-review article { border-top: 1px solid #ffffff15; padding: 14px 0; }
+.panel > details.memory-review blockquote { margin: 12px 0; padding-left: 14px; border-left: 2px solid #b6a5ff55; }

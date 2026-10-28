@@ -199,3 +199,18 @@ These are integrity records, not signed attestations or evidence of successful
 hardware acceptance. Build manifests explicitly report that notarization and
 hardware acceptance were not verified. Never distribute this as a production
 or notarized release based only on these automated checks.
+
+## Online source checks
+
+Open **Check an online source** in Conversation, type the exact query and approve
+it. Each request needs fresh agreement. Only that text goes to English Wikipedia;
+no AURA memories, ambient speech, provider credentials or account cookie are sent.
+Results remain in the current view, with source links, retrieval time and
+Wikipedia contributor attribution. They are not saved or sent to the language
+model. Clear removes them; Cancel stops waiting but cannot retract a sent query.
+
+This first source adapter retrieves public-knowledge summaries. It is not
+multi-source verification, general web search, current-news coverage or automatic
+fact-checking. It displays source text as text, never executes it, and never
+starts MCP tools. Request/response limits and an eight-second deadline constrain
+network use. Wikipedia may retain request data under its own privacy policy.
