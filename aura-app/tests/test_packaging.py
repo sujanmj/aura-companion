@@ -55,6 +55,7 @@ class PackagingTests(unittest.TestCase):
             self.assertNotIn('AURA-Companion/config/keys.env', z.namelist())
             self.assertEqual(len(z.namelist()), len(manifest['files']) + 1)
             for name, digest in manifest['files'].items():
+                self.assertNotIn('\\', name)
                 self.assertEqual(digest, hashlib.sha256(z.read('AURA-Companion/' + name)).hexdigest())
 
     def test_dirty_source_refused_and_old_archive_preserved(self):
@@ -104,7 +105,7 @@ class PackagingTests(unittest.TestCase):
             outside.unlink()
 
     def test_generated_symlink_is_refused(self):
-        (self.root / 'aura-app/dist/assets/link').symlink_to(self.root / 'aura-app/src')
+        (self.root / 'aura-app/dist/assets/link').symlink_to(self.root / 'aura-app/src', target_is_directory=True)
         with self.assertRaisesRegex(ValueError, 'Symlink'):
             package(self.root)
 

@@ -7,6 +7,8 @@ import { mkdtemp, rm, readdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { once } from "node:events";
+import { pathToFileURL } from "node:url";
+import { pythonCommand, pythonEnvironment } from "../server/python-runtime.mjs";
 const token = "test-only-session-code-123456789";
 const port = 18790,
   base = `http://127.0.0.1:${port}`;
@@ -568,7 +570,7 @@ test("people memory is private and forget removes its associated timeline", asyn
   const db = path.join(dir, "memory.db");
   const personId = Number(
     execFileSync(
-      "python3",
+      pythonCommand(),
       [
         "-c",
         [
@@ -586,7 +588,7 @@ test("people memory is private and forget removes its associated timeline", asyn
         ].join("\n"),
         db,
       ],
-      { encoding: "utf8" },
+      { encoding: "utf8", env: pythonEnvironment() },
     ).trim(),
   );
   try {
@@ -698,17 +700,18 @@ test("people memory is private and forget removes its associated timeline", asyn
       200,
     );
     const counts = execFileSync(
-      "python3",
+      pythonCommand(),
       [
         "-c",
         [
           "import sqlite3, sys",
-          "conn = sqlite3.connect('file:' + sys.argv[1] + '?mode=ro', uri=True)",
+          "from pathlib import Path",
+          "conn = sqlite3.connect(Path(sys.argv[1]).resolve().as_uri() + '?mode=ro', uri=True)",
           "print(*conn.execute('select (select count(*) from known_people), (select count(*) from person_events)').fetchone())",
         ].join("\n"),
         db,
       ],
-      { encoding: "utf8" },
+      { encoding: "utf8", env: pythonEnvironment() },
     ).trim();
     assert.equal(counts, "1 1");
   } finally {
@@ -729,7 +732,7 @@ test("online route needs approval, isolates memory and bounds repeated requests"
     return new Response(JSON.stringify(body), {headers:{"content-type":"application/json"}});
   };`);
   try {
-    await start(path.join(dir, "memory.db"), { NODE_OPTIONS: `--import=${JSON.stringify(fixture)}` });
+    await start(path.join(dir, "memory.db"), { NODE_OPTIONS: `--import=${JSON.stringify(pathToFileURL(fixture).href)}` });
     assert.equal((await post("online/lookup", { query: "test", approved: true })).status, 401);
     const cookie = await login();
     assert.equal((await post("online/lookup", { query: "test", approved: true }, cookie, "https://evil.test")).status, 403);

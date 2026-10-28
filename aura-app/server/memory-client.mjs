@@ -3,12 +3,12 @@ import { createInterface } from "node:readline";
 
 // A dead or stalled worker must not leave HTTP requests waiting indefinitely.
 export class MemoryClient {
-  constructor({ command, args, timeout = 45000 }) {
+  constructor({ command, args, env = process.env, timeout = 45000 }) {
     this.pending = new Map();
     this.sequence = 0;
     this.timeout = timeout;
     this.closed = false;
-    this.worker = spawn(command, args, { stdio: ["pipe", "pipe", "pipe"] });
+    this.worker = spawn(command, args, { env, stdio: ["pipe", "pipe", "pipe"] });
     this.worker.stderr.on("data", () => {}); // Never relay provider secrets.
     this.worker.on("error", () => this.close());
     this.worker.on("exit", () => this.close());

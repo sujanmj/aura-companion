@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { pythonCommand, pythonEnvironment } from "./python-runtime.mjs";
 import { MemoryClient } from "./memory-client.mjs";
 import { ApprovalGate, permittedOrigin } from "./policy.mjs";
 import { lookupWikipedia } from "./online-lookup.mjs";
@@ -21,7 +22,8 @@ const session = randomBytes(32).toString("base64url");
 let busy = false;
 let task = null;
 const memoryClient = new MemoryClient({
-  command: process.env.AURA_PYTHON || "python3",
+  command: pythonCommand(),
+  env: pythonEnvironment(),
   args: [path.join(ROOT, "server/memory_worker.py")],
 });
 const memory = (op, data = {}) => memoryClient.request(op, data);

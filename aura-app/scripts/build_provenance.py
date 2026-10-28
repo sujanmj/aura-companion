@@ -42,7 +42,7 @@ def inputs(root, kind):
         base = root / directory
         if not base.is_dir() or base.is_symlink():
             raise ValueError('Missing source directory or symlink')
-        names.extend(str(path.relative_to(root)) for path in base.rglob('*') if path.is_file() or path.is_symlink())
+        names.extend(path.relative_to(root).as_posix() for path in base.rglob('*') if path.is_file() or path.is_symlink())
     return {name: digest_file(checked_file(root, name)) for name in sorted(names)}
 
 
@@ -55,14 +55,14 @@ def output_files(root, directory, excluded=()):
         if path.is_symlink():
             raise ValueError('Symlink in build output')
         if path.is_file():
-            relative = str(path.relative_to(root))
+            relative = path.relative_to(root).as_posix()
             if relative not in excluded:
                 result[relative] = digest_file(checked_file(root, relative))
     return result
 
 
 def write_provenance(root, kind, directory):
-    name = str(Path(directory) / 'build-provenance.json')
+    name = (Path(directory) / 'build-provenance.json').as_posix()
     content = {'format': 'aura-build-provenance-v1', 'kind': kind, 'inputs': inputs(root, kind)}
     if kind == 'web':
         content['outputs'] = output_files(root, directory, (name,))
@@ -75,7 +75,7 @@ def write_provenance(root, kind, directory):
 
 
 def verify_provenance(root, kind, directory):
-    name = str(Path(directory) / 'build-provenance.json')
+    name = (Path(directory) / 'build-provenance.json').as_posix()
     content = json.loads(checked_file(root, name).read_text())
     if (content.get('format') != 'aura-build-provenance-v1'
             or content.get('kind') != kind or content.get('inputs') != inputs(root, kind)):

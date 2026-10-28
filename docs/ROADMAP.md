@@ -727,5 +727,23 @@ Local evidence: 80 Python tests passed, including seven new handoff tests with
 a real loopback HTTP server, independent SQLite connections racing for one turn,
 restart/expiry, auth, consent, scope, rotation/revocation and deletion checks.
 The 20 Node tests, 17 browser tests, native lifecycle tests, lint and existing
-provider/cloud/heartbeat regression tests also passed. New-commit CI and hardware
-acceptance remain pending.
+provider/cloud/heartbeat regression tests also passed. Commit `0ff2985` passed
+macOS and Ubuntu CI in [40773910557](https://github.com/sujanmj/aura-companion/actions/runs/40773910557),
+with both preview archives uploaded. Physical multi-room acceptance remains pending.
+
+## 2026-10-29 continuation — cross-platform preview checks (Phases 6, 12)
+
+Windows joins the CI matrix for the source/web/Python preview. Build helpers and
+the server select `python` on Windows, `python3` elsewhere, or the user's explicit
+`AURA_PYTHON` executable. Python IPC forces UTF-8 to preserve multilingual names
+and notes regardless of the console code page. Build provenance and archive
+member paths use forward slashes on every platform. Test fixtures use file URLs
+for module loading and SQLite read-only access, and directory symlinks declare
+their type explicitly.
+
+Local Mac evidence: 80 Python, 22 Node and 17 browser tests passed; build, lint,
+and ad-hoc native build passed. The new IPC test round-trips Hindi, accented text
+and emoji through a real Python process despite an inherited ASCII setting.
+The packaging test verifies archive/member hashes and slash-normalized paths.
+Windows CI results are pending. This does not provide a Windows native ambient
+helper, installer, signing, acoustic tests or device-permission acceptance.

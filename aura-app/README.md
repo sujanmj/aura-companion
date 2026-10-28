@@ -105,7 +105,7 @@ python3 scripts/bundle.py --check-source # staged source privacy preflight
 npm run bundle      # clean committed source + matching builds; no keys or memory
 ```
 
-For live UI development, run `AURA_DEV=1 npm start` and `npm run dev` in separate terminals, then open `http://127.0.0.1:5173`. Development admits exactly that extra origin; production does not. Run the build first for the server integration test. GitHub Actions repeats build, lint, tests, and artifact creation on macOS and Linux.
+For live UI development, run `AURA_DEV=1 npm start` and `npm run dev` in separate terminals, then open `http://127.0.0.1:5173`. Development admits exactly that extra origin; production does not. Run the build first for the server integration test. GitHub Actions repeats build, lint, tests, and artifact creation on macOS, Linux and Windows. Windows CI is newly added; consult the current run for verified results. Windows builds include the web/Python preview, not the Mac native helper.
 
 Tests use disposable databases and mocked Claude responses; they do not charge your API account. Live Claude, ElevenLabs, and user-specific MCP tools require your actual credentials and configuration and are not proven by these tests. The earlier Windows/sensor scripts are untouched and not launched by the new app. Emergency dispatch, iPhone control and task history remain outside this preview.
 
@@ -214,3 +214,21 @@ multi-source verification, general web search, current-news coverage or automati
 fact-checking. It displays source text as text, never executes it, and never
 starts MCP tools. Request/response limits and an eight-second deadline constrain
 network use. Wikipedia may retain request data under its own privacy policy.
+
+## Windows source preview
+
+Use Python 3.11+ and Node 22.12+ on PATH, then run the same `npm ci --ignore-scripts`,
+`npm run build` and `npm start` commands from `aura-app` in PowerShell. The runtime
+uses `python` on Windows and `python3` on macOS/Linux. To select a particular
+interpreter or existing memory file in PowerShell:
+
+```powershell
+$env:AURA_PYTHON = 'C:\Path\To\Python\python.exe'
+$env:AURA_DB_PATH = 'C:\Path\To\Existing\aura_memory.db'
+npm start
+```
+
+Set only the values you need, using your real paths. No new Windows native capture
+helper, installer, signing or microphone/camera acceptance is implied. The web
+voice permission flow still needs testing on the actual device and browser.
+Python IPC uses UTF-8 so names and notes are independent of the console code page.

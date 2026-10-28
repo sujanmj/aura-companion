@@ -107,4 +107,15 @@ playback fencing and real multi-room acceptance remain unfinished. See the
 [protocol and limitations](ROOM_HANDOFF.md). Local Python suite: 80/80, including
 seven new protocol/race/HTTP tests using temporary databases. Node 20/20, browser
 17/17, native lifecycle, lint and existing provider/cloud/heartbeat checks also
-passed. CI is pending.
+passed. Commit `0ff2985` passed macOS and Ubuntu CI run 40773910557; both
+platform preview archives were uploaded.
+
+## 2026-10-29 — Windows preview preparation
+
+The source/web preview now chooses the appropriate default Python command,
+respects an explicit interpreter path, and uses UTF-8 for memory IPC. Packaging
+normalizes manifest/archive paths across platforms. Windows has been added to
+CI alongside macOS and Linux; results are pending. PowerShell setup is documented
+in the app README. No Windows native capture helper or signed installer is
+included. Local Mac checks passed: 80 Python, 22 Node, 17 browser, build/lint and
+ad-hoc native build. Real Windows devices and permissions remain untested.

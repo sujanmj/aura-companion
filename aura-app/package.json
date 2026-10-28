@@ -9,11 +9,11 @@
   "scripts": {
     "start": "node server/server.mjs",
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build && python3 scripts/build_provenance.py web aura-app/dist",
+    "build": "tsc --noEmit && vite build && node scripts/run-python.mjs scripts/build_provenance.py web aura-app/dist",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src server tests",
     "test": "node --test tests/*.test.mjs",
-    "bundle": "python3 scripts/bundle.py",
+    "bundle": "node scripts/run-python.mjs scripts/bundle.py",
     "macos:app": "bash scripts/build-macos-app.sh",
     "test:e2e": "playwright test",
     "test:native": "bash scripts/test-native.sh"
