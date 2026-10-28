@@ -14,6 +14,7 @@ swiftc -parse-as-library -O -target arm64-apple-macosx13.0 \
   macos/AURACompanion/Sources/SpeechOutputSettings.swift
 cp macos/AURACompanion/Info.plist "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Add :NSLocalNetworkUsageDescription string "AURA connects to its companion service on this Mac."' "$APP/Contents/Info.plist"
+python3 scripts/build_provenance.py native "aura-app/$APP/Contents/Resources"
 codesign --force --options runtime --entitlements macos/AURACompanion/Entitlements.plist --sign "$SIGN_IDENTITY" "$APP"
 codesign --verify --strict --verbose=2 "$APP"
 SIGNED_ENTITLEMENTS="$(mktemp)"

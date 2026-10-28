@@ -44,4 +44,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: AURA-Companion-0.3.0-preview-${{ matrix.os }}
-          path: aura-app/release/*
+          path: |
+            aura-app/release/*.zip
+            aura-app/release/*.zip.sha256
+            aura-app/release/release-manifest.json

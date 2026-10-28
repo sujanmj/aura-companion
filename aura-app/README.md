@@ -101,7 +101,8 @@ npx playwright install chromium
 npm run test:e2e    # browser conversation, feedback, memory and kiosk consent
 npm run test:native # macOS: capture lifecycle cancellation/restart checks without hardware
 python3 -m unittest discover -s tests -p 'test_*.py'
-npm run bundle      # tracked source + production UI, no keys or memory
+python3 scripts/bundle.py --check-source # staged source privacy preflight
+npm run bundle      # clean committed source + matching builds; no keys or memory
 ```
 
 For live UI development, run `AURA_DEV=1 npm start` and `npm run dev` in separate terminals, then open `http://127.0.0.1:5173`. Development admits exactly that extra origin; production does not. Run the build first for the server integration test. GitHub Actions repeats build, lint, tests, and artifact creation on macOS and Linux.
@@ -181,3 +182,20 @@ confirm agreement for each question. Only that text goes to the configured
 provider, without personal memory or tool access. AURA does not store it; provider
 retention policies still apply. The reply is not online-verified. This form does
 not stop a separately running native helper or implement continuous group audio.
+
+## Preview integrity
+
+Run the source privacy preflight after staging any new source files and before
+committing/pushing. It rejects known private paths, database contents, symlinks
+and selected credential markers; review remains necessary because this is not a
+comprehensive secret scanner. Build the web UI and, on macOS, the native helper,
+then commit reviewed changes before running `npm run bundle`. Source changes
+that affect either build require rebuilding it. Packaging verifies provenance,
+web-output hashes and the Mac code signature before replacing the old archive.
+
+The ZIP and adjacent `release-manifest.json` record the source commit and each
+packaged file's SHA-256. The ZIP's adjacent `.sha256` records its checksum.
+These are integrity records, not signed attestations or evidence of successful
+hardware acceptance. Build manifests explicitly report that notarization and
+hardware acceptance were not verified. Never distribute this as a production
+or notarized release based only on these automated checks.

@@ -647,3 +647,26 @@ session; this web form does not control that helper's sensors.
 Local validation: 64 Python tests, 12 Node tests, 15 browser tests, native tests,
 frontend build/lint and ad-hoc Mac build passed. New-commit CI pending. No live
 speech, participant, provider or hardware test is claimed.
+
+## 2026-10-28 continuation — preview release integrity (Phases 6, 12)
+
+Invited-turn commit `a5f3e12` passed both macOS and Ubuntu jobs in
+[40681826266](https://github.com/sujanmj/aura-companion/actions/runs/40681826266).
+
+Preview packaging now requires clean committed source, verifies browser input and
+output hashes, checks native source provenance and the local code signature, and
+rejects private/runtime paths, symlinks, SQLite contents and selected credential
+markers. These checks can also run before committing/publishing newly staged
+files. They are a guardrail, not a comprehensive secret scanner or a hardware
+certificate. Existing backups and databases are never packaged or modified.
+A release manifest records the source commit, packaged-file hashes, platform,
+native signing scope and explicit absence of notarization/hardware verification.
+CI uploads only the ZIP, its checksum and the manifest.
+
+Dependency lockfile updates body-parser to 2.4.0 and fast-uri to 3.1.9; npm audit
+reported zero known vulnerabilities on 2026-10-28. Native settings now scroll
+below a fixed capture control, and text matches the direct-address trigger.
+Local checks passed: Python 73/73 (including nine real-archive packaging tests),
+Node 12/12, browser 15/15, native lifecycle/speech tests, frontend build/lint and
+ad-hoc Mac build. Archive creation is checked after committing; new CI pending.
+No clean-install, live sensor, acoustic or distribution-signing claim is added.

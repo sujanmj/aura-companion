@@ -1184,10 +1184,15 @@ private struct MenuView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 15) {
+        VStack(alignment: .leading, spacing: 8) {
+            if monitor.isPaired {
+                Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: []).disabled(monitor.cameraStopping || monitor.microphoneStopping)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 15) {
             HStack { Text("✳ AURA").font(.system(size: 22, weight: .medium)); Spacer(); Text(monitor.isActive ? "LIVE" : "PAUSED").font(.caption2).tracking(2).foregroundStyle(monitor.isActive ? .green : .secondary) }
             Text("Ambient companion").font(.headline)
-            Text("AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. While ambient mode is on, changed scene summaries may be stored in local SQLite. Only direct requests and explicit support phrases reach your AURA companion.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text("AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. While ambient mode is on, changed scene summaries may be stored in local SQLite. Requests beginning with AURA or Hey AURA reach your companion. Solo follow-ups require a separate opt-in.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) { Label(monitor.microphoneStopping ? "Microphone stopping" : monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn || monitor.microphoneStopping ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
             Group {
                 Picker("Spoken voice", selection: $speechVoiceIdentifier) {
@@ -1231,7 +1236,6 @@ private struct MenuView: View {
                         .disabled(monitor.isPairing || monitor.isClearingPairing)
                 }
             } else {
-                Button(monitor.isStarting ? "Cancel startup" : monitor.isActive ? "Pause listening and camera" : "Start local ambient mode") { if monitor.isActive || monitor.isStarting { monitor.stop() } else { Task { await monitor.start() } } }.keyboardShortcut(.space, modifiers: []).disabled(monitor.cameraStopping || monitor.microphoneStopping)
                 Toggle("Allow solo follow-ups for this session", isOn: Binding(get: { monitor.followupsEnabled }, set: { monitor.setFollowups($0) }))
                     .disabled(!monitor.isActive)
                 Text("Only enable when everyone nearby agrees. After a direct reply, the next phrase within 30 seconds is sent to your configured companion and saved in your conversation. AURA cannot identify the speaker. Pause, sleep or closing the window clears this choice.")
@@ -1250,7 +1254,9 @@ private struct MenuView: View {
                     .buttonStyle(.bordered)
             }
             Divider(); Text("Closing this window or pressing Pause stops local listening and camera capture.").font(.system(size: 10)).foregroundStyle(.tertiary)
-        }.padding(18).frame(width: 350)
+                }.padding(12)
+            }
+        }.padding(12).frame(width: 386, height: 530)
     }
 }
 

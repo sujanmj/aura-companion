@@ -48,4 +48,24 @@ question/reply. Provider retention still applies. Pause the separate native
 ambient helper before a group session. Automatic group capture is not included.
 
 Local validation: Python 64/64, Node 12/12, browser 15/15, native tests, build/lint
-and Mac ad-hoc build passed; this milestone's CI remains pending.
+and Mac ad-hoc build passed; invited-turn commit a5f3e12 passed macOS and Ubuntu CI run 40681826266.
+
+## Preview integrity and dependency updates
+
+Builds now record source-input hashes. Packaging rejects stale browser/native
+builds, changed web output, dirty source trees, symlink inputs, tracked memory or
+runtime files, SQLite contents and selected credential markers. Run the source
+check after staging new files and before publishing. It is not a comprehensive
+secret scanner. Each ZIP contains a manifest with its source commit and file
+hashes; the adjacent SHA-256 verifies the ZIP itself. The manifest explicitly
+separates local/ad-hoc signing from notarization and hardware acceptance.
+
+The lockfile now uses body-parser 2.4.0 and fast-uri 3.1.9, addressing the upstream
+[body-parser advisory](https://github.com/expressjs/body-parser/security/advisories/GHSA-27r3-jxmh-p828)
+and [fast-uri advisory](https://github.com/fastify/fast-uri/security/advisories/GHSA-w74x-v6f9-j3xg).
+The local npm audit reports zero known vulnerabilities as of 2026-10-28.
+Native settings scroll with a fixed capture control; sensor acceptance is unchanged.
+
+Local verification: Python 73/73, Node 12/12, browser 15/15, native tests, build/lint
+and local ad-hoc Mac build passed. Nine packaging tests exercise actual archives
+in temporary repositories. Release packaging and new-commit CI are pending.
