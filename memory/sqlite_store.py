@@ -85,6 +85,9 @@ class AuraMemoryStore:
                    disabled=0""",
             (user_id, node_id, display_name, room, token_hash),
         )
+        self.conn.execute(
+            "DELETE FROM room_sessions WHERE user_id=? AND node_id=?", (user_id, node_id)
+        )
         self.conn.commit()
         node = self.conn.execute(
             """SELECT id, node_id, display_name, room, created_at, last_seen_at, disabled
@@ -127,6 +130,9 @@ class AuraMemoryStore:
             "UPDATE sensor_nodes SET disabled=1 WHERE user_id = ? AND node_id = ?",
             (user_id, node_id),
         )
+        self.conn.execute(
+            "DELETE FROM room_sessions WHERE user_id=? AND node_id=?", (user_id, node_id)
+        )
         self.conn.commit()
         return cur.rowcount == 1
 
@@ -139,7 +145,11 @@ class AuraMemoryStore:
             raise ValueError("User not found")
 
         self.expire_observations(user_id)
+        self.conn.execute("DELETE FROM room_sessions WHERE expires_at <= strftime('%s', 'now')")
+        self.conn.commit()
         tables = (
+            "room_sessions",
+            "room_reply_claims",
             "companion_preferences",
             "observation_retention",
             "conversation_logs",

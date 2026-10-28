@@ -1,0 +1,67 @@
+# Explicit room handoff protocol — software prototype
+
+The sensor hub can reserve a reply for one explicitly invited, enrolled node.
+This prototype does not activate a microphone, camera, speaker, provider, tool,
+or memory recall. There is no room tracking or inferred person identity. It is
+not integrated into the Pi heartbeat client or native Mac conversation loop yet.
+
+Use the existing private sensor hub deployment and authentication. The hub's
+master `X-AURA-API-Token` controls invitations. Enrolled nodes use their separate
+credentials only to claim turns; possession of a node token cannot start,
+transfer, stop or inspect an owner's invitation. This API retains the existing
+single configured owner model; it is not a multi-account login service. Do not
+expose the plain HTTP development server to the public internet.
+
+All routes below are JSON POST requests:
+
+| Route | Credential | Body | Result |
+| --- | --- | --- | --- |
+| `/rooms/start` | Master | `node_id`, `approved: true` | New `session` with `session_id`, `generation: 1`, node and expiry |
+| `/rooms/transfer` | Master | `session_id`, current integer `generation`, destination `node_id`, fresh `approved: true` | Same session, increased generation |
+| `/rooms/status` | Master | `{}` | Current session or `null` |
+| `/rooms/stop` | Master | `session_id`, current `generation` | Deletes session and claims; `session: null` |
+| `/rooms/claim` | Enrolled node | `session_id`, current integer `generation`, canonical UUID `turn_id` | `session.reserved: true` once for that turn |
+
+Start and transfer need a visible human invitation before a caller sends literal
+JSON `true`; string or numeric approximations are rejected. The destination must
+belong to the owner, be enabled, and have a heartbeat within 90 seconds. A start
+cannot replace an existing active invitation. Transfers do not extend the
+original five-minute deadline. After expiry, obtain a new explicit invitation.
+Status, start and other successful protocol operations clean expired metadata;
+export also cleans it. No background expiry timer is required to reject an
+expired claim. Stopping, revoking or re-enrolling the active node deletes its
+session and claims. Rotation requires a fresh heartbeat and invitation.
+
+The controller must assign one stable UUID to each logical reply and reuse it
+across retries and destinations. Independently generating different UUIDs for
+the same spoken utterance does **not** deduplicate it. A SQLite write transaction
+serializes reservations across hub connections. The pair of session ID and turn
+ID is unique, even after transfer; at most 1,000 claims fit in one session.
+Reservations survive a hub process restart within the original lease. A repeated
+claim returns HTTP 409, never permission to replay. Missing/incorrect credential
+returns 401; stale, expired, uninvited or invalid protocol requests return 409.
+A lost response can therefore cause a missed reply: fail closed instead of
+retrying speech under a new turn ID.
+
+This is at-most-one **software reservation**, not exactly-once physical playback.
+A reservation already returned cannot be recalled by a transfer or stop. A real
+speaker pipeline still needs cancellation, fencing at the playback boundary,
+audio ownership, clock/network-loss acceptance and an explicit UI before use.
+Wall-clock rollback or restoration of an old database backup is not addressed by
+this prototype; revoke invitations before deployment from a restored backup.
+
+Only owner/session/node/turn identifiers, generation and lease deadline are
+stored in the new tables. Memory export includes these records, scoped to the
+owner, without credentials. Stop deletes this live metadata; existing backups
+and SQLite storage recovery are not securely erased. No conversation text,
+ambient media or new profile memory is recorded by these endpoints.
+
+## Reproducible evidence
+
+Run `python3 -m unittest discover -s aura-app/tests -p test_room_handoff.py` from
+the repository root. Seven tests use temporary databases and a loopback server:
+approval and online prerequisites; transfer fences and duplicate claims; owner
+scoping, expiry and process restart; rotation/revocation; two concurrent database
+connections racing for a turn; validation/capacity; and actual HTTP role checks,
+transfer and stop without conversation-memory writes. No hardware, production
+memory database or external service is used.

@@ -14,6 +14,7 @@ from actions.voice_runtime import create_runtime_speaker
 from api.dashboard_service import DashboardService
 from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
+from devices.room_handoff import RoomHandoff, HandoffDenied
 from memory.sqlite_store import AuraMemoryStore, DEFAULT_DB_PATH
 from incidents.incident_service import IncidentService, incident_api_summary
 from runtime.heartbeat import RuntimeHeartbeat
@@ -473,7 +474,7 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
-        if path == "/nodes/heartbeat":
+        if path in ("/nodes/heartbeat", "/rooms/claim"):
             if not self._require_sensor_node_auth():
                 return
         elif path == "/events":
@@ -487,6 +488,33 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             store,
             metadata={"path": self.path, "method": "POST"},
         )
+
+        if path in ("/rooms/start", "/rooms/transfer", "/rooms/stop", "/rooms/status", "/rooms/claim"):
+            payload = self._read_json_body()
+            if payload is None:
+                self._send_json(400, {"ok": False, "error": "invalid_json"})
+                return
+            handoff = RoomHandoff(store)
+            try:
+                if path == "/rooms/claim":
+                    result = handoff.claim(self.headers.get(AUTH_HEADER, ""), payload.get("session_id"),
+                                           payload.get("generation"), payload.get("turn_id"))
+                else:
+                    user_id = self._get_user_id(store)
+                    if path == "/rooms/start":
+                        result = handoff.start(user_id, payload.get("node_id"), payload.get("approved"))
+                    elif path == "/rooms/transfer":
+                        result = handoff.transfer(user_id, payload.get("session_id"), payload.get("generation"),
+                                                  payload.get("node_id"), payload.get("approved"))
+                    elif path == "/rooms/stop":
+                        handoff.stop(user_id, payload.get("session_id"), payload.get("generation"))
+                        result = None
+                    else:
+                        result = handoff.status(user_id)
+                self._send_json(200, {"ok": True, "session": result})
+            except HandoffDenied as exc:
+                self._send_json(409, {"ok": False, "error": str(exc)})
+            return
 
         if path == "/nodes/enroll":
             payload = self._read_json_body()

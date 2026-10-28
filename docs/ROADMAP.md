@@ -700,4 +700,32 @@ mocked source transport verifies no memory changes. A real public query for
 “Raspberry Pi” on 2026-10-29 IST returned Raspberry Pi, Raspberry Pi OS and
 Raspberry Pi 4 summaries with no unavailable sources (retrieved UTC
 2026-10-28T21:28:39.588Z). This verifies that single public-source path, not answer
-accuracy or ongoing availability. New-commit CI remains pending.
+accuracy or ongoing availability. Commit `3cfd416` passed both macOS and Ubuntu
+CI in [40772617052](https://github.com/sujanmj/aura-companion/actions/runs/40772617052),
+including both preview archive uploads.
+
+## 2026-10-29 continuation — invited room reservations (Phase 5)
+
+Added the [room handoff protocol](ROOM_HANDOFF.md) to the existing enrolled-node
+hub. An explicit invitation creates a five-minute lease for one online node;
+transfers require fresh approval and a matching generation. Old-node requests,
+expired invitations, cross-owner nodes, duplicate turn UUIDs and stale stops are
+rejected. Revocation or credential rotation clears the active invitation.
+SQLite transactions enforce one reservation per logical turn across connections
+and room transfers. Stop removes live invitation/claim metadata; memory export
+includes only owner-scoped metadata and no node credential.
+
+This is an API/software prototype, not a working multi-room audio companion.
+The caller must preserve the logical reply's UUID across retries. A returned
+reservation cannot be recalled, so physical playback still needs cancellation
+and fencing. There is no capture, speaker action, location inference, shared
+memory retrieval, or Pi/Mac conversation integration in this milestone. The
+original five-minute deadline never renews on transfer. Device/API changes now
+trigger the application CI workflow.
+
+Local evidence: 80 Python tests passed, including seven new handoff tests with
+a real loopback HTTP server, independent SQLite connections racing for one turn,
+restart/expiry, auth, consent, scope, rotation/revocation and deletion checks.
+The 20 Node tests, 17 browser tests, native lifecycle tests, lint and existing
+provider/cloud/heartbeat regression tests also passed. New-commit CI and hardware
+acceptance remain pending.

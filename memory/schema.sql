@@ -339,3 +339,20 @@ CREATE TABLE IF NOT EXISTS observation_retention (
     days INTEGER NOT NULL DEFAULT 0 CHECK(days IN (0, 1, 7, 30, 90, 365))
 );
 CREATE INDEX IF NOT EXISTS idx_observations_user_created ON observations(user_id, created_at);
+
+-- Short-lived explicit room invitations. No transcript/audio/location history.
+CREATE TABLE IF NOT EXISTS room_sessions (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    session_id TEXT NOT NULL UNIQUE,
+    node_id TEXT NOT NULL,
+    generation INTEGER NOT NULL,
+    expires_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS room_reply_claims (
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    session_id TEXT NOT NULL REFERENCES room_sessions(session_id) ON DELETE CASCADE,
+    turn_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    generation INTEGER NOT NULL,
+    PRIMARY KEY(session_id, turn_id)
+);

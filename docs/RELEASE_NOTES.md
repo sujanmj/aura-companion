@@ -87,8 +87,24 @@ source content cannot run code or tools. Optional conversation panels now have
 bounded scrolling and open one at a time to preserve the main conversation.
 
 Local tests: 73 Python, 20 Node, 17 browser; build/lint passed. One real public
-Raspberry Pi query returned three cited summaries on 2026-10-29 IST. New CI is
-pending. Source APIs follow the official
+Raspberry Pi query returned three cited summaries on 2026-10-29 IST. Commit
+`3cfd416` passed macOS and Ubuntu CI run 40772617052 with both preview uploads. Source APIs follow the official
 [MediaWiki search](https://www.mediawiki.org/wiki/API:Search) and
 [Page Content Service](https://www.mediawiki.org/wiki/Page_Content_Service)
 documentation and use an identifying User-Agent.
+
+## 2026-10-29 — invited room reservation prototype
+
+The enrolled-node hub now supports explicit five-minute room invitations,
+approved transfers, stop/status and a node-authenticated reply reservation.
+Stale generations, cross-owner nodes, offline destinations and duplicate turn
+UUIDs fail closed. Rotating or revoking the active node clears its invitation.
+Stop removes live session/claim metadata, which is also owner-scoped in export.
+
+This API does not capture, speak, recall personal memory or infer location. A
+reservation already returned cannot be recalled. Pi/Mac integration, physical
+playback fencing and real multi-room acceptance remain unfinished. See the
+[protocol and limitations](ROOM_HANDOFF.md). Local Python suite: 80/80, including
+seven new protocol/race/HTTP tests using temporary databases. Node 20/20, browser
+17/17, native lifecycle, lint and existing provider/cloud/heartbeat checks also
+passed. CI is pending.
