@@ -10,8 +10,8 @@ context throughout the day, remember user-approved people, events and routines,
 and speak naturally without requiring a wake phrase for every exchange. It may
 help find recently seen objects, offer timely routine and medication reminders,
 and contribute to a shared conversation when invited. This is an aspiration;
-these capabilities are not implemented as a complete system today. The active
-delivery phase remains Phase 2 below.
+these capabilities are not implemented as a complete system today. Software milestones now proceed across Phases 2–12; Phase 2 hardware
+acceptance remains open and is not a prerequisite for independent software work.
 
 Always-present sensing must be distinguishable from recording. Audio and video
 are processed only while the user has enabled the relevant sensor, with visible
@@ -47,7 +47,7 @@ hardware release, and the branch has not yet been merged into main.
 
 ## Phase 2 — Reliable single-device runtime
 
-Status: in progress; this is the current phase.
+Status: software reliability milestones implemented; hardware acceptance remains open.
 
 - Completed: closed approval gates after cancellation; enforce approval deadlines;
   explicit kiosk auto-send consent; fail closed when the memory worker dies/stalls.
@@ -514,7 +514,7 @@ ready solely because it compiles or passes CI.
 ## Future companion capability phases
 
 These phases extend the delivery work above. They are not complete, and they do
-not change the current status: Phase 2 is active.
+do not close the unresolved Phase 2 hardware acceptance gates.
 
 ### Phase 7 — Continuous, private perception
 
@@ -603,3 +603,21 @@ not change the current status: Phase 2 is active.
 Exit for these future phases: the behavior is useful in real homes, stays under
 the user's control, has passed privacy and reliability acceptance, and is never
 described as human-level or production-ready without evidence.
+
+## 2026-10-28 continuation — observation expiry (Phases 4, 7, 8)
+
+Baseline `0a121ba9589155f8bee311d50380b817a3c2775f` was verified against
+GitHub Actions run [39900633505](https://github.com/sujanmj/aura-companion/actions/runs/39900633505):
+both macOS and Ubuntu jobs passed, including preview artifact upload.
+
+Added opt-in note expiry (1, 7, 30, 90 or 365 days) with a deletion-count preview
+and explicit confirmation in Memory. The default preserves all existing notes.
+Expiry covers observations, explicit event notes and corrections, is scoped to
+the account, and runs on service requests before recall/export. It does not erase
+original chat messages or existing SQLite backups. Turning expiry off cannot
+restore removed notes. No background deletion is promised while AURA is stopped.
+
+Local validation: 61 Python tests, 12 Node tests, frontend build/lint and native
+lifecycle/speech tests passed; the ad-hoc Mac preview built successfully. Browser
+validation and new-commit CI are recorded in the accompanying release evidence.
+No live sensor, provider, acoustic, Pi or health integration acceptance was run.

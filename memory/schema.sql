@@ -332,3 +332,10 @@ CREATE TABLE IF NOT EXISTS service_heartbeats (
 
 CREATE INDEX IF NOT EXISTS idx_service_heartbeats_user_service
     ON service_heartbeats (user_id, service_name);
+
+-- Opt-in expiry; existing installations retain all notes until explicitly changed.
+CREATE TABLE IF NOT EXISTS observation_retention (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    days INTEGER NOT NULL DEFAULT 0 CHECK(days IN (0, 1, 7, 30, 90, 365))
+);
+CREATE INDEX IF NOT EXISTS idx_observations_user_created ON observations(user_id, created_at);

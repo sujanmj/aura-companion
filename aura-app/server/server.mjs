@@ -243,6 +243,18 @@ const server = http.createServer(async (req, res) => {
       if (["/api/stt", "/api/tts"].includes(url.pathname))
         return await voice(req, res, url.pathname.slice(5));
       const data = JSON.parse((await body(req)).toString());
+      if (["/api/observations/retention", "/api/observations/retention-preview"].includes(url.pathname)) {
+        if (!Number.isInteger(data.days) || ![0, 1, 7, 30, 90, 365].includes(data.days))
+          return json(res, 400, { error: "Invalid observation retention." });
+        const saving = url.pathname === "/api/observations/retention";
+        if (saving && data.confirmed !== true)
+          return json(res, 400, { error: "Confirm the retention change first." });
+        try {
+          return json(res, 200, await memory(saving ? "set_observation_retention" : "preview_observation_expiry", { days: data.days }));
+        } catch {
+          return json(res, 503, { error: "Observation retention is unavailable." });
+        }
+      }
       if (url.pathname === "/api/ambient/observation") {
         if (
           !Array.isArray(data.labels) ||

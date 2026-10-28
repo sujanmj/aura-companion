@@ -44,6 +44,7 @@ type Status = {
     last_delivered_on: string | null;
     dismissed_on: string | null;
   }[];
+  observation_retention: { days: number };
   preferences: CheckinPreferences;
   conversations: Message[];
   actions: boolean;
@@ -211,6 +212,7 @@ function App() {
     [routineDraft, setRoutineDraft] = useState(""),
     [editingObservation, setEditingObservation] = useState<number | null>(null),
     [observationDraft, setObservationDraft] = useState(""),
+    [retentionDays, setRetentionDays] = useState("30"),
     [personName, setPersonName] = useState(""),
     [personRelation, setPersonRelation] = useState(""),
     [personConsent, setPersonConsent] = useState(false),
@@ -1479,6 +1481,25 @@ function App() {
                 </section>
                 <section className="memory-review">
                   <h3>Recent observations</h3>
+                  <p>Note expiry: {status.observation_retention.days === 0 ? "keep until you delete" : `${status.observation_retention.days} days`}. This covers scene summaries, event notes and corrections. Expiry runs while the service handles requests, before recall or export. Existing backups and original chat messages remain.</p>
+                  <form onSubmit={async (event) => {
+                    event.preventDefault();
+                    try {
+                      const days = Number(retentionDays);
+                      const preview = await api<{ expiring: number }>("observations/retention-preview", { days });
+                      if (!window.confirm(`Change note expiry to ${days === 0 ? "keep until deleted" : `${days} days`}? ${preview.expiring} notes currently qualify for deletion. Older notes will be removed automatically; the count may change before saving. Backups and chat history remain. This cannot restore deleted notes.`)) return;
+                      await api("observations/retention", { days, confirmed: true });
+                      await refresh();
+                      setError("Note expiry saved.");
+                    } catch (e) { setError(String(e)); }
+                  }}>
+                    <label htmlFor="observation-retention">Expire saved notes after</label>
+                    <select id="observation-retention" value={retentionDays} onChange={(event) => setRetentionDays(event.target.value)}>
+                      <option value="0">Keep until I delete</option>
+                      {[1, 7, 30, 90, 365].map((days) => <option key={days} value={days}>{days} days</option>)}
+                    </select>
+                    <button type="submit">Review note expiry</button>
+                  </form>
                   {status.observations.length > 0 && (
                     <button
                       className="memory-export"

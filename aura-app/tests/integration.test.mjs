@@ -95,6 +95,15 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       403,
     );
     let cookie = await login();
+    assert.equal((await post("observations/retention", { days: 30, confirmed: true })).status, 401);
+    assert.equal((await post("observations/retention", { days: 30, confirmed: true }, cookie, "https://evil.test")).status, 403);
+    assert.equal((await post("observations/retention", { days: 30 }, cookie)).status, 400);
+    assert.equal((await post("observations/retention", { days: true, confirmed: true }, cookie)).status, 400);
+    const retentionPreview = await post("observations/retention-preview", { days: 30 }, cookie);
+    assert.equal(retentionPreview.status, 200);
+    assert.equal((await retentionPreview.json()).days, 30);
+    assert.equal((await post("observations/retention", { days: 30, confirmed: true }, cookie)).status, 200);
+    assert.equal((await post("observations/retention", { days: 0, confirmed: true }, cookie)).status, 200);
     assert.equal(
       (await post("ambient/observation", { labels: ["room"], human_present: true, confidence: 0.8 })).status,
       401,

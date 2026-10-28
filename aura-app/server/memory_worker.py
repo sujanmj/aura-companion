@@ -49,6 +49,7 @@ def main():
             req = json.loads(line)
             with contextlib.redirect_stdout(sys.stderr):
                 op = req['op']
+                store.expire_observations(user)
                 if op == 'readiness':
                     store.conn.execute('SELECT 1').fetchone()
                     result = {'brain': brain_readiness(), 'memory': 'available'}
@@ -71,6 +72,7 @@ def main():
                                   )}
                                   for person in store.get_known_people(user)
                               ],
+                              'observation_retention': store.observation_retention(user),
                               'preferences': store.get_companion_preferences(user)}
                 elif op == 'preferences':
                     result = store.get_companion_preferences(user)
@@ -131,6 +133,10 @@ def main():
                     discard_pending_conversations(pending_ids)
                     enqueue_conversation_deletions(pending_ids)
                     result = {'deleted': deleted}
+                elif op == 'preview_observation_expiry':
+                    result = store.preview_observation_expiry(user, req.get('days'))
+                elif op == 'set_observation_retention':
+                    result = store.set_observation_retention(user, req.get('days'))
                 elif op == 'clear_observations':
                     result = {'deleted': store.clear_observations(user)}
                 elif op == 'update_fact':

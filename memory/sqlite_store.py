@@ -138,8 +138,10 @@ class AuraMemoryStore:
         if not user:
             raise ValueError("User not found")
 
+        self.expire_observations(user_id)
         tables = (
             "companion_preferences",
+            "observation_retention",
             "conversation_logs",
             "memory_facts",
             "forgotten_memory_facts",
@@ -544,6 +546,7 @@ class AuraMemoryStore:
             or not 0.0 <= confidence <= 1.0
         ):
             raise ValueError("Invalid scene confidence")
+        self.expire_observations(user_id)
         clean_labels = [label.strip() for label in labels]
         if not clean_labels and not human_present:
             return {"saved": False, "reason": "no_scene_signal"}
@@ -717,7 +720,45 @@ class AuraMemoryStore:
             )
         return True
 
+    def observation_retention(self, user_id: int) -> dict[str, int]:
+        row = self.conn.execute(
+            "SELECT days FROM observation_retention WHERE user_id=?", (user_id,)
+        ).fetchone()
+        return {"days": row["days"] if row else 0}
+
+    def preview_observation_expiry(self, user_id: int, days: int) -> dict[str, int]:
+        if type(days) is not int or days not in (0, 1, 7, 30, 90, 365):
+            raise ValueError("Invalid observation retention")
+        count = self.conn.execute(
+            "SELECT count(*) FROM observations WHERE user_id=? AND julianday(created_at) < julianday('now', ?)",
+            (user_id, f"-{days} days"),
+        ).fetchone()[0] if days else 0
+        return {"days": days, "expiring": count}
+
+    def set_observation_retention(self, user_id: int, days: int) -> dict[str, int]:
+        self.preview_observation_expiry(user_id, days)
+        with self.conn:
+            self.conn.execute(
+                "INSERT INTO observation_retention(user_id, days) VALUES (?, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET days=excluded.days", (user_id, days)
+            )
+            deleted = self.expire_observations(user_id, commit=False)
+        return {"days": days, "deleted": deleted}
+
+    def expire_observations(self, user_id: int, *, commit: bool = True) -> int:
+        days = self.observation_retention(user_id)["days"]
+        if not days:
+            return 0
+        cur = self.conn.execute(
+            "DELETE FROM observations WHERE user_id=? AND julianday(created_at) < julianday('now', ?)",
+            (user_id, f"-{days} days"),
+        )
+        if commit:
+            self.conn.commit()
+        return cur.rowcount
+
     def get_latest_observations(self, user_id: int, limit: int = 10) -> list[dict[str, Any]]:
+        self.expire_observations(user_id)
         cur = self.conn.execute(
             """
             SELECT id, event_type, event_summary, confidence, source, created_at

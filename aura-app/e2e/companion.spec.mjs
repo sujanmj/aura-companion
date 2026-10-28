@@ -540,3 +540,23 @@ test("memory export downloads the current authenticated account data", async ({
     }),
   );
 });
+
+
+test("note expiry previews a change and persists only after confirmation", async ({ page }) => {
+  await connect(page);
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  await page.getByLabel("Expire saved notes after").selectOption("7");
+  const dismissed = new Promise(resolve => page.once("dialog", async dialog => { await dialog.dismiss(); resolve(); }));
+  await page.getByRole("button", { name: "Review note expiry" }).click();
+  await dismissed;
+  await expect(page.getByText(/Note expiry: keep until you delete/)).toBeVisible();
+  page.once("dialog", dialog => {
+    expect(dialog.message()).toContain("Backups and chat history remain");
+    void dialog.accept();
+  });
+  await page.getByRole("button", { name: "Review note expiry" }).click();
+  await expect(page.getByRole("status")).toContainText("Note expiry saved");
+  await page.reload();
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  await expect(page.getByText(/Note expiry: 7 days/)).toBeVisible();
+});
