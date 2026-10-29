@@ -545,13 +545,16 @@ class CompanionTest(unittest.TestCase):
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             base = f'http://127.0.0.1:{server.server_port}'
+            local_urlopen = urllib.request.build_opener(
+                urllib.request.ProxyHandler({}),
+            ).open
             try:
                 with (
                     patch.dict(os.environ, {}, clear=True),
                     patch('api.sensor_api_server.beat_sensor_api_heartbeat'),
                     patch('api.sensor_api_server.sync_sensor_event'),
                 ):
-                    with urllib.request.urlopen(base + '/health', timeout=2) as response:
+                    with local_urlopen(base + '/health', timeout=2) as response:
                         self.assertEqual(response.status, 200)
                         self.assertEqual(json.loads(response.read())['version'], '0.4')
 
@@ -568,14 +571,14 @@ class CompanionTest(unittest.TestCase):
                         ),
                     ):
                         with self.assertRaises(urllib.error.HTTPError) as error:
-                            urllib.request.urlopen(request, timeout=2)
+                            local_urlopen(request, timeout=2)
                         self.assertEqual(error.exception.code, 401)
                         error.exception.close()
 
                     token = 't' * 32
                     with patch.dict(os.environ, {'AURA_SENSOR_API_TOKEN': token}, clear=True):
                         request = urllib.request.Request(base + '/events/latest', headers={'X-AURA-API-Token': token})
-                        with urllib.request.urlopen(request, timeout=2) as response:
+                        with local_urlopen(request, timeout=2) as response:
                             self.assertEqual(response.status, 200)
 
                         request = urllib.request.Request(
@@ -592,7 +595,7 @@ class CompanionTest(unittest.TestCase):
                             method='POST',
                         )
                         with self.assertRaises(urllib.error.HTTPError) as error:
-                            urllib.request.urlopen(request, timeout=2)
+                            local_urlopen(request, timeout=2)
                         self.assertEqual(error.exception.code, 400)
                         error.exception.close()
 
@@ -609,7 +612,7 @@ class CompanionTest(unittest.TestCase):
                             },
                             method='POST',
                         )
-                        with urllib.request.urlopen(request, timeout=2) as response:
+                        with local_urlopen(request, timeout=2) as response:
                             enrollment = json.loads(response.read())
                         node_token = enrollment['token']
                         self.assertNotIn(
@@ -623,14 +626,14 @@ class CompanionTest(unittest.TestCase):
                             headers={'Content-Type': 'application/json', 'X-AURA-API-Token': node_token},
                             method='POST',
                         )
-                        with urllib.request.urlopen(request, timeout=2) as response:
+                        with local_urlopen(request, timeout=2) as response:
                             self.assertTrue(json.loads(response.read())['ok'])
 
                         request = urllib.request.Request(
                             base + '/nodes/status',
                             headers={'X-AURA-API-Token': token},
                         )
-                        with urllib.request.urlopen(request, timeout=2) as response:
+                        with local_urlopen(request, timeout=2) as response:
                             nodes = json.loads(response.read())['nodes']
                         self.assertEqual(nodes[0]['node_id'], 'pi_bedroom_node')
                         self.assertTrue(nodes[0]['online'])
@@ -656,7 +659,7 @@ class CompanionTest(unittest.TestCase):
                             method='POST',
                         )
                         with self.assertRaises(urllib.error.HTTPError) as error:
-                            urllib.request.urlopen(request, timeout=2)
+                            local_urlopen(request, timeout=2)
                         self.assertEqual(error.exception.code, 400)
                         error.exception.close()
 
@@ -669,7 +672,7 @@ class CompanionTest(unittest.TestCase):
                             },
                             method='POST',
                         )
-                        with urllib.request.urlopen(request, timeout=2) as response:
+                        with local_urlopen(request, timeout=2) as response:
                             node_event_response = json.loads(response.read())
                         self.assertEqual(node_event_response['event']['source'], 'pi_bedroom_node')
                         self.assertEqual(node_event_response['event']['room'], 'bedroom')
@@ -683,7 +686,7 @@ class CompanionTest(unittest.TestCase):
                             },
                             method='POST',
                         )
-                        with urllib.request.urlopen(request, timeout=2) as response:
+                        with local_urlopen(request, timeout=2) as response:
                             self.assertTrue(json.loads(response.read())['revoked'])
                         request = urllib.request.Request(
                             base + '/nodes/heartbeat',
@@ -692,7 +695,7 @@ class CompanionTest(unittest.TestCase):
                             method='POST',
                         )
                         with self.assertRaises(urllib.error.HTTPError) as error:
-                            urllib.request.urlopen(request, timeout=2)
+                            local_urlopen(request, timeout=2)
                         self.assertEqual(error.exception.code, 401)
                         error.exception.close()
 
@@ -717,7 +720,7 @@ class CompanionTest(unittest.TestCase):
                                 },
                                 method='POST',
                             )
-                            with urllib.request.urlopen(request, timeout=2) as response:
+                            with local_urlopen(request, timeout=2) as response:
                                 responses.append(json.loads(response.read()))
                         self.assertFalse(responses[0]['event']['duplicate'])
                         self.assertTrue(responses[1]['event']['duplicate'])
