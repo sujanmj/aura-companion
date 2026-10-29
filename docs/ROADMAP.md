@@ -904,17 +904,20 @@ group and sends the displayed exchange plus the new question to the configured
 provider. The exchange stays in browser page state, is excluded from AURA's
 memory and saved chat history, and can be cleared; a refresh also clears it.
 The provider may retain requests under its own policy. Server validation limits
-the exchange to six alternating messages, validates every message bound, and
-rejects malformed histories before provider access. Provider prompts label the
-entire transcript as untrusted content and prohibit private-memory access,
-identity inference, and tools. Online lookup remains disabled for this path.
+the exchange to six alternating messages, caps each question and reply at 4,000
+characters, and rejects malformed histories before provider access. Provider
+prompts label the entire transcript as untrusted content and prohibit
+private-memory access, identity inference, and tools. Online lookup remains
+disabled for this path.
 
-Local verification: 92 Python tests, 23 Node tests, all 18 browser tests,
-frontend lint and production build pass. The first browser run used stale built
-assets and failed on the old button label; rebuilding and rerunning the full
-suite passed. Commit `fab9f3b` passed macOS, Ubuntu and Windows push CI in
+Commit `fab9f3b` passed macOS, Ubuntu and Windows push CI in
 [40903186466](https://github.com/sujanmj/aura-companion/actions/runs/40903186466)
 and pull-request CI in
 [40903197339](https://github.com/sujanmj/aura-companion/actions/runs/40903197339).
-Both runs uploaded all three preview archives. No real provider retention,
-multi-person consent, or acoustic behavior is verified by these software tests.
+Both runs uploaded all three preview archives. The first browser run used stale
+built assets and failed on the old button label; rebuilding and rerunning passed.
+A follow-up caps provider replies at 4,000 characters, so they fit in the next
+turn's bounded history. Local verification after that fix: 93 Python tests, 23
+Node tests, all 18 browser tests, frontend lint and production build pass. Its
+cross-platform CI is pending. No real provider retention, multi-person consent,
+or acoustic behavior is verified by these software tests.

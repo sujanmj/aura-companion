@@ -54,4 +54,10 @@ class SharedConversationTests(unittest.TestCase):
         self.assertNotIn('private provider error', str(result))
         self.assertIn('unavailable', result['response'])
 
+    def test_long_provider_replies_fit_the_next_turn_history_limit(self):
+        with patch('shared_conversation.brain_readiness', return_value={'provider':'claude', 'state':'configured_unverified'}):
+            result = shared_contribution('hello', True, generate=lambda _: 'x' * 5000)
+        self.assertEqual(len(result['response']), 4000)
+        self.assertEqual(result['response'], 'x' * 4000)
+
 if __name__ == '__main__': unittest.main()

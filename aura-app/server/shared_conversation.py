@@ -53,5 +53,5 @@ def shared_contribution(message, consent, history=None, *, generate=None):
     if not isinstance(response, str) or not response.strip():
         return {'response': 'Thanks for inviting me. A language-model reply is unavailable right now; I have not checked online sources. You can configure and test a provider in Setup.',
                 'provider': 'local', 'saved': False, 'online_verified': False}
-    return {'response': response.strip()[:8000], 'provider': provider,
+    return {'response': response.strip()[:4000], 'provider': provider,
             'saved': False, 'online_verified': False}

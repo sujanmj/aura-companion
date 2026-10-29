@@ -237,4 +237,7 @@ Python, 23 Node and 18 browser tests plus lint and production build. Commit
 [40903186466](https://github.com/sujanmj/aura-companion/actions/runs/40903186466)
 and pull-request CI in
 [40903197339](https://github.com/sujanmj/aura-companion/actions/runs/40903197339).
-Both runs uploaded preview archives for all three platforms.
+Both runs uploaded preview archives for all three platforms. A follow-up caps
+shared provider replies at 4,000 characters so a long answer cannot break the
+next turn's bounded transcript. Local Python, Node, browser, lint and production
+build checks pass for the follow-up; its cross-platform CI is pending.
