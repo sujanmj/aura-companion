@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ssl
+import os
 import sys
 import tempfile
 import unittest
@@ -49,6 +50,7 @@ class SensorTransportTests(unittest.TestCase):
             key = Path(directory) / "server.key"
             cert.write_text("placeholder")
             key.write_text("placeholder")
+            key.chmod(0o640)
             with patch.object(ssl.SSLContext, "load_cert_chain") as load_cert_chain:
                 context = server_tls_context("0.0.0.0", {
                     "AURA_SENSOR_TLS_CERT_FILE": str(cert),
@@ -57,6 +59,43 @@ class SensorTransportTests(unittest.TestCase):
             self.assertIsInstance(context, ssl.SSLContext)
             self.assertGreaterEqual(context.minimum_version, ssl.TLSVersion.TLSv1_2)
             load_cert_chain.assert_called_once_with(certfile=str(cert), keyfile=str(key))
+
+    def test_network_bind_rejects_missing_or_insecure_key_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            cert = Path(directory) / "server.crt"
+            key = Path(directory) / "server.key"
+            cert.write_text("placeholder")
+            key.write_text("placeholder")
+            key.chmod(0o640)
+            env = {
+                "AURA_SENSOR_TLS_CERT_FILE": str(cert),
+                "AURA_SENSOR_TLS_KEY_FILE": str(key),
+            }
+            key.unlink()
+            with self.assertRaisesRegex(ValueError, "regular files"):
+                server_tls_context("0.0.0.0", env)
+            key.write_text("placeholder")
+            key.chmod(0o644)
+            if sys.platform != "win32":
+                with self.assertRaisesRegex(ValueError, "permissions"):
+                    server_tls_context("0.0.0.0", env)
+
+    @unittest.skipUnless(os.name == "posix", "symlink creation is not portable on Windows")
+    def test_network_bind_rejects_symlinked_certificate_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cert_target = root / "real.crt"
+            cert_link = root / "server.crt"
+            key = root / "server.key"
+            cert_target.write_text("placeholder")
+            cert_link.symlink_to(cert_target)
+            key.write_text("placeholder")
+            key.chmod(0o640)
+            with self.assertRaisesRegex(ValueError, "regular files"):
+                server_tls_context("0.0.0.0", {
+                    "AURA_SENSOR_TLS_CERT_FILE": str(cert_link),
+                    "AURA_SENSOR_TLS_KEY_FILE": str(key),
+                })
 
 
 if __name__ == "__main__":

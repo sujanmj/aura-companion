@@ -685,9 +685,18 @@ def server_tls_context(host: str, environment: dict[str, str] | None = None):
     key_file = values.get("AURA_SENSOR_TLS_KEY_FILE", "")
     if not cert_file or not key_file:
         raise ValueError("TLS certificate and private key are required for a network-bound sensor API")
+    certificate = Path(cert_file)
+    private_key = Path(key_file)
+    if not all(
+        path.is_absolute() and path.is_file() and not path.is_symlink()
+        for path in (certificate, private_key)
+    ):
+        raise ValueError("TLS certificate and private key must be absolute regular files")
+    if os.name == "posix" and private_key.stat().st_mode & 0o027:
+        raise ValueError("TLS private key permissions allow group or world access")
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.minimum_version = ssl.TLSVersion.TLSv1_2
-    context.load_cert_chain(certfile=cert_file, keyfile=key_file)
+    context.load_cert_chain(certfile=str(certificate), keyfile=str(private_key))
     return context
 
 

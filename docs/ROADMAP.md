@@ -1008,8 +1008,9 @@ TLS certificate and private key, and negotiates TLS 1.2 or newer. HTTP remains
 available on loopback for local development. Sensor event, enrollment, heartbeat
 and room-claim clients accept HTTPS for remote hubs and reject remote HTTP before
 sending a credential; the heartbeat service validator applies the same rule.
-The hardened systemd hub template now requires certificate files and rejects a
-missing certificate or a world-accessible private key before startup. Updated
+The hub requires absolute regular certificate/key files without symlinks and
+rejects unsafe POSIX private-key permissions; the hardened systemd preflight
+checks the same requirements before startup. Updated
 the Pi instructions to require a trusted certificate and HTTPS. Automated tests
 cover transport URL policy, loopback exceptions, server TLS setup and service
 preflight; no live certificate, Pi install or network deployment is claimed.
