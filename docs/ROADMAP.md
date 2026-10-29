@@ -848,4 +848,5 @@ Vision summary and states that it applies only to the top classification label.
 This makes the evidence behind a visual hint reviewable before the user edits
 or deletes the observation. No images are shown or retained. The browser test
 submits a bounded synthetic camera-summary event and verifies the displayed
-confidence; this is a UI/API test, not camera hardware acceptance. CI is pending.
+confidence; this is a UI/API test, not camera hardware acceptance.
+Commit `f4174d6` passed macOS, Ubuntu and Windows push CI in [40815574599](https://github.com/sujanmj/aura-companion/actions/runs/40815574599) and pull-request CI in [40815578985](https://github.com/sujanmj/aura-companion/actions/runs/40815578985). All three preview artifacts were uploaded from the push run. The first PR Windows browser attempt timed out in an unrelated Setup-tab click; rerunning the job passed.
