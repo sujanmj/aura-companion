@@ -26,6 +26,7 @@ type Status = {
     event_type: string;
     event_summary: string;
     source: string;
+    confidence: number;
     created_at: string;
   }[];
   people: {
@@ -1560,6 +1561,7 @@ function App() {
                 <section className="memory-review">
                   <h3>Recent observations</h3>
                   <p>Note expiry: {status.observation_retention.days === 0 ? "keep until you delete" : `${status.observation_retention.days} days`}. This covers scene summaries, event notes and corrections. Expiry runs while the service handles requests, before recall or export. Existing backups and original chat messages remain.</p>
+                  <p>On-device camera summaries are estimates. Their confidence score applies to the top scene label only; review, correct, or delete them here.</p>
                   <form onSubmit={async (event) => {
                     event.preventDefault();
                     try {
@@ -1611,6 +1613,8 @@ function App() {
                         <small>
                           {observation.event_type.replaceAll("_", " ")} ·{" "}
                           {observation.source}
+                          {observation.source === "mac_local_vision" &&
+                            ` · Top-label confidence ${Math.round(observation.confidence * 100)}%`}
                         </small>
                         {editingObservation === observation.id ? (
                           <form

@@ -161,6 +161,11 @@ Secondary labels and human-presence signals cannot answer object questions.
 This software path uses saved summaries only; hardware vision accuracy is not
 validated by automated tests. Cross-platform CI for this change is pending.
 
+Memory now displays the confidence stored with each Vision summary and clarifies
+that the score applies to the top label only. Users can review that estimate
+before correcting or deleting it. Browser validation uses a synthetic summary;
+it does not test camera accuracy or hardware behavior. CI is pending.
+
 The optional Ollama brain now accepts only a numeric loopback URL and fixed API
 path. It bypasses proxy settings, never follows redirects, caps prompts/replies,
 and exposes the selected `OLLAMA_MODEL` in setup readiness. Custom `OLLAMA_URL`

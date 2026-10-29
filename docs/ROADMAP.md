@@ -840,3 +840,12 @@ label rejection, unrelated/person queries, and explicit-note priority. The full
 suite passes locally. This does not verify Vision's real-world object accuracy
 or guarantee that AURA can find an object on a particular Mac. Cross-platform
 CI is pending.
+
+## 2026-10-29 continuation — camera estimate review clarity (Phases 4, 8)
+
+The Memory view now shows the confidence score attached to each locally saved
+Vision summary and states that it applies only to the top classification label.
+This makes the evidence behind a visual hint reviewable before the user edits
+or deletes the observation. No images are shown or retained. The browser test
+submits a bounded synthetic camera-summary event and verifies the displayed
+confidence; this is a UI/API test, not camera hardware acceptance. CI is pending.

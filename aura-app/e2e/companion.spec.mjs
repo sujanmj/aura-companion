@@ -368,13 +368,10 @@ test("camera context observations can be deleted from saved memory", async ({
 }) => {
   await connect(page);
   const ambient = await page.evaluate(async () => {
-    const response = await fetch("/api/ambient", {
+    const response = await fetch("/api/ambient/observation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "Hey AURA, are you there?",
-        observation: "Local camera context: laptop, person present",
-      }),
+      body: JSON.stringify({ labels: ["laptop"], human_present: true, confidence: 0.88 }),
     });
     return { status: response.status, body: await response.json() };
   });
@@ -383,8 +380,9 @@ test("camera context observations can be deleted from saved memory", async ({
   await page.getByRole("button", { name: "Memory 02" }).click();
   const observation = page
     .locator(".fact")
-    .filter({ hasText: "Local camera context: laptop, person present" });
+    .filter({ hasText: "On-device scene estimate: laptop" });
   await expect(observation).toBeVisible();
+  await expect(observation).toContainText("Top-label confidence 88%");
   page.once("dialog", (dialog) => {
     expect(dialog.message()).toContain("Delete this saved observation");
     void dialog.accept();
@@ -394,7 +392,7 @@ test("camera context observations can be deleted from saved memory", async ({
   await expect(
     page
       .locator(".fact")
-      .filter({ hasText: "Local camera context: laptop, person present" }),
+      .filter({ hasText: "On-device scene estimate: laptop" }),
   ).toHaveCount(0);
 });
 
