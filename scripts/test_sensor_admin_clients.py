@@ -15,9 +15,13 @@ sys.path.insert(0, str(ROOT))
 from scripts import (
     enroll_sensor_node,
     show_dashboard_status,
+    test_confirmation_api,
+    test_dashboard_api,
+    test_incident_api,
     test_sensor_api_auth,
     test_sensor_api_client,
     test_sensor_api_event_status,
+    test_runtime_dashboard_heartbeat,
 )
 
 
@@ -228,6 +232,65 @@ class SensorAdminClientTests(unittest.TestCase):
                 test_sensor_api_event_status.main()
         self.assertEqual(raised.exception.code, 1)
         open_request.assert_not_called()
+
+    def test_incident_confirmation_dashboard_and_heartbeat_use_direct_transport(self) -> None:
+        cases = (
+            (test_incident_api, "test_incident_api.py", "GET", "/incidents/recent", 15),
+            (test_confirmation_api, "test_confirmation_api.py", "GET", "/confirmations/pending", 15),
+            (test_dashboard_api, "test_dashboard_api.py", "GET", "/dashboard/status", 15),
+        )
+        for module, label, method, path, timeout in cases:
+            with self.subTest(client=label):
+                opener = patch.object(
+                    module,
+                    "open_sensor_api_request",
+                    return_value=response(200, {"ok": True}),
+                )
+                with opener as open_request:
+                    module._request(
+                        method,
+                        f"https://hub.example{path}",
+                        token=ADMIN_TOKEN,
+                    )
+                request = open_request.call_args.args[0]
+                self.assertEqual(request.get_header("X-aura-api-token"), ADMIN_TOKEN)
+                self.assertEqual(open_request.call_args.kwargs, {"timeout": timeout})
+
+        with patch.object(
+            test_runtime_dashboard_heartbeat,
+            "open_sensor_api_request",
+            return_value=response(200, {}),
+        ) as open_request:
+            self.assertEqual(
+                test_runtime_dashboard_heartbeat._request(
+                    "https://hub.example/dashboard/status", ADMIN_TOKEN, timeout=9,
+                ),
+                200,
+            )
+        request = open_request.call_args.args[0]
+        self.assertEqual(request.get_header("X-aura-api-token"), ADMIN_TOKEN)
+        self.assertEqual(open_request.call_args.kwargs, {"timeout": 9})
+
+    def test_remaining_sensor_api_probes_refuse_remote_http_before_request(self) -> None:
+        clients = (
+            (test_incident_api, "test_incident_api.py"),
+            (test_confirmation_api, "test_confirmation_api.py"),
+            (test_dashboard_api, "test_dashboard_api.py"),
+            (test_runtime_dashboard_heartbeat, "test_runtime_dashboard_heartbeat.py"),
+        )
+        for module, label in clients:
+            with self.subTest(client=label):
+                with (
+                    patch.object(module, "load_env_file"),
+                    patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+                    patch.object(module, "open_sensor_api_request") as open_request,
+                    patch.object(sys, "argv", [label, "http://192.168.1.20:8787"]),
+                    redirect_stdout(io.StringIO()),
+                ):
+                    with self.assertRaises(SystemExit) as raised:
+                        module.main()
+                self.assertEqual(raised.exception.code, 1)
+                open_request.assert_not_called()
 
 
 if __name__ == "__main__":

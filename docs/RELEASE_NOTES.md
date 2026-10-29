@@ -376,3 +376,7 @@ returning a non-zero exit code before opening a request. Push CI
 and PR CI
 [40968385143](https://github.com/sujanmj/aura-companion/actions/runs/40968385143)
 passed on macOS, Windows and Ubuntu; both uploaded all three preview archives.
+
+Incident, confirmation, dashboard and runtime-heartbeat probes now follow the
+same direct transport rule. Twelve focused admin-client tests pass locally;
+cross-platform verification is pending.

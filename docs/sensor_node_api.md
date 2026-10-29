@@ -27,12 +27,12 @@ python scripts/test_sensor_api_client.py
 python scripts/test_sensor_api_auth.py
 ```
 
-The `test_sensor_api_client.py`, `test_sensor_api_auth.py`, and
-`test_sensor_api_event_status.py` probes accept an optional hub URL. HTTP is
-allowed only for loopback development; remote hubs must use HTTPS. Hub clients
-connect directly and refuse redirects so administrator credentials are not
-forwarded through a machine-wide proxy or to another URL. An unsafe hub URL
-also exits with an error status before a request is opened.
+The sensor API, incident, confirmation, dashboard and runtime-heartbeat probes
+accept an optional hub URL where documented. HTTP is allowed only for loopback
+development; remote hubs must use HTTPS. Authenticated hub clients connect
+directly and refuse redirects so administrator credentials are not forwarded
+through a machine-wide proxy or to another URL. An unsafe hub URL also exits
+with an error status before a request is opened.
 
 ## Authentication (v0.4)
 

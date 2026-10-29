@@ -1135,3 +1135,8 @@ URL violates the HTTPS/loopback policy. Push CI
 and PR CI
 [40968385143](https://github.com/sujanmj/aura-companion/actions/runs/40968385143)
 passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+
+The incident, confirmation, dashboard and runtime-heartbeat probes now use the
+same no-proxy, no-redirect transport and reject remote HTTP before sending the
+admin token. Twelve focused admin-client tests pass locally; cross-platform CI
+is pending for this final client group.
