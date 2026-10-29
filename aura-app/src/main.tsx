@@ -472,7 +472,12 @@ function App() {
             <button
               key={id}
               className={tab === id ? "selected" : ""}
-              onClick={() => setTab(id)}
+              onClick={() => {
+                setTab(id);
+                if (id === "memory") {
+                  void refresh().catch((e) => setError(String(e)));
+                }
+              }}
             >
               <span>{label}</span>
               <small>{n}</small>

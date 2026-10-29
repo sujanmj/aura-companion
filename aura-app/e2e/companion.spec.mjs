@@ -278,8 +278,14 @@ test("saved routines can be corrected and forgotten without automatic recreation
 }) => {
   await connect(page);
   await page.getByLabel("Your message").fill("I like gym workouts");
+  const memoryRefresh = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/status") &&
+      response.request().method() === "GET",
+  );
   await page.getByRole("button", { name: "Send ↗" }).click();
   await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await memoryRefresh;
   await page.getByRole("button", { name: "Memory 02" }).click();
   const routine = page.locator(".fact").filter({ hasText: "fitness interest" });
   await expect(routine).toBeVisible();
@@ -321,6 +327,7 @@ test("people are added only with recorded consent and can be forgotten", async (
   await expect(add).toBeDisabled();
   await page.getByLabel("They agreed that AURA may remember their name.").check();
   await add.click();
+  await expect(page.getByRole("status")).toContainText("Person added to AURA memory.");
   const person = page.locator(".fact").filter({ hasText: "Maya" });
   await expect(person).toBeVisible();
   await expect(person).toContainText("friend");

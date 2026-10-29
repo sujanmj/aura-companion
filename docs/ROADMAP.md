@@ -990,3 +990,10 @@ ambiguous network failure. This establishes a software client seam only; it
 does not run a Pi service, access a microphone or speaker, or prove physical
 room handoff. Native conversation-loop integration, cancellation/fencing at
 playback, reconnect behavior and hardware acceptance remain open.
+
+The first three-platform run for the client found two Windows browser failures
+where Memory assertions raced the saved-state refresh. Opening Memory now reloads
+the current local memory, and the affected browser tests wait for the chat or
+person-save refresh to finish. The full browser suite passes locally (18 tests),
+as do lint/build, 94 Python app tests, and the room-client, heartbeat and
+service suites. Cross-platform CI is being rerun for this follow-up.
