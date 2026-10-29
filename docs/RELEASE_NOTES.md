@@ -269,3 +269,32 @@ and pull-request CI in
 [40914144108](https://github.com/sujanmj/aura-companion/actions/runs/40914144108),
 which uploaded preview archives for all three platforms. Acoustic acceptance
 remains pending.
+
+## 2026-10-30 — room reservations and sensor transport hardening
+
+Enrolled Pi nodes can now make one explicit room-turn reservation using an
+existing owner's invitation and a stable caller-provided UUID. The client fails
+closed if the claim response is lost or rejected; it does not retry under a new
+ID or start capture, generate speech, or play audio. Physical room handoff is
+still not implemented.
+
+Network-bound sensor hubs now require TLS 1.2 or newer and absolute regular
+certificate/key files without symlinks in their paths. On POSIX systems the
+private key cannot be group-writable or world-accessible. The Pi systemd hub
+preflight applies the same checks. Remote node clients reject HTTP before
+sending credentials; HTTP remains available for loopback development. Before
+upgrading an existing network-bound hub, install a trusted certificate at
+`/etc/aura/tls/server.crt` and a private key at `/etc/aura/tls/server.key`, make
+the key readable by the `aura` account without world access, and install the
+issuing CA in each node's trust store. The updated service intentionally refuses
+to start without this configuration.
+
+The Memory panel refreshes saved state when opened, and browser checks now wait
+for the corresponding save/refresh. Commit `b5695ac` passed push CI in
+[40952983216](https://github.com/sujanmj/aura-companion/actions/runs/40952983216)
+and PR CI in
+[40952990897](https://github.com/sujanmj/aura-companion/actions/runs/40952990897).
+Both runs passed on macOS, Ubuntu and Windows and uploaded all three preview
+archives. These are software and packaging checks only. Pi installation, TLS
+certificate/trust setup, microphone/camera permissions, room playback, acoustic
+quality, and Developer ID signing/notarization remain unverified or blocked.
