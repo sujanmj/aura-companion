@@ -197,8 +197,12 @@ camera capture. It resumes local transcription after stopping; if a reminder is
 spoken with sensors off, they stay off. Stale speech completion callbacks are
 discarded so they cannot change the state of a later turn. Local native tests,
 the app build, 91 Python tests, 23 Node tests, 18 browser tests, frontend build
-and lint pass. Cross-platform CI and acoustic interruption acceptance remain
-pending.
+and lint pass. Commit `6dc3bf6` passed macOS, Ubuntu and Windows pull-request CI
+in [40900351981](https://github.com/sujanmj/aura-companion/actions/runs/40900351981),
+which uploaded all three preview archives. Ubuntu and Windows push jobs passed
+in [40900342769](https://github.com/sujanmj/aura-companion/actions/runs/40900342769);
+the macOS push job remained queued when recorded. Acoustic interruption
+acceptance remains pending.
 
 The optional Ollama brain now accepts only a numeric loopback URL and fixed API
 path. It bypasses proxy settings, never follows redirects, caps prompts/replies,

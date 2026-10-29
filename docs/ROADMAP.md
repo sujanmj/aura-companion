@@ -888,5 +888,10 @@ AURA was speaking a check-in with sensors off, the sensors stay off. Playback
 generation invalidation prevents an old speech completion from changing the
 state of a later turn. Local checks passed: 91 Python tests, 23 Node tests, all
 18 browser tests, native lifecycle/speech tests, frontend build/lint and an
-ad-hoc signed Mac app build. Cross-platform CI is pending; no acoustic
+ad-hoc signed Mac app build. Commit `6dc3bf6` passed macOS, Ubuntu and Windows
+pull-request CI in
+[40900351981](https://github.com/sujanmj/aura-companion/actions/runs/40900351981),
+which uploaded all three preview archives. The push run passed Ubuntu and
+Windows in [40900342769](https://github.com/sujanmj/aura-companion/actions/runs/40900342769);
+its macOS job remained queued when this evidence was recorded. No acoustic
 interruption acceptance is claimed.
