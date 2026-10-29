@@ -261,5 +261,8 @@ that remain unrun or blocked.
 Phase 9 native tests now cover repeated solo follow-up windows: each spoken AURA
 reply renews one bounded window, supporting a short exchange without a repeated
 wake phrase while the session-only opt-in remains active. Native tests and an
-ad-hoc Mac app build pass locally. Slow Windows browser runs now have a 60-second
-per-test ceiling; fresh PR CI and acoustic acceptance are pending.
+ad-hoc Mac app build pass locally. The Windows browser timeout increase passed
+all PR platforms and Windows/Ubuntu push CI. A separate macOS push E2E run found
+a tab-navigation wait race in an existing routine test; an explicit heading
+wait was added and its new CI run is pending. Acoustic acceptance remains
+pending.

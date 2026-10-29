@@ -962,8 +962,14 @@ Added native lifecycle coverage proving that each accepted solo follow-up may
 receive one reply without repeating the wake phrase, and that the reply opens a
 new bounded window. The invitation remains off unless freshly enabled for the
 ambient session and remains revocable by Pause; no speaker identity is inferred.
-Native tests and an ad-hoc Mac app build pass locally. Cross-platform CI is
-pending. This verifies state logic only, not acoustic turn detection or live
-speech quality. Repeated Windows E2E attempts hit the 30-second ceiling in
-different unrelated tests while macOS, Ubuntu and the push Windows run passed;
-the Windows-only browser-test ceiling is now 60 seconds pending a fresh PR run.
+Native tests and an ad-hoc Mac app build pass locally. The chained-turn commit
+`d560347` passed macOS, Ubuntu and Windows push CI in
+[40909846047](https://github.com/sujanmj/aura-companion/actions/runs/40909846047);
+the PR Windows browser job hit unrelated 30-second test ceilings twice. The
+Windows-only browser-test ceiling is now 60 seconds. Its PR run passed all three
+platforms in [40912788103](https://github.com/sujanmj/aura-companion/actions/runs/40912788103),
+and push Windows/Ubuntu passed in
+[40912780134](https://github.com/sujanmj/aura-companion/actions/runs/40912780134).
+Push macOS found a race in an existing routine test's tab-navigation wait; an
+explicit heading wait now covers that transition, with fresh CI pending. This
+verifies state logic only, not acoustic turn detection or live speech quality.

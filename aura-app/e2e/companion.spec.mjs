@@ -304,6 +304,7 @@ test("saved routines can be corrected and forgotten without automatic recreation
   await page.getByRole("button", { name: "Send ↗" }).click();
   await expect(page.locator(".message.assistant").last()).toBeVisible();
   await page.getByRole("button", { name: "Memory 02" }).click();
+  await expect(page.getByRole("heading", { name: "Routines" })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Routines" }).locator(".."),
   ).toContainText("No routines have been saved.");
