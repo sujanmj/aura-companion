@@ -386,3 +386,13 @@ passed macOS, Windows and Ubuntu push CI
 and PR CI
 [40970187073](https://github.com/sujanmj/aura-companion/actions/runs/40970187073);
 both runs uploaded all three preview archives.
+
+The Three.js holographic scene is now split from the initial React shell, which
+uses the static orb while the scene loads. The initial JavaScript chunk fell
+from 1,177.90 kB (326.04 kB gzip) to 266.92 kB (82.76 kB gzip); the scene is a
+separate 912.29 kB chunk. Local build, lint, Node and browser tests pass.
+Commit `dfd56d9` passed macOS, Windows and Ubuntu push CI
+[40972148472](https://github.com/sujanmj/aura-companion/actions/runs/40972148472)
+and PR CI
+[40972155147](https://github.com/sujanmj/aura-companion/actions/runs/40972155147);
+both runs uploaded all three preview archives.

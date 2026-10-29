@@ -83,6 +83,15 @@ These checks establish only the behavior covered by their tests:
   [40970187073](https://github.com/sujanmj/aura-companion/actions/runs/40970187073)
   passed on macOS, Windows and Ubuntu; both uploaded all three preview
   archives. This is software-only evidence.
+- Commit `dfd56d9` lazy-loads the Three.js scene behind a static orb fallback.
+  The initial JavaScript bundle is 266.92 kB minified (82.76 kB gzip), with the
+  scene in a separate 912.29 kB chunk. Build, lint, 28 Node tests and 18 browser
+  tests pass locally. Push CI
+  [40972148472](https://github.com/sujanmj/aura-companion/actions/runs/40972148472)
+  and PR CI
+  [40972155147](https://github.com/sujanmj/aura-companion/actions/runs/40972155147)
+  passed on macOS, Windows and Ubuntu; both uploaded all three preview
+  archives. No hardware rendering or wall-clock startup measurement is claimed.
 - Commit `154af25`: Pi event, heartbeat and room-claim requests use a direct
   no-proxy opener and refuse redirects before credentials can be sent to
   another destination. Push CI

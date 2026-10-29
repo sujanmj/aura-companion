@@ -1153,3 +1153,18 @@ and PR CI
 [40970187073](https://github.com/sujanmj/aura-companion/actions/runs/40970187073);
 both runs uploaded all three preview archives. This client-side check does not
 validate a deployed hub or Pi device.
+
+## 2026-10-30 continuation — lazy holographic scene loading (Phase 2)
+
+The React shell now lazy-loads its Three.js scene behind the existing static orb
+fallback, allowing the companion controls and privacy status to render without
+waiting for the scene chunk. Local production output split the initial
+JavaScript from 1,177.90 kB minified (326.04 kB gzip) to 266.92 kB (82.76 kB
+gzip); the holographic scene is a separate 912.29 kB chunk (244.31 kB gzip).
+This measures bundle layout, not wall-clock startup or hardware rendering.
+Local build, lint, 28 Node tests and 18 browser tests pass. Commit `dfd56d9`
+passed macOS, Windows and Ubuntu push CI in
+[40972148472](https://github.com/sujanmj/aura-companion/actions/runs/40972148472)
+and PR CI
+[40972155147](https://github.com/sujanmj/aura-companion/actions/runs/40972155147);
+both uploaded all three preview archives.
