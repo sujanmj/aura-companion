@@ -6,6 +6,7 @@ const folder = mkdtempSync(path.join(tmpdir(), "aura-browser-"));
 export default defineConfig({
   testDir: "./e2e",
   workers: 1,
+  timeout: process.platform === "win32" ? 60_000 : 30_000,
   use: {
     baseURL: "http://127.0.0.1:18791",
     headless: true,

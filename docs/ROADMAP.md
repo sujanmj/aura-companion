@@ -964,4 +964,6 @@ new bounded window. The invitation remains off unless freshly enabled for the
 ambient session and remains revocable by Pause; no speaker identity is inferred.
 Native tests and an ad-hoc Mac app build pass locally. Cross-platform CI is
 pending. This verifies state logic only, not acoustic turn detection or live
-speech quality.
+speech quality. Repeated Windows E2E attempts hit the 30-second ceiling in
+different unrelated tests while macOS, Ubuntu and the push Windows run passed;
+the Windows-only browser-test ceiling is now 60 seconds pending a fresh PR run.
