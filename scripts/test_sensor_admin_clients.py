@@ -141,7 +141,9 @@ class SensorAdminClientTests(unittest.TestCase):
             ]),
             redirect_stdout(io.StringIO()),
         ):
-            test_sensor_api_client.main()
+            with self.assertRaises(SystemExit) as raised:
+                test_sensor_api_client.main()
+        self.assertEqual(raised.exception.code, 1)
         open_request.assert_not_called()
 
     def test_sensor_api_auth_client_uses_direct_transport_for_admin_token(self) -> None:
@@ -180,7 +182,9 @@ class SensorAdminClientTests(unittest.TestCase):
             ]),
             redirect_stdout(io.StringIO()),
         ):
-            test_sensor_api_auth.main()
+            with self.assertRaises(SystemExit) as raised:
+                test_sensor_api_auth.main()
+        self.assertEqual(raised.exception.code, 1)
         open_request.assert_not_called()
 
     def test_sensor_event_status_client_uses_direct_authenticated_transport(self) -> None:

@@ -44,7 +44,7 @@ def main() -> None:
     base_url = (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL).rstrip("/")
     if not is_safe_sensor_api_url(base_url):
         print("AURA_SENSOR_API_CLIENT_ERROR: hub URL must use HTTPS outside loopback")
-        return
+        raise SystemExit(1)
     token = os.environ.get("AURA_SENSOR_API_TOKEN")
 
     if not token:

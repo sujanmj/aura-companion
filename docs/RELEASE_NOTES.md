@@ -360,7 +360,8 @@ and PR CI
 passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
 
 The sensor API authentication and event-status test probes also use direct
-transport, reject redirects, and refuse remote HTTP before sending tokens.
+transport, reject redirects, and refuse remote HTTP before sending tokens with
+a non-zero exit status.
 The 10-test admin-client suite, 49 focused room/transport tests and all 94 app
 Python tests pass locally. Commit `b7c72ff` passed macOS, Windows and Ubuntu
 push CI
