@@ -1099,10 +1099,9 @@ Focused tests verify no-proxy/redirect behavior, enrollment/status request
 scope, and existing retry/claim behavior. Local verification passes: 94 app
 Python tests and 43 focused room, invitation, heartbeat, service, admin-client
 and sensor-transport tests. The new admin-client suite is included in CI.
-Cross-platform CI is pending. No Pi installation or network deployment is
-claimed. Commit
-`154af25` passed macOS, Windows and Ubuntu push CI in
-[40962677800](https://github.com/sujanmj/aura-companion/actions/runs/40962677800)
+Commit `29061f7` passed macOS, Windows and Ubuntu push CI in
+[40964038358](https://github.com/sujanmj/aura-companion/actions/runs/40964038358)
 and PR CI
-[40962684508](https://github.com/sujanmj/aura-companion/actions/runs/40962684508);
-both runs uploaded preview archives for all three platforms.
+[40964044684](https://github.com/sujanmj/aura-companion/actions/runs/40964044684);
+both runs uploaded preview archives for all three platforms. This is software
+transport coverage only; no Pi installation or network deployment is claimed.

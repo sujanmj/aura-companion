@@ -342,9 +342,9 @@ sensor enrollment and dashboard-status utilities, now use a shared transport
 that bypasses system proxies and refuses redirects. Remote HTTP is rejected
 before credentials are sent; remote hubs require HTTPS. Focused tests and all
 94 app Python tests pass locally. No Pi installation or deployed network hub is
-represented by this change. Commit
-`154af25` passed macOS, Windows and Ubuntu push CI in
-[40962677800](https://github.com/sujanmj/aura-companion/actions/runs/40962677800)
+represented by this change. Commit `29061f7` passed macOS, Windows and Ubuntu
+push CI
+[40964038358](https://github.com/sujanmj/aura-companion/actions/runs/40964038358)
 and PR CI
-[40962684508](https://github.com/sujanmj/aura-companion/actions/runs/40962684508);
+[40964044684](https://github.com/sujanmj/aura-companion/actions/runs/40964044684);
 both runs uploaded all three preview archives.
