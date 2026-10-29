@@ -955,3 +955,13 @@ macOS, Ubuntu and Windows push CI in
 [40906445069](https://github.com/sujanmj/aura-companion/actions/runs/40906445069),
 which uploaded previews for all three platforms. This does not represent
 local-timezone/DST or live speaker acceptance.
+
+## 2026-10-29 continuation — chained solo follow-up windows (Phase 9)
+
+Added native lifecycle coverage proving that each accepted solo follow-up may
+receive one reply without repeating the wake phrase, and that the reply opens a
+new bounded window. The invitation remains off unless freshly enabled for the
+ambient session and remains revocable by Pause; no speaker identity is inferred.
+Native tests and an ad-hoc Mac app build pass locally. Cross-platform CI is
+pending. This verifies state logic only, not acoustic turn detection or live
+speech quality.

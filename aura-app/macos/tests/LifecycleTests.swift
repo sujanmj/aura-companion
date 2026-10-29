@@ -35,6 +35,16 @@ struct LifecycleTests {
             precondition(!timedTurn.accepts("late follow-up", now: 100 + Double(seconds)), "The selected follow-up deadline is exclusive")
         }
 
+        var backAndForth = ConversationTurnGate()
+        backAndForth.configure(true, durationSeconds: 30)
+        let exchange = backAndForth.generation
+        backAndForth.replyFinished(generation: exchange, now: 100)
+        precondition(backAndForth.accepts("first follow-up", now: 129.9))
+        backAndForth.replyFinished(generation: exchange, now: 130)
+        precondition(backAndForth.accepts("second follow-up without wake phrase", now: 159.9), "Each invited reply opens a new bounded window")
+        backAndForth.replyFinished(generation: exchange, now: 160)
+        precondition(!backAndForth.accepts("late nearby speech", now: 190), "The renewed window remains bounded and exclusive")
+
         var playback = SpeechPlaybackGeneration()
         let firstPlayback = playback.begin()
         precondition(playback.contains(firstPlayback))

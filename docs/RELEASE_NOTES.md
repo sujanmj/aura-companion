@@ -257,3 +257,8 @@ Phase 12 now has a device acceptance record in
 [`PHASE_12_ACCEPTANCE.md`](PHASE_12_ACCEPTANCE.md), separating automated software
 evidence from Mac, Pi, acoustic, multi-room, privacy and release-signing checks
 that remain unrun or blocked.
+
+Phase 9 native tests now cover repeated solo follow-up windows: each spoken AURA
+reply renews one bounded window, supporting a short exchange without a repeated
+wake phrase while the session-only opt-in remains active. Native tests and an
+ad-hoc Mac app build pass locally; CI and acoustic acceptance are pending.
