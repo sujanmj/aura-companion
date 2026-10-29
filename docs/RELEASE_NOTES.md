@@ -115,7 +115,30 @@ platform preview archives were uploaded.
 The source/web preview now chooses the appropriate default Python command,
 respects an explicit interpreter path, and uses UTF-8 for memory IPC. Packaging
 normalizes manifest/archive paths across platforms. Windows has been added to
-CI alongside macOS and Linux; results are pending. PowerShell setup is documented
+CI alongside macOS and Linux. Commit `4c9b44a` passed all three platforms in
+run 40774579580 with Linux and macOS preview uploads. PowerShell setup is documented
 in the app README. No Windows native capture helper or signed installer is
 included. Local Mac checks passed: 80 Python, 22 Node, 17 browser, build/lint and
 ad-hoc native build. Real Windows devices and permissions remain untested.
+
+
+## 2026-10-29 — local Ollama transport guard
+
+The existing Ollama provider now accepts only HTTP on a numeric loopback address
+and the `/api/generate` path. It does not follow redirects or use environment
+HTTP proxies, so prompts remain on the local machine. `OLLAMA_URL` can select a
+loopback port, and `OLLAMA_MODEL` is reflected in readiness. Prompts are capped
+at 20,000 characters, response bodies at 1 MiB and returned text at 16,000
+characters. Network, malformed or oversized responses fail closed to the existing
+local fallback.
+
+Four new tests use a disposable loopback HTTP server to cover Unicode, model
+selection, rejected off-device URLs, redirects and size/parse failures. They do
+not install or invoke an Ollama model. A live Ollama model check still requires
+one installed on the user's Mac or Windows device.
+
+The optional Ollama brain now accepts only a numeric loopback URL and fixed API
+path. It bypasses proxy settings, never follows redirects, caps prompts/replies,
+and exposes the selected `OLLAMA_MODEL` in setup readiness. Custom `OLLAMA_URL`
+ports still have to be local. Tests used a temporary loopback server; no real
+Ollama installation or model was available or claimed.

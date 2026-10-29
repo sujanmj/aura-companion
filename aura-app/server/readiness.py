@@ -16,7 +16,7 @@ def brain_readiness(env=None):
         return {'provider': 'unsupported', 'state': 'unavailable', 'model': '', 'missing': []}
     missing = [key for key in requirements[provider] if not env.get(key, '').strip()]
     model = (env.get('ANTHROPIC_MODEL', '') if provider == 'claude' else
-             env.get('OPENAI_MODEL', 'gpt-4.1-mini') if provider == 'openai' else 'llama3.1')
+             env.get('OPENAI_MODEL', 'gpt-4.1-mini') if provider == 'openai' else env.get('OLLAMA_MODEL', 'llama3.1'))
     return {'provider': provider, 'state': 'missing_configuration' if missing else 'configured_unverified',
             'model': model, 'missing': missing}
 

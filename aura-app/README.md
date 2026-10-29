@@ -129,7 +129,11 @@ button sends only the fixed text “Reply with exactly: AURA connection confirme
 to that provider. It includes no conversation or saved memory, and AURA does not
 retain the reply. Missing settings list only variable names, never key values.
 Restart after changing configuration. The selected model now matches the
-selected brain, including OpenAI and Ollama.
+selected brain, including OpenAI and Ollama. Ollama requests go only to a numeric
+loopback address (`127.0.0.1:11434` by default; `OLLAMA_URL` can select another local
+loopback port), use the selected `OLLAMA_MODEL`, and
+are bounded. A configured server is not live-verified until its separate check
+succeeds.
 
 Before declaring the single-device companion ready, record these live results:
 

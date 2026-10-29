@@ -745,5 +745,26 @@ Local Mac evidence: 80 Python, 22 Node and 17 browser tests passed; build, lint,
 and ad-hoc native build passed. The new IPC test round-trips Hindi, accented text
 and emoji through a real Python process despite an inherited ASCII setting.
 The packaging test verifies archive/member hashes and slash-normalized paths.
-Windows CI results are pending. This does not provide a Windows native ambient
+Commit `4c9b44a` passed macOS, Ubuntu and Windows CI in
+[40774579580](https://github.com/sujanmj/aura-companion/actions/runs/40774579580),
+including Linux and macOS preview uploads. This does not provide a Windows native ambient
 helper, installer, signing, acoustic tests or device-permission acceptance.
+
+## 2026-10-29 continuation — keep Ollama prompts on device (Phase 2)
+
+Hardened the existing optional Ollama provider. It connects through a direct
+HTTP socket only to a numeric loopback address and fixed `/api/generate` path;
+it does not consult proxies or follow redirects. Prompts, response bodies and
+returned text have fixed size bounds. Bad or unavailable local responses fall
+back through the existing behavior. `OLLAMA_MODEL` is now consistent between
+provider selection and the setup panel. A loopback `OLLAMA_URL` may select a
+custom local port; external hosts, DNS names, credentials, queries, fragments
+and other paths are refused before sending any prompt.
+
+Four temporary local-server tests cover Unicode request/reply, model setting,
+rejected remote destinations, no redirects, size limits and malformed output.
+The complete local validation passed: 84 Python tests, 22 Node tests, 17 browser
+tests, lint, the provider/cloud/node regressions and Mac native tests/build.
+These HTTP tests do not verify an installed Ollama model, its quality, or its
+availability on a physical device. That live check remains optional and must be
+run by the user with a model installed.

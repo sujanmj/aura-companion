@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import http.client
+import ipaddress
 import json
 import os
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 from typing import Any
 
 from config.env_loader import load_env_file
@@ -15,40 +18,74 @@ class BaseLLMProvider:
 
 
 class OllamaProvider(BaseLLMProvider):
+    """Send prompts only to an explicitly local Ollama HTTP endpoint."""
+    MAX_PROMPT_CHARS = 20000
+    MAX_RESPONSE_BYTES = 1024 * 1024
+    MAX_REPLY_CHARS = 16000
+
     def __init__(
         self,
         model_name: str = "llama3.1",
-        ollama_url: str = "http://localhost:11434/api/generate",
+        ollama_url: str = "http://127.0.0.1:11434/api/generate",
         timeout_seconds: int = 20,
     ) -> None:
         self.model_name = model_name
         self.ollama_url = ollama_url
         self.timeout_seconds = timeout_seconds
 
-    def generate(self, prompt: str) -> str | None:
-        payload = {
-            "model": self.model_name,
-            "prompt": prompt,
-            "stream": False,
-        }
-
+    def _endpoint(self) -> tuple[str, int, str] | None:
         try:
-            data = json.dumps(payload).encode("utf-8")
-            request = urllib.request.Request(
-                self.ollama_url,
-                data=data,
-                headers={"Content-Type": "application/json"},
-                method="POST",
+            parsed = urlsplit(self.ollama_url)
+            address = ipaddress.ip_address(parsed.hostname or "")
+            if (parsed.scheme != "http" or not address.is_loopback
+                    or parsed.username or parsed.password or parsed.query
+                    or parsed.fragment or parsed.path != "/api/generate"):
+                return None
+            port = parsed.port or 80
+            if not 1 <= port <= 65535:
+                return None
+            host = address.compressed
+            path = "/api/generate"
+            return host, port, path
+        except (ValueError, TypeError):
+            return None
+
+    def generate(self, prompt: str) -> str | None:
+        endpoint = self._endpoint()
+        if (endpoint is None or not isinstance(prompt, str) or not prompt.strip()
+                or len(prompt) > self.MAX_PROMPT_CHARS
+                or not isinstance(self.model_name, str) or not self.model_name.strip()
+                or len(self.model_name) > 128):
+            return None
+
+        connection = http.client.HTTPConnection(
+            endpoint[0], endpoint[1], timeout=self.timeout_seconds
+        )
+        try:
+            payload = json.dumps({
+                "model": self.model_name,
+                "prompt": prompt,
+                "stream": False,
+            }).encode("utf-8")
+            connection.request(
+                "POST", endpoint[2], body=payload,
+                headers={"Content-Type": "application/json", "Accept": "application/json"},
             )
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                body = response.read().decode("utf-8")
-            parsed: dict[str, Any] = json.loads(body)
-            text = parsed.get("response")
-            if isinstance(text, str) and text.strip():
+            response = connection.getresponse()
+            if response.status != 200:
+                return None
+            body = response.read(self.MAX_RESPONSE_BYTES + 1)
+            if len(body) > self.MAX_RESPONSE_BYTES:
+                return None
+            parsed = json.loads(body.decode("utf-8"))
+            text = parsed.get("response") if isinstance(parsed, dict) else None
+            if isinstance(text, str) and text.strip() and len(text) <= self.MAX_REPLY_CHARS:
                 return text.strip()
             return None
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError, OSError, ValueError):
+        except (http.client.HTTPException, TimeoutError, OSError, json.JSONDecodeError, UnicodeDecodeError, ValueError):
             return None
+        finally:
+            connection.close()
 
 
 class ClaudeProvider(BaseLLMProvider):
@@ -202,7 +239,11 @@ class LLMProvider:
         elif selected == "openai":
             self.provider = OpenAIProvider(timeout_seconds=timeout_seconds)
         elif selected == "ollama":
-            self.provider = OllamaProvider(timeout_seconds=timeout_seconds)
+            self.provider = OllamaProvider(
+                model_name=os.environ.get("OLLAMA_MODEL", "llama3.1"),
+                ollama_url=os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434/api/generate"),
+                timeout_seconds=timeout_seconds,
+            )
         elif selected == "gemini":
             self.provider = GeminiProvider()
         elif selected == "groq":
