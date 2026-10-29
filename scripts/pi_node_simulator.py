@@ -16,23 +16,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.env_loader import load_env_file
-from config.sensor_transport import is_safe_sensor_api_url
+from config.sensor_transport import is_safe_sensor_api_url, open_sensor_api_request
 
 AUTH_HEADER = "X-AURA-API-Token"
 DEFAULT_HUB_URL = "http://127.0.0.1:8787"
 
 
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
-
-
 def _open_hub_request(request: urllib.request.Request, timeout: int):
     """Keep enrolled-node credentials on the configured hub connection."""
-    opener = urllib.request.build_opener(
-        urllib.request.ProxyHandler({}), _NoRedirectHandler()
-    )
-    return opener.open(request, timeout=timeout)
+    return open_sensor_api_request(request, timeout)
 
 
 NODE_PRESETS: dict[str, dict[str, Any]] = {

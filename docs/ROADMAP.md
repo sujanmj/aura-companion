@@ -1091,15 +1091,16 @@ playback, room cancellation/fencing, or physical handoff acceptance is claimed.
 
 ## 2026-10-30 continuation — direct Pi hub transport (Phase 5)
 
-The Pi simulator's event, heartbeat and room-claim requests now bypass
-machine-wide HTTP proxies and refuse redirects. These requests carry enrolled
-node credentials and are intended for the configured local/LAN sensor hub; the
-transport policy avoids forwarding those credentials through a system proxy or
-to a redirect destination. Focused tests verify the direct no-proxy opener,
-redirect refusal and existing retry/claim behavior. Local verification passes:
-94 app Python tests and 39 focused room, invitation, heartbeat, service and
-sensor-transport tests. Cross-platform CI is pending. Remote sensor hubs still
-require HTTPS, and no Pi installation or network deployment is claimed. Commit
+The Pi simulator's event, heartbeat and room-claim requests, plus sensor-node
+enrollment and dashboard-status utilities, now use a shared direct transport
+that ignores machine-wide proxies and refuses redirects. Remote HTTP URLs are
+rejected before administrator credentials are sent; remote hubs require HTTPS.
+Focused tests verify no-proxy/redirect behavior, enrollment/status request
+scope, and existing retry/claim behavior. Local verification passes: 94 app
+Python tests and 43 focused room, invitation, heartbeat, service, admin-client
+and sensor-transport tests. The new admin-client suite is included in CI.
+Cross-platform CI is pending. No Pi installation or network deployment is
+claimed. Commit
 `154af25` passed macOS, Windows and Ubuntu push CI in
 [40962677800](https://github.com/sujanmj/aura-companion/actions/runs/40962677800)
 and PR CI

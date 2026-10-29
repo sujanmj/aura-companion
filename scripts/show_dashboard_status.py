@@ -9,6 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.env_loader import load_env_file
+from config.sensor_transport import is_safe_sensor_api_url, open_sensor_api_request
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8787"
 AUTH_HEADER = "X-AURA-API-Token"
@@ -17,6 +18,10 @@ AUTH_HEADER = "X-AURA-API-Token"
 def main() -> None:
     load_env_file()
     base_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL
+    base_url = base_url.rstrip("/")
+    if not is_safe_sensor_api_url(base_url):
+        print("AURA_DASHBOARD_STATUS_ERROR: hub URL must use HTTPS outside loopback")
+        return
     token = os.environ.get("AURA_SENSOR_API_TOKEN")
 
     headers = {"Accept": "application/json"}
@@ -30,7 +35,7 @@ def main() -> None:
     )
 
     try:
-        with urllib.request.urlopen(request, timeout=15) as response:
+        with open_sensor_api_request(request, timeout=15) as response:
             body = json.loads(response.read().decode("utf-8"))
     except urllib.error.URLError:
         print("AURA_DASHBOARD_STATUS_ERROR: server not running")

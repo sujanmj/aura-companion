@@ -2,8 +2,22 @@
 from __future__ import annotations
 
 import ipaddress
+import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def open_sensor_api_request(request: urllib.request.Request, timeout: int):
+    """Open a hub request directly, without ambient proxies or redirects."""
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), _NoRedirectHandler()
+    )
+    return opener.open(request, timeout=timeout)
 
 
 def is_loopback_host(host: str | None) -> bool:

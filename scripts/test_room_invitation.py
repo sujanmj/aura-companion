@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from config import sensor_transport
 from scripts import room_invitation
 
 
@@ -66,7 +67,7 @@ class RoomInvitationTests(unittest.TestCase):
         self.assertIn(f"session_id={SESSION}", output)
         request = build_opener.return_value.open.call_args.args[0]
         self.assertEqual(build_opener.call_args.args[0].proxies, {})
-        self.assertIs(build_opener.call_args.args[1], room_invitation._NoRedirectHandler)
+        self.assertIsInstance(build_opener.call_args.args[1], sensor_transport._NoRedirectHandler)
         self.assertEqual(request.full_url, f"{HUB}/rooms/start")
         self.assertEqual(request.get_header("X-aura-api-token"), TOKEN)
         self.assertEqual(json.loads(request.data), {"node_id": "bedroom", "approved": True})
@@ -158,7 +159,7 @@ class RoomInvitationTests(unittest.TestCase):
                 self.assertIn("check invitation status before trying again", output)
 
     def test_redirect_handler_never_forwards_the_admin_token(self) -> None:
-        handler = room_invitation._NoRedirectHandler()
+        handler = sensor_transport._NoRedirectHandler()
         self.assertIsNone(handler.redirect_request(
             None, None, 307, "Temporary Redirect", {}, "https://other.example/rooms/status"
         ))

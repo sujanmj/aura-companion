@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from config import sensor_transport
 from scripts import pi_node_simulator
 
 
@@ -140,7 +141,7 @@ class RoomHandoffClientTests(unittest.TestCase):
         proxy_handler, redirect_handler = build.call_args.args
         self.assertIsInstance(proxy_handler, urllib.request.ProxyHandler)
         self.assertEqual(proxy_handler.proxies, {})
-        self.assertIsInstance(redirect_handler, pi_node_simulator._NoRedirectHandler)
+        self.assertIsInstance(redirect_handler, sensor_transport._NoRedirectHandler)
         self.assertIsNone(redirect_handler.redirect_request(
             request, None, 302, "Found", {}, "https://attacker.example/"
         ))

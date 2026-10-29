@@ -337,11 +337,12 @@ and PR CI
 [40960227044](https://github.com/sujanmj/aura-companion/actions/runs/40960227044);
 both runs uploaded macOS, Windows and Ubuntu preview archives.
 
-The Pi simulator's authenticated event, heartbeat and room-claim requests now
-bypass system proxies and refuse redirects, keeping node credentials directed
-to the configured hub. Focused tests and all 94 app Python tests pass locally.
-Remote sensor hubs still require HTTPS. No Pi
-installation or deployed network hub is represented by this change. Commit
+The Pi simulator's authenticated event, heartbeat and room-claim requests, plus
+sensor enrollment and dashboard-status utilities, now use a shared transport
+that bypasses system proxies and refuses redirects. Remote HTTP is rejected
+before credentials are sent; remote hubs require HTTPS. Focused tests and all
+94 app Python tests pass locally. No Pi installation or deployed network hub is
+represented by this change. Commit
 `154af25` passed macOS, Windows and Ubuntu push CI in
 [40962677800](https://github.com/sujanmj/aura-companion/actions/runs/40962677800)
 and PR CI

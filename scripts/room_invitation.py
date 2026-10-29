@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from config.env_loader import load_env_file
-from config.sensor_transport import is_safe_sensor_api_url
+from config.sensor_transport import is_safe_sensor_api_url, open_sensor_api_request
 
 AUTH_HEADER = "X-AURA-API-Token"
 DEFAULT_HUB_URL = "http://127.0.0.1:8787"
@@ -24,11 +24,6 @@ DEFAULT_HUB_URL = "http://127.0.0.1:8787"
 
 class InvitationClientError(RuntimeError):
     pass
-
-
-class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
 
 
 def post_invitation_request(
@@ -53,10 +48,7 @@ def post_invitation_request(
     try:
         # Sensor hubs are LAN services; avoid leaking admin credentials to a
         # machine-wide proxy and keep loopback development requests local.
-        opener = urllib.request.build_opener(
-            urllib.request.ProxyHandler({}), _NoRedirectHandler
-        )
-        with opener.open(request, timeout=10) as response:
+        with open_sensor_api_request(request, timeout=10) as response:
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         status = exc.code

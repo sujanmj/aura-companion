@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from config.env_loader import load_env_file
-from config.sensor_transport import is_safe_sensor_api_url
+from config.sensor_transport import is_safe_sensor_api_url, open_sensor_api_request
 
 AUTH_HEADER = "X-AURA-API-Token"
 
@@ -55,7 +55,7 @@ def main(argv: list[str] | None = None) -> int:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
+        with open_sensor_api_request(request, timeout=10) as response:
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         print(f"AURA_SENSOR_NODE_ENROLL_ERROR: hub returned HTTP {exc.code}")
