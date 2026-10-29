@@ -1,10 +1,20 @@
-import { Component, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Component,
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createRoot } from "react-dom/client";
-import { Scene } from "./scene/Scene";
 import { api } from "./lib/api";
 import { listen, speak, silence } from "./lib/voice";
 import "./style.css";
 import { OnlineLookup } from "./OnlineLookup";
+const Scene = lazy(() =>
+  import("./scene/Scene").then(({ Scene: scene }) => ({ default: scene })),
+);
 type Message = {
   id?: number;
   role: string;
@@ -515,11 +525,13 @@ function App() {
           <section className="presence" aria-busy={busy}>
             <div className="orb">
               <OrbBoundary>
-                <Scene
-                  active={busy || mic || speaking}
-                  level={level}
-                  theme={theme}
-                />
+                <Suspense fallback={<div className="fallback-orb" aria-hidden="true">A</div>}>
+                  <Scene
+                    active={busy || mic || speaking}
+                    level={level}
+                    theme={theme}
+                  />
+                </Suspense>
               </OrbBoundary>
               <div className="orb-label">A U R A</div>
             </div>
