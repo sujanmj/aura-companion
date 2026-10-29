@@ -51,7 +51,11 @@ def post_invitation_request(
         method="POST",
     )
     try:
-        opener = urllib.request.build_opener(_NoRedirectHandler)
+        # Sensor hubs are LAN services; avoid leaking admin credentials to a
+        # machine-wide proxy and keep loopback development requests local.
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}), _NoRedirectHandler
+        )
         with opener.open(request, timeout=10) as response:
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:

@@ -160,11 +160,12 @@ class RoomHandoffTests(unittest.TestCase):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         admin = 'a' * 40
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         def post(path, body, token):
             request = urllib.request.Request(f'http://127.0.0.1:{server.server_port}/rooms/{path}',
                 data=json.dumps(body).encode(), headers={'Content-Type': 'application/json', 'X-AURA-API-Token': token})
             try:
-                response = urllib.request.urlopen(request, timeout=3)
+                response = opener.open(request, timeout=10)
             except urllib.error.HTTPError as exc:
                 response = exc
             with response:

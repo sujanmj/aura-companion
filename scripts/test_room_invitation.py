@@ -65,7 +65,8 @@ class RoomInvitationTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertIn(f"session_id={SESSION}", output)
         request = build_opener.return_value.open.call_args.args[0]
-        self.assertIs(build_opener.call_args.args[0], room_invitation._NoRedirectHandler)
+        self.assertEqual(build_opener.call_args.args[0].proxies, {})
+        self.assertIs(build_opener.call_args.args[1], room_invitation._NoRedirectHandler)
         self.assertEqual(request.full_url, f"{HUB}/rooms/start")
         self.assertEqual(request.get_header("X-aura-api-token"), TOKEN)
         self.assertEqual(json.loads(request.data), {"node_id": "bedroom", "approved": True})
