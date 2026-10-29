@@ -838,8 +838,12 @@ Automated tests use temporary SQLite observations and cover fresh, high-
 confidence matching labels, stale or low-confidence rows, secondary-label
 label rejection, unrelated/person queries, and explicit-note priority. The full
 suite passes locally. This does not verify Vision's real-world object accuracy
-or guarantee that AURA can find an object on a particular Mac. Cross-platform
-CI is pending.
+or guarantee that AURA can find an object on a particular Mac. Commit
+`20c5bbc` passed macOS, Ubuntu and Windows push CI in
+[40813822187](https://github.com/sujanmj/aura-companion/actions/runs/40813822187)
+and pull-request CI in
+[40813827634](https://github.com/sujanmj/aura-companion/actions/runs/40813827634).
+All three preview archives were uploaded from the push run.
 
 ## 2026-10-29 continuation — camera estimate review clarity (Phases 4, 8)
 
