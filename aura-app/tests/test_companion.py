@@ -797,7 +797,7 @@ class CompanionTest(unittest.TestCase):
 
         payload = pi_node_simulator.build_payload('bedroom', 'movement_absent')
         with (
-            patch.object(pi_node_simulator.urllib.request, 'urlopen', side_effect=[
+            patch.object(pi_node_simulator, '_open_hub_request', side_effect=[
                 urllib.error.URLError('temporary disconnect'), Response()
             ]) as urlopen,
             patch.object(pi_node_simulator.time, 'sleep'),

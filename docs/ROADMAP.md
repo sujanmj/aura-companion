@@ -1088,3 +1088,15 @@ and PR CI
 both runs uploaded all three preview archives.
 This validates the software reservation response only; no Pi service, speaker
 playback, room cancellation/fencing, or physical handoff acceptance is claimed.
+
+## 2026-10-30 continuation — direct Pi hub transport (Phase 5)
+
+The Pi simulator's event, heartbeat and room-claim requests now bypass
+machine-wide HTTP proxies and refuse redirects. These requests carry enrolled
+node credentials and are intended for the configured local/LAN sensor hub; the
+transport policy avoids forwarding those credentials through a system proxy or
+to a redirect destination. Focused tests verify the direct no-proxy opener,
+redirect refusal and existing retry/claim behavior. Local verification passes:
+94 app Python tests and 39 focused room, invitation, heartbeat, service and
+sensor-transport tests. Cross-platform CI is pending. Remote sensor hubs still
+require HTTPS, and no Pi installation or network deployment is claimed.

@@ -48,8 +48,8 @@ class PiNodeHeartbeatTests(unittest.TestCase):
             io.BytesIO(b"ignored"),
         )
         with (
-            patch(
-                "urllib.request.urlopen",
+            patch.object(
+                pi_node_simulator, "_open_hub_request",
                 side_effect=[request, response(200)],
             ) as urlopen,
             patch.object(pi_node_simulator.time, "sleep") as sleep,
@@ -75,7 +75,7 @@ class PiNodeHeartbeatTests(unittest.TestCase):
             io.BytesIO(b"private response body"),
         )
         with (
-            patch("urllib.request.urlopen", side_effect=unauthorized) as urlopen,
+            patch.object(pi_node_simulator, "_open_hub_request", side_effect=unauthorized) as urlopen,
             patch.object(pi_node_simulator.time, "sleep") as sleep,
         ):
             result, output = self.call_heartbeat()
@@ -89,8 +89,8 @@ class PiNodeHeartbeatTests(unittest.TestCase):
 
     def test_retries_request_timeout(self) -> None:
         with (
-            patch(
-                "urllib.request.urlopen",
+            patch.object(
+                pi_node_simulator, "_open_hub_request",
                 side_effect=[TimeoutError("timed out"), response(200)],
             ) as urlopen,
             patch.object(pi_node_simulator.time, "sleep") as sleep,
@@ -103,7 +103,7 @@ class PiNodeHeartbeatTests(unittest.TestCase):
         sleep.assert_called_once_with(0.5)
 
     def test_invalid_success_body_is_reported_as_rejection(self) -> None:
-        with patch("urllib.request.urlopen", return_value=response(200, b"not json")):
+        with patch.object(pi_node_simulator, "_open_hub_request", return_value=response(200, b"not json")):
             result, output = self.call_heartbeat()
 
         self.assertEqual(result, 1)

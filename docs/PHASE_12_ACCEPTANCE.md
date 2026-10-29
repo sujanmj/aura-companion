@@ -48,6 +48,10 @@ These checks establish only the behavior covered by their tests:
   passed on macOS, Windows and Ubuntu; both runs uploaded all three preview
   archives. This does not establish Pi installation, playback fencing, speaker
   output, or physical room handoff.
+- Current software change: Pi event, heartbeat and room-claim requests use a
+  direct no-proxy opener and refuse redirects before credentials can be sent to
+  another destination. Focused transport and app tests pass locally; CI is
+  pending. This does not establish deployment on a Pi or a live network hub.
 
 ## Required device checks
 

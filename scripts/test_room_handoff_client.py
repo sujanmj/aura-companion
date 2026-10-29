@@ -7,6 +7,7 @@ import os
 import sys
 import unittest
 import urllib.error
+import urllib.request
 import uuid
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -57,7 +58,7 @@ class RoomHandoffClientTests(unittest.TestCase):
         return result, output.getvalue()
 
     def test_claim_sends_stable_turn_id_once_with_node_credential(self) -> None:
-        with patch("urllib.request.urlopen", return_value=response()) as urlopen:
+        with patch.object(pi_node_simulator, "_open_hub_request", return_value=response()) as urlopen:
             result, output = self.claim()
 
         self.assertEqual(result, 0)
@@ -73,8 +74,8 @@ class RoomHandoffClientTests(unittest.TestCase):
         })
 
     def test_unknown_network_outcome_is_not_retried(self) -> None:
-        with patch(
-            "urllib.request.urlopen", side_effect=TimeoutError("response lost")
+        with patch.object(
+            pi_node_simulator, "_open_hub_request", side_effect=TimeoutError("response lost")
         ) as urlopen:
             result, output = self.claim()
 
@@ -91,7 +92,7 @@ class RoomHandoffClientTests(unittest.TestCase):
             {},
             io.BytesIO(b"private hub details"),
         )
-        with patch("urllib.request.urlopen", side_effect=rejected) as urlopen:
+        with patch.object(pi_node_simulator, "_open_hub_request", side_effect=rejected) as urlopen:
             result, output = self.claim()
 
         self.assertEqual(result, 1)
@@ -106,8 +107,8 @@ class RoomHandoffClientTests(unittest.TestCase):
             (SESSION, 2, "not-a-uuid"),
             ("", 2, TURN),
         ):
-            with self.subTest(generation=generation, turn=turn), patch(
-                "urllib.request.urlopen"
+            with self.subTest(generation=generation, turn=turn), patch.object(
+                pi_node_simulator, "_open_hub_request"
             ) as urlopen, patch.dict(os.environ, {"AURA_SENSOR_NODE_TOKEN": TOKEN}):
                 self.assertEqual(
                     pi_node_simulator.claim_invited_room_turn(
@@ -119,7 +120,7 @@ class RoomHandoffClientTests(unittest.TestCase):
 
     def test_remote_http_is_rejected_before_sending_node_token(self) -> None:
         with (
-            patch("urllib.request.urlopen") as urlopen,
+            patch.object(pi_node_simulator, "_open_hub_request") as urlopen,
             patch.dict(os.environ, {"AURA_SENSOR_NODE_TOKEN": TOKEN}),
         ):
             result = pi_node_simulator.claim_invited_room_turn(
@@ -127,6 +128,22 @@ class RoomHandoffClientTests(unittest.TestCase):
             )
         self.assertEqual(result, 1)
         urlopen.assert_not_called()
+
+    def test_hub_opener_ignores_proxies_and_refuses_redirects(self) -> None:
+        opener = MagicMock()
+        request = urllib.request.Request("https://hub.example/rooms/claim")
+        with patch.object(urllib.request, "build_opener", return_value=opener) as build:
+            pi_node_simulator._open_hub_request(request, timeout=7)
+
+        self.assertEqual(opener.open.call_args.args[0], request)
+        self.assertEqual(opener.open.call_args.kwargs, {"timeout": 7})
+        proxy_handler, redirect_handler = build.call_args.args
+        self.assertIsInstance(proxy_handler, urllib.request.ProxyHandler)
+        self.assertEqual(proxy_handler.proxies, {})
+        self.assertIsInstance(redirect_handler, pi_node_simulator._NoRedirectHandler)
+        self.assertIsNone(redirect_handler.redirect_request(
+            request, None, 302, "Found", {}, "https://attacker.example/"
+        ))
 
     def test_mismatched_or_stale_claim_response_fails_closed(self) -> None:
         valid_session = {
@@ -147,8 +164,8 @@ class RoomHandoffClientTests(unittest.TestCase):
             {key: value for key, value in valid_session.items() if key != "turn_id"},
         )
         for invalid in invalid_sessions:
-            with self.subTest(session=invalid), patch(
-                "urllib.request.urlopen",
+            with self.subTest(session=invalid), patch.object(
+                pi_node_simulator, "_open_hub_request",
                 return_value=response(body=json.dumps({"ok": True, "session": invalid}).encode()),
             ) as urlopen:
                 result, output = self.claim()
@@ -166,8 +183,8 @@ class RoomHandoffClientTests(unittest.TestCase):
                 "expires_at": time.time() + 60,
             },
         }
-        with patch(
-            "urllib.request.urlopen",
+        with patch.object(
+            pi_node_simulator, "_open_hub_request",
             return_value=response(body=json.dumps({**valid, "ok": False}).encode()),
         ) as urlopen:
             result, output = self.claim()

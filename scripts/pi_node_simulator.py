@@ -21,6 +21,20 @@ from config.sensor_transport import is_safe_sensor_api_url
 AUTH_HEADER = "X-AURA-API-Token"
 DEFAULT_HUB_URL = "http://127.0.0.1:8787"
 
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _open_hub_request(request: urllib.request.Request, timeout: int):
+    """Keep enrolled-node credentials on the configured hub connection."""
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), _NoRedirectHandler()
+    )
+    return opener.open(request, timeout=timeout)
+
+
 NODE_PRESETS: dict[str, dict[str, Any]] = {
     "bedroom": {
         "source": "pi_bedroom_node",
@@ -199,7 +213,7 @@ def post_event(hub_url: str, payload: dict[str, Any], token: str | None) -> dict
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=15) as response:
+            with _open_hub_request(request, timeout=15) as response:
                 body = response.read().decode("utf-8")
                 return json.loads(body) if body else {}
         except urllib.error.HTTPError as exc:
@@ -239,7 +253,7 @@ def send_node_heartbeat(
     )
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with _open_hub_request(request, timeout=10) as response:
                 body = response.read().decode("utf-8")
                 try:
                     result = json.loads(body) if body else {}
@@ -311,7 +325,7 @@ def claim_invited_room_turn(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
+        with _open_hub_request(request, timeout=10) as response:
             body = response.read().decode("utf-8")
             result = json.loads(body) if body else {}
             reservation = result.get("session") if isinstance(result, dict) else None

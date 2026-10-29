@@ -336,3 +336,9 @@ check. Commit `03e1a89` passed all three platforms in push CI
 and PR CI
 [40960227044](https://github.com/sujanmj/aura-companion/actions/runs/40960227044);
 both runs uploaded macOS, Windows and Ubuntu preview archives.
+
+The Pi simulator's authenticated event, heartbeat and room-claim requests now
+bypass system proxies and refuse redirects, keeping node credentials directed
+to the configured hub. Focused tests and all 94 app Python tests pass locally;
+cross-platform CI is pending. Remote sensor hubs still require HTTPS. No Pi
+installation or deployed network hub is represented by this change.
