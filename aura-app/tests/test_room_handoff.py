@@ -13,11 +13,14 @@ import urllib.error
 import uuid
 from http.server import HTTPServer
 from unittest.mock import patch
+from contextlib import redirect_stdout
+from io import StringIO
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from memory.sqlite_store import AuraMemoryStore
 from devices.room_handoff import RoomHandoff, HandoffDenied
 from api.sensor_api_server import AuraSensorAPIHandler
+from scripts import pi_node_simulator
 
 
 class RoomHandoffTests(unittest.TestCase):
@@ -176,6 +179,18 @@ class RoomHandoffTests(unittest.TestCase):
                 claim = {'session_id': session['session_id'], 'generation': 1, 'turn_id': str(uuid.uuid4())}
                 self.assertEqual(post('claim', claim, admin)[0], 401)
                 self.assertEqual(post('claim', claim, self.tokens['kitchen'])[0], 409)
+                client_turn = str(uuid.uuid4())
+                with (
+                    patch.object(pi_node_simulator, 'load_env_file'),
+                    patch.dict(os.environ, {'AURA_SENSOR_NODE_TOKEN': self.tokens['bedroom']}),
+                    redirect_stdout(StringIO()),
+                ):
+                    self.assertEqual(pi_node_simulator.claim_invited_room_turn(
+                        session['session_id'], 1, client_turn,
+                        f'http://127.0.0.1:{server.server_port}',
+                    ), 0)
+                client_claim = {'session_id': session['session_id'], 'generation': 1, 'turn_id': client_turn}
+                self.assertEqual(post('claim', client_claim, self.tokens['bedroom'])[0], 409)
                 self.assertEqual(post('claim', claim, self.tokens['bedroom'])[0], 200)
                 self.assertEqual(post('claim', claim, self.tokens['bedroom'])[0], 409)
                 self.assertEqual(post('transfer', {**claim, 'node_id': 'kitchen', 'approved': True}, admin)[0], 200)

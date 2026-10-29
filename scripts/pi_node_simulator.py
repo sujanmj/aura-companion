@@ -261,6 +261,64 @@ def send_node_heartbeat(
     return 1
 
 
+def claim_invited_room_turn(
+    session_id: str,
+    generation: int,
+    turn_id: str,
+    hub_url: str | None = None,
+    token: str | None = None,
+) -> int:
+    """Reserve one already-invited turn; never retries an ambiguous claim."""
+    if token is None:
+        load_env_file()
+        token = os.environ.get("AURA_SENSOR_NODE_TOKEN", "")
+    token = token.strip()
+    if len(token) < 32:
+        print("AURA_PI_ROOM_CLAIM_ERROR: set AURA_SENSOR_NODE_TOKEN from enrollment")
+        return 1
+    if type(generation) is not int or generation < 1:
+        print("AURA_PI_ROOM_CLAIM_ERROR: generation must be a positive integer")
+        return 1
+    try:
+        if not isinstance(turn_id, str) or str(uuid.UUID(turn_id)) != turn_id:
+            raise ValueError
+    except (ValueError, AttributeError):
+        print("AURA_PI_ROOM_CLAIM_ERROR: turn ID must be a canonical UUID")
+        return 1
+    if not isinstance(session_id, str) or not session_id.strip():
+        print("AURA_PI_ROOM_CLAIM_ERROR: session ID is required")
+        return 1
+
+    base_url = (hub_url or get_hub_url()).rstrip("/")
+    request = urllib.request.Request(
+        f"{base_url}/rooms/claim",
+        data=json.dumps({
+            "session_id": session_id,
+            "generation": generation,
+            "turn_id": turn_id,
+        }).encode("utf-8"),
+        headers={"Content-Type": "application/json", AUTH_HEADER: token},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            body = response.read().decode("utf-8")
+            result = json.loads(body) if body else {}
+            reservation = result.get("session") if isinstance(result, dict) else None
+            if response.status != 200 or not isinstance(reservation, dict) or reservation.get("reserved") is not True:
+                print("AURA_PI_ROOM_CLAIM_ERROR: hub rejected room claim")
+                return 1
+            print(f"AURA_PI_ROOM_CLAIM_OK session_id={session_id} generation={generation} turn_id={turn_id}")
+            return 0
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+        exc.close()
+        print(f"AURA_PI_ROOM_CLAIM_ERROR: HTTP {status}; do not retry with a new turn ID")
+    except (urllib.error.URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
+        print("AURA_PI_ROOM_CLAIM_ERROR: claim outcome is unknown; do not retry with a new turn ID")
+    return 1
+
+
 def send_simulated_event(
     node: str,
     event_type: str,
@@ -335,6 +393,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--source", default=None, help="Override source identifier")
     parser.add_argument("--summary", default=None, help="Override event summary")
     parser.add_argument("--heartbeat", default=None, help="Send node heartbeat with its enrolled token")
+    parser.add_argument("--claim-session", default=None, help="Claim one turn in an existing room invitation")
+    parser.add_argument("--generation", type=int, default=None, help="Current invitation generation for --claim-session")
+    parser.add_argument("--turn-id", default=None, help="Stable canonical UUID for the logical reply being claimed")
     parser.add_argument("--loop", type=int, default=1, help="Send event N times")
     parser.add_argument("--delay", type=float, default=3.0, help="Delay between loop sends")
     parser.add_argument(
@@ -354,6 +415,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.heartbeat:
         return send_node_heartbeat(args.heartbeat, hub_url=args.hub_url)
+
+    if args.claim_session is not None:
+        if args.generation is None or args.turn_id is None:
+            print("Usage: python scripts/pi_node_simulator.py --claim-session ID --generation N --turn-id UUID")
+            return 1
+        return claim_invited_room_turn(
+            args.claim_session, args.generation, args.turn_id, hub_url=args.hub_url
+        )
 
     if not args.node or not args.event_type:
         print("Usage: python scripts/pi_node_simulator.py <node> <event_type>")

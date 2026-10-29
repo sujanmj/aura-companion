@@ -5,6 +5,20 @@ This prototype does not activate a microphone, camera, speaker, provider, tool,
 or memory recall. There is no room tracking or inferred person identity. It is
 not integrated into the Pi heartbeat client or native Mac conversation loop yet.
 
+The Pi node simulator now includes a one-shot client for `/rooms/claim`:
+
+```sh
+python scripts/pi_node_simulator.py --claim-session SESSION_ID --generation 1 --turn-id TURN_UUID
+```
+
+It uses the enrolled `AURA_SENSOR_NODE_TOKEN` and requires a caller-supplied
+canonical UUID that remains stable for the logical reply. The client sends one
+request only. If its response is lost, the reservation outcome is unknown and
+the client fails closed; callers must not mint a new turn ID and replay the same
+reply. A successful reservation still does not activate capture, generate a
+reply, or play audio. This command is a software integration point, not physical
+room handoff acceptance.
+
 Use the existing private sensor hub deployment and authentication. The hub's
 master `X-AURA-API-Token` controls invitations. Enrolled nodes use their separate
 credentials only to claim turns; possession of a node token cannot start,
@@ -65,3 +79,9 @@ scoping, expiry and process restart; rotation/revocation; two concurrent databas
 connections racing for a turn; validation/capacity; and actual HTTP role checks,
 transfer and stop without conversation-memory writes. No hardware, production
 memory database or external service is used.
+
+The node claim client is covered separately with
+`python3 scripts/test_room_handoff_client.py`. Its tests verify the exact
+credential and stable turn payload, strict input validation, rejection handling,
+and no retry after an ambiguous network result. These tests do not connect a
+client to hardware or exercise speaker playback.

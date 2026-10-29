@@ -977,3 +977,16 @@ and pull-request CI in
 [40914144108](https://github.com/sujanmj/aura-companion/actions/runs/40914144108);
 both runs uploaded macOS, Windows and Ubuntu preview archives. This verifies
 state logic only, not acoustic turn detection or live speech quality.
+
+## 2026-10-30 continuation — enrolled-node room claim client (Phase 5)
+
+Added an explicit one-shot `/rooms/claim` client to the Pi node simulator. It
+requires an active invitation's session and generation plus a caller-supplied
+canonical UUID for the logical reply, and authenticates with the enrolled node
+credential. The client makes one request and fails closed when the response is
+lost or rejected, since changing the turn UUID could replay a reply. Automated
+coverage checks validation, credential/payload scope, conflict handling and
+ambiguous network failure. This establishes a software client seam only; it
+does not run a Pi service, access a microphone or speaker, or prove physical
+room handoff. Native conversation-loop integration, cancellation/fencing at
+playback, reconnect behavior and hardware acceptance remain open.
