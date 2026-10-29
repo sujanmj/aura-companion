@@ -349,3 +349,12 @@ push CI
 and PR CI
 [40964044684](https://github.com/sujanmj/aura-companion/actions/runs/40964044684);
 both runs uploaded all three preview archives.
+
+Commit `2de8276` also routes the documented sensor API test client through the
+same no-proxy, no-redirect transport and refuses remote HTTP before sending
+credentials. Its focused tests and all 94 app Python tests passed locally.
+Push CI
+[40966173161](https://github.com/sujanmj/aura-companion/actions/runs/40966173161)
+and PR CI
+[40966180392](https://github.com/sujanmj/aura-companion/actions/runs/40966180392)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.

@@ -1106,3 +1106,13 @@ and PR CI
 [40964044684](https://github.com/sujanmj/aura-companion/actions/runs/40964044684);
 both runs uploaded preview archives for all three platforms. This is software
 transport coverage only; no Pi installation or network deployment is claimed.
+
+The documented sensor API test client now uses the same direct transport and
+refuses remote HTTP before sending its administrator token. Focused local tests
+and the 94 app Python tests pass. Commit `2de8276` passed macOS, Windows and
+Ubuntu push CI in
+[40966173161](https://github.com/sujanmj/aura-companion/actions/runs/40966173161)
+and PR CI
+[40966180392](https://github.com/sujanmj/aura-companion/actions/runs/40966180392);
+both runs uploaded all three preview archives. This still does not establish a
+deployed hub or physical Pi behavior.

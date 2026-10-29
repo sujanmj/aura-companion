@@ -48,11 +48,16 @@ These checks establish only the behavior covered by their tests:
   passed on macOS, Windows and Ubuntu; both runs uploaded all three preview
   archives. This does not establish Pi installation, playback fencing, speaker
   output, or physical room handoff.
-- Current software change: Pi event, heartbeat and room-claim requests, node
-  enrollment, dashboard status and the documented sensor API test client share
-  a direct no-proxy transport that refuses redirects. Remote HTTP is rejected
-  before credentials are sent. Cross-platform CI is pending for this follow-up.
-  This does not establish Pi deployment or a live network hub.
+- Commit `2de8276`: the documented sensor API test client joins Pi event,
+  heartbeat and room-claim requests, node enrollment and dashboard status on a
+  direct no-proxy transport that refuses redirects. Remote HTTP is rejected
+  before credentials are sent. Local verification passed 94 app Python tests
+  and 45 focused tests. Push CI
+  [40966173161](https://github.com/sujanmj/aura-companion/actions/runs/40966173161)
+  and PR CI
+  [40966180392](https://github.com/sujanmj/aura-companion/actions/runs/40966180392)
+  passed on macOS, Windows and Ubuntu; both uploaded all three preview
+  archives. This does not establish Pi deployment or a live network hub.
 - Commit `154af25`: Pi event, heartbeat and room-claim requests use a direct
   no-proxy opener and refuse redirects before credentials can be sent to
   another destination. Push CI
