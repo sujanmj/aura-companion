@@ -620,6 +620,10 @@ not close the unresolved Phase 2 hardware acceptance gates.
   mistaken memories, interruptions, network loss, privacy controls and deletion.
 - Publish only a signed, documented build whose tested sensors, providers,
   retention behavior and known limitations match its release notes.
+- Added a device-by-device acceptance record in
+  [`PHASE_12_ACCEPTANCE.md`](PHASE_12_ACCEPTANCE.md). It separates CI evidence
+  from physical-device checks, records current hardware and signing blockers,
+  and prevents simulated results from being recorded as home acceptance.
 
 Exit for these future phases: the behavior is useful in real homes, stays under
 the user's control, has passed privacy and reliability acceptance, and is never

@@ -252,3 +252,8 @@ suite passes locally. Commit `9ed1705` passed all three push CI jobs in
 [40906445069](https://github.com/sujanmj/aura-companion/actions/runs/40906445069),
 with preview archives for macOS, Windows and Ubuntu. This does not establish
 speaker, timezone or daylight-saving acceptance.
+
+Phase 12 now has a device acceptance record in
+[`PHASE_12_ACCEPTANCE.md`](PHASE_12_ACCEPTANCE.md), separating automated software
+evidence from Mac, Pi, acoustic, multi-room, privacy and release-signing checks
+that remain unrun or blocked.
