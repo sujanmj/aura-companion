@@ -361,4 +361,10 @@ passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
 
 The sensor API authentication and event-status test probes also use direct
 transport, reject redirects, and refuse remote HTTP before sending tokens.
-Focused tests pass locally; cross-platform CI is pending for this follow-up.
+The 10-test admin-client suite, 49 focused room/transport tests and all 94 app
+Python tests pass locally. Commit `b7c72ff` passed macOS, Windows and Ubuntu
+push CI
+[40967410539](https://github.com/sujanmj/aura-companion/actions/runs/40967410539)
+and PR CI
+[40967416698](https://github.com/sujanmj/aura-companion/actions/runs/40967416698);
+both runs uploaded all three preview archives.

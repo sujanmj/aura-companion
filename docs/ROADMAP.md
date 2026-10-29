@@ -1119,6 +1119,11 @@ deployed hub or physical Pi behavior.
 
 The sensor API authentication and event-status probes now use the same direct
 transport as the documented client; both reject remote HTTP before sending
-credentials. Ten focused admin-client tests pass locally, including no-request
-checks for insecure URLs. Cross-platform CI is pending. This remains a client
-transport check and does not validate a deployed hub or Pi device.
+credentials. Ten focused admin-client tests, the 49-test room/transport group,
+and all 94 app Python tests pass locally. Commit `b7c72ff` passed macOS,
+Windows and Ubuntu push CI in
+[40967410539](https://github.com/sujanmj/aura-companion/actions/runs/40967410539)
+and PR CI
+[40967416698](https://github.com/sujanmj/aura-companion/actions/runs/40967416698);
+both runs uploaded all three preview archives. This remains a client transport
+check and does not validate a deployed hub or Pi device.

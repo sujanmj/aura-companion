@@ -58,6 +58,15 @@ These checks establish only the behavior covered by their tests:
   [40966180392](https://github.com/sujanmj/aura-companion/actions/runs/40966180392)
   passed on macOS, Windows and Ubuntu; both uploaded all three preview
   archives. This does not establish Pi deployment or a live network hub.
+- Commit `b7c72ff`: the authenticated sensor API authentication and event-status
+  probes also use direct no-proxy transport and refuse redirects. Remote HTTP
+  is rejected before credentials are sent. Ten focused admin-client tests,
+  49 room/transport tests and all 94 app Python tests pass locally. Push CI
+  [40967410539](https://github.com/sujanmj/aura-companion/actions/runs/40967410539)
+  and PR CI
+  [40967416698](https://github.com/sujanmj/aura-companion/actions/runs/40967416698)
+  passed on macOS, Windows and Ubuntu; both uploaded all three preview
+  archives. This does not validate a deployed hub or physical Pi behavior.
 - Commit `154af25`: Pi event, heartbeat and room-claim requests use a direct
   no-proxy opener and refuse redirects before credentials can be sent to
   another destination. Push CI
