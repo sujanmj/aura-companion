@@ -37,8 +37,12 @@ not provide GPIO drivers or room-to-room conversation handoff. Install the
 checkout at `/opt/aura-companion`, create a dedicated `aura` system user, and
 install the unit file into `/etc/systemd/system/`. Create `/etc/aura/aura.env`
 with a unique `AURA_SENSOR_API_TOKEN` of at least 32 characters; keep that file
-readable only by root. The service binds to the network, so the token is required
-and checked before startup. The database stays in the service's private
+readable only by root. Install a trusted server certificate at
+`/etc/aura/tls/server.crt` and its private key at `/etc/aura/tls/server.key`;
+the key must be readable by the `aura` service account and unavailable to other
+users. The service binds to the network only with TLS 1.2 or newer, and its
+startup check rejects missing certificate material or a world-accessible key.
+The database stays in the service's private
 `/var/lib/aura` state directory. Review firewall rules to allow port 8787 only
 from trusted devices before enabling the service. The unit and startup validator
 are covered by automated tests, but have not been run on a Raspberry Pi.

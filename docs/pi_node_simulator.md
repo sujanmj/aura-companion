@@ -48,10 +48,11 @@ python scripts/pi_node_simulator.py balcony plant_moisture_low --loop 3 --delay 
 
 ## Remote hub example
 
-Point at another machine on your LAN:
+For a hub on another machine, configure a trusted TLS certificate and use its
+hostname. Remote HTTP URLs are rejected before AURA sends the node credential.
 
 ```powershell
-python scripts/pi_node_simulator.py bedroom fall_detected --hub-url http://192.168.1.50:8787
+python scripts/pi_node_simulator.py bedroom fall_detected --hub-url https://aura-hub.example.com:8787
 ```
 
 Or set `AURA_SENSOR_API_URL` in `config/keys.env`.
@@ -67,6 +68,10 @@ Or set `AURA_SENSOR_API_URL` in `config/keys.env`.
 | `--loop N` | Send event N times |
 | `--delay SECONDS` | Delay between loop sends (default: 3) |
 | `--list` | Show supported nodes/events |
+
+The default `http://127.0.0.1:8787` is limited to local development. A network
+hub requires HTTPS; install its issuing CA in the Pi operating system trust
+store so normal certificate verification remains enabled.
 
 ## Supported nodes
 

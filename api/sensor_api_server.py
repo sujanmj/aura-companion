@@ -6,6 +6,8 @@ import re
 import secrets
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import ipaddress
+import ssl
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -668,8 +670,30 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             self._send_json(500, {"ok": False, "error": "internal_server_error"})
 
 
+def server_tls_context(host: str, environment: dict[str, str] | None = None):
+    values = os.environ if environment is None else environment
+    if host.lower() == "localhost":
+        loopback = True
+    else:
+        try:
+            loopback = ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            loopback = False
+    if loopback:
+        return None
+    cert_file = values.get("AURA_SENSOR_TLS_CERT_FILE", "")
+    key_file = values.get("AURA_SENSOR_TLS_KEY_FILE", "")
+    if not cert_file or not key_file:
+        raise ValueError("TLS certificate and private key are required for a network-bound sensor API")
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_cert_chain(certfile=cert_file, keyfile=key_file)
+    return context
+
+
 def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
     load_env_file()
+    tls_context = server_tls_context(host)
     db_path = Path(os.environ.get("AURA_DB_PATH", str(DEFAULT_DB_PATH))).expanduser().resolve()
     store = AuraMemoryStore(db_path)
     store.apply_schema()
@@ -685,11 +709,14 @@ def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
     )
 
     server = HTTPServer((host, port), AuraSensorAPIHandler)
+    if tls_context:
+        server.socket = tls_context.wrap_socket(server.socket, server_side=True)
     server.aura_store = store  # type: ignore[attr-defined]
 
     print(f"AURA_SENSOR_API_STARTING")
     print(f"host={host}")
     print(f"port={port}")
+    print(f"transport={'https' if tls_context else 'http_loopback_only'}")
     if not get_sensor_api_token():
         print(
             "AURA_SENSOR_API_AUTH_REQUIRED: protected routes reject requests until "

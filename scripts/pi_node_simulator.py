@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.env_loader import load_env_file
+from config.sensor_transport import is_safe_sensor_api_url
 
 AUTH_HEADER = "X-AURA-API-Token"
 DEFAULT_HUB_URL = "http://127.0.0.1:8787"
@@ -179,6 +180,8 @@ def build_payload(
 
 
 def post_event(hub_url: str, payload: dict[str, Any], token: str | None) -> dict[str, Any]:
+    if not is_safe_sensor_api_url(hub_url):
+        raise ValueError("hub URL must use HTTPS, or HTTP on loopback for local development")
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -224,6 +227,9 @@ def send_node_heartbeat(
         print("AURA_PI_NODE_HEARTBEAT_ERROR: set AURA_SENSOR_NODE_TOKEN from enrollment")
         return 1
     base_url = (hub_url or get_hub_url()).rstrip("/")
+    if not is_safe_sensor_api_url(base_url):
+        print("AURA_PI_NODE_HEARTBEAT_ERROR: hub URL must use HTTPS outside loopback")
+        return 1
     request = urllib.request.Request(
         f"{base_url}/nodes/heartbeat",
         data=json.dumps({"node_id": node_id}).encode("utf-8"),
@@ -290,6 +296,9 @@ def claim_invited_room_turn(
         return 1
 
     base_url = (hub_url or get_hub_url()).rstrip("/")
+    if not is_safe_sensor_api_url(base_url):
+        print("AURA_PI_ROOM_CLAIM_ERROR: hub URL must use HTTPS outside loopback")
+        return 1
     request = urllib.request.Request(
         f"{base_url}/rooms/claim",
         data=json.dumps({

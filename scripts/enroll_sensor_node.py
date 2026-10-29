@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from config.env_loader import load_env_file
+from config.sensor_transport import is_safe_sensor_api_url
 
 AUTH_HEADER = "X-AURA-API-Token"
 
@@ -30,6 +31,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     load_env_file()
     hub_url = (args.hub_url or os.environ.get("AURA_SENSOR_API_URL") or "http://127.0.0.1:8787").rstrip("/")
+    if not is_safe_sensor_api_url(hub_url):
+        print("AURA_SENSOR_NODE_ENROLL_ERROR: hub URL must use HTTPS outside loopback")
+        return 1
     token = os.environ.get("AURA_SENSOR_API_TOKEN", "").strip()
     if len(token) < 32:
         print("AURA_SENSOR_NODE_ENROLL_ERROR: configure a 32-character AURA_SENSOR_API_TOKEN on the hub")

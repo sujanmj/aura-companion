@@ -1,0 +1,36 @@
+"""Transport rules for requests carrying AURA sensor credentials."""
+from __future__ import annotations
+
+import ipaddress
+from urllib.parse import urlparse
+
+
+def is_loopback_host(host: str | None) -> bool:
+    if not host:
+        return False
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def is_safe_sensor_api_url(url: str) -> bool:
+    """Allow HTTPS anywhere and HTTP only to a loopback development hub."""
+    try:
+        parsed = urlparse(url)
+        # Accessing .port also rejects malformed ports.
+        _ = parsed.port
+    except (TypeError, ValueError):
+        return False
+    return (
+        parsed.scheme == "https" and bool(parsed.hostname)
+        or parsed.scheme == "http" and is_loopback_host(parsed.hostname)
+    ) and (
+        parsed.username is None
+        and parsed.password is None
+        and not parsed.query
+        and not parsed.fragment
+        and parsed.path in {"", "/"}
+    )

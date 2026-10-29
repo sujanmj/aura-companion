@@ -1,7 +1,7 @@
 name: AURA application
 on:
   push:
-    paths: ['aura-app/**', 'brain/**', 'companion/**', 'memory/**', 'api/**', 'devices/**', 'cloud/**', 'config/**', 'scripts/test_openai_provider.py', 'scripts/test_cloud_sync.py', '.github/workflows/aura-app.yml']
+    paths: ['aura-app/**', 'brain/**', 'companion/**', 'memory/**', 'api/**', 'devices/**', 'cloud/**', 'config/**', 'scripts/**', 'deploy/systemd/**', '.github/workflows/aura-app.yml']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -40,6 +40,7 @@ jobs:
       - run: python ../scripts/test_cloud_sync.py
       - run: python ../scripts/test_pi_node_heartbeat.py
       - run: python ../scripts/test_room_handoff_client.py
+      - run: python ../scripts/test_sensor_transport.py
       - run: python ../scripts/test_pi_node_heartbeat_service.py
       - run: python -m unittest discover -s tests -p 'test_*.py'
       - run: npm run bundle

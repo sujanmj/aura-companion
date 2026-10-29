@@ -1000,3 +1000,16 @@ service suites. Corrected commit `bfde1c4` passed macOS, Windows and Ubuntu push
 CI in [40948677085](https://github.com/sujanmj/aura-companion/actions/runs/40948677085).
 The run uploaded all three preview archives. This verifies software and
 packaging builds only; it does not add physical-device acceptance.
+
+## 2026-10-30 continuation — TLS for network sensor hubs (Phase 5)
+
+The sensor API now refuses to bind to a network address without a configured
+TLS certificate and private key, and negotiates TLS 1.2 or newer. HTTP remains
+available on loopback for local development. Sensor event, enrollment, heartbeat
+and room-claim clients accept HTTPS for remote hubs and reject remote HTTP before
+sending a credential; the heartbeat service validator applies the same rule.
+The hardened systemd hub template now requires certificate files and rejects a
+missing certificate or a world-accessible private key before startup. Updated
+the Pi instructions to require a trusted certificate and HTTPS. Automated tests
+cover transport URL policy, loopback exceptions, server TLS setup and service
+preflight; no live certificate, Pi install or network deployment is claimed.

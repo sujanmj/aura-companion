@@ -5,6 +5,7 @@ import os
 import re
 from collections.abc import Mapping
 from urllib.parse import urlparse
+from config.sensor_transport import is_safe_sensor_api_url
 
 
 def validate_environment(environment: Mapping[str, str] | None = None) -> bool:
@@ -28,7 +29,7 @@ def validate_environment(environment: Mapping[str, str] | None = None) -> bool:
         and token.strip() == token
         and len(set(token)) > 1
         and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", node_id) is not None
-        and parsed_url.scheme in {"http", "https"}
+        and is_safe_sensor_api_url(hub_url)
         and bool(parsed_url.hostname)
         and parsed_url.username is None
         and parsed_url.password is None

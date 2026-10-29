@@ -66,6 +66,11 @@ class PiNodeHeartbeatServiceTests(unittest.TestCase):
             with self.subTest(url=url):
                 self.assertFalse(validate_environment(environment))
 
+    def test_allows_loopback_http_for_local_development(self) -> None:
+        environment = valid_environment()
+        environment["AURA_SENSOR_API_URL"] = "http://127.0.0.1:8787"
+        self.assertTrue(validate_environment(environment))
+
     def test_requires_a_heartbeat_interval_within_online_window(self) -> None:
         for interval in ("invalid", "4", "61"):
             environment = valid_environment()

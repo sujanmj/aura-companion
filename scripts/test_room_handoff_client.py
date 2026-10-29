@@ -105,6 +105,17 @@ class RoomHandoffClientTests(unittest.TestCase):
                 )
                 urlopen.assert_not_called()
 
+    def test_remote_http_is_rejected_before_sending_node_token(self) -> None:
+        with (
+            patch("urllib.request.urlopen") as urlopen,
+            patch.dict(os.environ, {"AURA_SENSOR_NODE_TOKEN": TOKEN}),
+        ):
+            result = pi_node_simulator.claim_invited_room_turn(
+                SESSION, 2, TURN, "http://192.168.1.20:8787"
+            )
+        self.assertEqual(result, 1)
+        urlopen.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

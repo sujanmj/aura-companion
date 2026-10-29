@@ -109,7 +109,7 @@ Invoke-RestMethod -Uri "http://<hub-ip>:8787/events" -Method Post -Headers $head
 import json
 import urllib.request
 
-url = "http://<hub-ip>:8787/events"
+url = "https://<hub-hostname>:8787/events"
 token = "<copy this node's enrollment token from its private config>"
 payload = {
     "event_type": "fall_detected",
@@ -152,22 +152,30 @@ node ID and one-time enrollment token from this node's private configuration:
 ```env
 AURA_SENSOR_NODE_ID=pi_bedroom_node
 AURA_SENSOR_NODE_TOKEN=YOUR_NODE_TOKEN
-AURA_SENSOR_API_URL=http://aura-hub.local:8787
+AURA_SENSOR_API_URL=https://aura-hub.example.com:8787
 AURA_SENSOR_NODE_HEARTBEAT_INTERVAL_SECONDS=30
 ```
 
 Keep the file root-owned with mode `0600`. The startup check rejects missing or
-weak tokens, invalid IDs and URLs, and heartbeat intervals outside 5–60 seconds.
-Enable the service with `systemctl enable --now aura-pi-node-heartbeat.service`.
-Use HTTPS with a trusted certificate when available; plain HTTP exposes the
-node credential on the LAN and should be limited to a trusted isolated network.
+weak tokens, invalid IDs, remote HTTP URLs, and heartbeat intervals outside
+5–60 seconds. Remote hub connections require HTTPS with a certificate trusted
+by the node's operating system. Plain HTTP is permitted only for loopback local
+development. Enable the service with
+`systemctl enable --now aura-pi-node-heartbeat.service`.
 The unit runs as `aura-node` with a read-only filesystem view and does not write
 application state. It is tested on CI only and has not been installed on Pi
 hardware.
 
 v0.4 uses one hub token for administration and separate revocable node tokens for
 each enrolled sensor. Keep the API on a **trusted LAN only**; do not expose it
-directly to the internet. HTTP on a LAN does not encrypt credentials, so use a
+directly to the internet. Network-bound hubs require TLS 1.2 or newer and a
+configured certificate and private key. The packaged systemd template expects
+`/etc/aura/tls/server.crt` and `/etc/aura/tls/server.key`; install a certificate
+trusted by every node and make the private key readable by the `aura` service
+account without world access. The service preflight rejects missing TLS files
+or a world-readable/writable private key. HTTP remains available only when the
+hub binds to loopback for development. Node clients reject remote HTTP before
+sending their credential.
 trusted network and protect access to each node's private config.
 
 ## Endpoints
