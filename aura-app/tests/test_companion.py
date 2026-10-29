@@ -48,6 +48,31 @@ class CompanionTest(unittest.TestCase):
             self.assertIsNone(store.create_checkin_if_due(user,datetime(2026,1,3,10,1,tzinfo=timezone.utc)))
             store.close()
 
+    def test_checkin_quiet_hours_cross_midnight_and_release_at_end_boundary(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            user = store.get_or_create_user('Owner')
+            store.add_conversation(user, 'user', 'Earlier conversation')
+            store.conn.execute(
+                "UPDATE conversation_logs SET created_at=? WHERE user_id=? AND role='user'",
+                ('2026-01-01 10:00:00', user),
+            )
+            store.conn.commit()
+            store.update_companion_preferences(user, True, '22:00', '08:00', 4)
+
+            self.assertIsNone(store.create_checkin_if_due(
+                user, datetime(2026, 1, 2, 23, 0, tzinfo=timezone.utc)
+            ))
+            self.assertIsNone(store.create_checkin_if_due(
+                user, datetime(2026, 1, 3, 7, 59, tzinfo=timezone.utc)
+            ))
+            released = store.create_checkin_if_due(
+                user, datetime(2026, 1, 3, 8, 0, tzinfo=timezone.utc)
+            )
+            self.assertTrue(released['check_in'])
+            store.close()
+
     def test_checkin_preferences_reject_invalid_times_and_intervals(self):
         with tempfile.TemporaryDirectory() as folder:
             store=AuraMemoryStore(Path(folder)/'test.db');store.apply_schema()

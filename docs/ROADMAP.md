@@ -940,3 +940,12 @@ validation for the current group exchange and preview packaging changes. A
 signed/notarized public release, installed-device permission and acoustic tests,
 Pi capture, multi-room handoff and home acceptance still require the relevant
 credentials and physical devices; none is claimed by this CI run.
+
+## 2026-10-29 continuation — check-in quiet-hour boundaries (Phase 11)
+
+Added a regression test with an already-due check-in, proving that overnight
+quiet hours suppress it at 23:00 and 07:59 and permit it exactly at the 08:00
+end boundary. This isolates quiet-hour behavior from the separate cooldown
+condition. The full local Python suite passes 94 tests; cross-platform CI is
+pending for this test-only change. It does not represent local-timezone/DST or
+live speaker acceptance.
