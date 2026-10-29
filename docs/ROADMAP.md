@@ -867,5 +867,9 @@ follow-up after a direct reply. Solo follow-ups remain off until explicitly
 enabled for the current ambient session; AURA does not identify who is speaking.
 Pause, sleep and closing the window revoke the invitation. Native tests cover
 all supported timeout boundaries. Local native lifecycle/speech tests, frontend
-build and lint passed. Cross-platform CI is pending; no acoustic acceptance is
+build and lint passed. Commit `1e2d03e` passed macOS, Ubuntu and Windows push CI
+in [40888876555](https://github.com/sujanmj/aura-companion/actions/runs/40888876555)
+and pull-request CI in
+[40888888652](https://github.com/sujanmj/aura-companion/actions/runs/40888888652).
+The push run uploaded all three preview archives. No acoustic acceptance is
 claimed.

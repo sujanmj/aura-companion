@@ -183,7 +183,12 @@ the owner can choose a 15, 30 or 60-second window for one phrase after a direct
 reply. Pause, sleep and closing the window revoke the invitation. AURA cannot
 identify the speaker, and accepted follow-up speech is saved in the owner's
 conversation. Native timing tests, local app build and lint pass. Cross-platform
-CI is pending; no acoustic test is claimed.
+CI passed on macOS, Ubuntu and Windows in push run
+[40888876555](https://github.com/sujanmj/aura-companion/actions/runs/40888876555)
+and pull-request run
+[40888888652](https://github.com/sujanmj/aura-companion/actions/runs/40888888652).
+All three preview archives were uploaded by the push run. No acoustic test is
+claimed.
 
 The optional Ollama brain now accepts only a numeric loopback URL and fixed API
 path. It bypasses proxy settings, never follows redirects, caps prompts/replies,
