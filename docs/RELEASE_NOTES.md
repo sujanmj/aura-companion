@@ -232,5 +232,9 @@ exchange and the newly reviewed question to the selected provider. The exchange
 is temporary in the page and is absent from saved memory and chat history; the
 provider may retain its request. It can be cleared at any time, and no online
 lookup, microphone, camera or tools are started. Local verification passes 92
-Python, 23 Node and 18 browser tests plus lint and production build. Cross-platform
-CI results and preview artifacts are pending for this commit.
+Python, 23 Node and 18 browser tests plus lint and production build. Commit
+`fab9f3b` passed macOS, Ubuntu and Windows push CI in
+[40903186466](https://github.com/sujanmj/aura-companion/actions/runs/40903186466)
+and pull-request CI in
+[40903197339](https://github.com/sujanmj/aura-companion/actions/runs/40903197339).
+Both runs uploaded preview archives for all three platforms.

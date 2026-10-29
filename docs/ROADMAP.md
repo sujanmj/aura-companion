@@ -912,6 +912,9 @@ identity inference, and tools. Online lookup remains disabled for this path.
 Local verification: 92 Python tests, 23 Node tests, all 18 browser tests,
 frontend lint and production build pass. The first browser run used stale built
 assets and failed on the old button label; rebuilding and rerunning the full
-suite passed. CI and preview artifacts will be recorded after the branch push.
-No real provider retention, multi-person consent, or acoustic behavior is
-verified by these software tests.
+suite passed. Commit `fab9f3b` passed macOS, Ubuntu and Windows push CI in
+[40903186466](https://github.com/sujanmj/aura-companion/actions/runs/40903186466)
+and pull-request CI in
+[40903197339](https://github.com/sujanmj/aura-companion/actions/runs/40903197339).
+Both runs uploaded all three preview archives. No real provider retention,
+multi-person consent, or acoustic behavior is verified by these software tests.
