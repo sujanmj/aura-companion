@@ -1021,3 +1021,9 @@ and pull-request CI in
 on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
 The Pi certificate installation, trust-store setup and network deployment
 remain untested.
+The follow-up also validates certificate/key paths at server startup, rejecting
+symlinks and unsafe POSIX key permissions. Commit `b3087c5` passed push CI in
+[40951723853](https://github.com/sujanmj/aura-companion/actions/runs/40951723853)
+and pull-request CI in
+[40951731217](https://github.com/sujanmj/aura-companion/actions/runs/40951731217)
+on all three platforms; both runs uploaded preview archives.
