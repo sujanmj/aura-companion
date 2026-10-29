@@ -996,4 +996,7 @@ where Memory assertions raced the saved-state refresh. Opening Memory now reload
 the current local memory, and the affected browser tests wait for the chat or
 person-save refresh to finish. The full browser suite passes locally (18 tests),
 as do lint/build, 94 Python app tests, and the room-client, heartbeat and
-service suites. Cross-platform CI is being rerun for this follow-up.
+service suites. Corrected commit `bfde1c4` passed macOS, Windows and Ubuntu push
+CI in [40948677085](https://github.com/sujanmj/aura-companion/actions/runs/40948677085).
+The run uploaded all three preview archives. This verifies software and
+packaging builds only; it does not add physical-device acceptance.
