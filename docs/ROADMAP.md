@@ -970,6 +970,10 @@ Windows-only browser-test ceiling is now 60 seconds. Its PR run passed all three
 platforms in [40912788103](https://github.com/sujanmj/aura-companion/actions/runs/40912788103),
 and push Windows/Ubuntu passed in
 [40912780134](https://github.com/sujanmj/aura-companion/actions/runs/40912780134).
-Push macOS found a race in an existing routine test's tab-navigation wait; an
-explicit heading wait now covers that transition, with fresh CI pending. This
-verifies state logic only, not acoustic turn detection or live speech quality.
+An explicit heading wait fixes the existing routine test's tab-navigation
+race. Commit `f12edab` passed all three push CI jobs in
+[40914132493](https://github.com/sujanmj/aura-companion/actions/runs/40914132493)
+and pull-request CI in
+[40914144108](https://github.com/sujanmj/aura-companion/actions/runs/40914144108);
+both runs uploaded macOS, Windows and Ubuntu preview archives. This verifies
+state logic only, not acoustic turn detection or live speech quality.

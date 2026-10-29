@@ -262,7 +262,10 @@ Phase 9 native tests now cover repeated solo follow-up windows: each spoken AURA
 reply renews one bounded window, supporting a short exchange without a repeated
 wake phrase while the session-only opt-in remains active. Native tests and an
 ad-hoc Mac app build pass locally. The Windows browser timeout increase passed
-all PR platforms and Windows/Ubuntu push CI. A separate macOS push E2E run found
-a tab-navigation wait race in an existing routine test; an explicit heading
-wait was added and its new CI run is pending. Acoustic acceptance remains
-pending.
+all PR platforms and Windows/Ubuntu push CI. An explicit heading wait resolves
+a routine-test tab-navigation race. Commit `f12edab` passed all three push jobs
+in [40914132493](https://github.com/sujanmj/aura-companion/actions/runs/40914132493)
+and pull-request CI in
+[40914144108](https://github.com/sujanmj/aura-companion/actions/runs/40914144108),
+which uploaded preview archives for all three platforms. Acoustic acceptance
+remains pending.
