@@ -190,6 +190,16 @@ and pull-request run
 All three preview archives were uploaded by the push run. No acoustic test is
 claimed.
 
+## 2026-10-29 — interrupt local speech
+
+The Mac helper now offers Stop speaking without pausing active microphone or
+camera capture. It resumes local transcription after stopping; if a reminder is
+spoken with sensors off, they stay off. Stale speech completion callbacks are
+discarded so they cannot change the state of a later turn. Local native tests,
+the app build, 91 Python tests, 23 Node tests, 18 browser tests, frontend build
+and lint pass. Cross-platform CI and acoustic interruption acceptance remain
+pending.
+
 The optional Ollama brain now accepts only a numeric loopback URL and fixed API
 path. It bypasses proxy settings, never follows redirects, caps prompts/replies,
 and exposes the selected `OLLAMA_MODEL` in setup readiness. Custom `OLLAMA_URL`

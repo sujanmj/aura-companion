@@ -75,7 +75,9 @@ struct AURAAmbientApp: App {
     @Published var scene = ""
     @Published private(set) var followupsEnabled = false
     @Published private(set) var followupDurationSeconds = 30
+    @Published private(set) var isSpeaking = false
     private var conversationTurns = ConversationTurnGate()
+    private var speechPlaybackGeneration = SpeechPlaybackGeneration()
 
     private var camera: LocalCamera?
     private var lifecycle = AmbientLifecycle()
@@ -533,6 +535,8 @@ struct AURAAmbientApp: App {
             speakLocally(text, generation: lifecycle.generation)
             return
         }
+        let playbackToken = speechPlaybackGeneration.begin()
+        isSpeaking = true
         recentResponse = text
         status = "AURA is speaking an opted-in check-in or reminder. Microphone and camera are off."
         synthesizer.speak(SpeechOutputSettings.utterance(text))
@@ -540,10 +544,13 @@ struct AURAAmbientApp: App {
         Task { [weak self] in
             guard let self else { return }
             while self.synthesizer.isSpeaking,
-                  self.pairingGeneration.isCurrent(generation) {
+                  self.pairingGeneration.isCurrent(generation),
+                  self.speechPlaybackGeneration.contains(playbackToken) {
                 try? await Task.sleep(nanoseconds: 100_000_000)
             }
-            guard self.pairingGeneration.isCurrent(generation), !self.isActive else { return }
+            guard self.speechPlaybackGeneration.contains(playbackToken),
+                  self.pairingGeneration.isCurrent(generation), !self.isActive else { return }
+            self.isSpeaking = false
             self.status = "Paired. Opted-in reminders are active; microphone and camera are off."
         }
     }
@@ -604,6 +611,8 @@ struct AURAAmbientApp: App {
     private func speakLocally(_ text: String, generation: UInt64, turnGeneration: UInt64? = nil) {
         guard lifecycle.acceptsCaptureEvent(generation), isActive,
               !text.isEmpty, !synthesizer.isSpeaking else { return }
+        let playbackToken = speechPlaybackGeneration.begin()
+        isSpeaking = true
         recentResponse = text
         let utterance = SpeechOutputSettings.utterance(text)
         let outputGeneration = speechOutputSuppression.begin()
@@ -620,6 +629,8 @@ struct AURAAmbientApp: App {
             try? await Task.sleep(nanoseconds: 800_000_000)
             guard speechOutputSuppression.finish(outputGeneration) else { return }
             transcriber?.setOutputSuppressed(false)
+            guard speechPlaybackGeneration.contains(playbackToken) else { return }
+            isSpeaking = false
             guard lifecycle.contains(sessionGeneration) else { return }
             if let turnGeneration {
                 conversationTurns.replyFinished(generation: turnGeneration, now: ProcessInfo.processInfo.systemUptime)
@@ -630,11 +641,26 @@ struct AURAAmbientApp: App {
         }
     }
 
+    func stopSpeaking() {
+        guard isSpeaking || synthesizer.isSpeaking else { return }
+        speechPlaybackGeneration.invalidate()
+        speechOutputSuppression.cancel()
+        synthesizer.stopSpeaking(at: .immediate)
+        transcriber?.setOutputSuppressed(false)
+        isSpeaking = false
+        status = isActive
+            ? "Speech stopped. Listening locally; say Hey AURA for a direct request."
+            : "Speech stopped. Microphone and camera remain off."
+    }
+
     func stop(preservingWakeResume: Bool = false) {
         setFollowups(false)
         startupTimeoutTask?.cancel()
         startupTimeoutTask = nil
+        speechPlaybackGeneration.invalidate()
         speechOutputSuppression.cancel()
+        synthesizer.stopSpeaking(at: .immediate)
+        isSpeaking = false
         if !cameraStopping { lifecycle.pause() }
         let stoppedGeneration = lifecycle.generation
         if !preservingWakeResume { wakeResume.cancel() }
@@ -1201,6 +1227,8 @@ private struct MenuView: View {
             Text("Ambient companion").font(.headline)
             Text("AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. While ambient mode is on, changed scene summaries may be stored in local SQLite. Requests beginning with AURA or Hey AURA reach your companion. Solo follow-ups require a separate opt-in.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) { Label(monitor.microphoneStopping ? "Microphone stopping" : monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn || monitor.microphoneStopping ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
+            Button("Stop speaking") { monitor.stopSpeaking() }
+                .disabled(!monitor.isSpeaking)
             Group {
                 Picker("Spoken voice", selection: $speechVoiceIdentifier) {
                     Text("English (US) default").tag("")

@@ -295,3 +295,20 @@ struct ConversationTurnGate {
         deadline = now + followupDuration
     }
 }
+
+struct SpeechPlaybackGeneration {
+    private(set) var value: UInt64 = 0
+
+    mutating func begin() -> UInt64 {
+        value &+= 1
+        return value
+    }
+
+    mutating func invalidate() {
+        value &+= 1
+    }
+
+    func contains(_ token: UInt64) -> Bool {
+        value == token
+    }
+}

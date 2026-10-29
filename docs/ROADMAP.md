@@ -566,6 +566,12 @@ not close the unresolved Phase 2 hardware acceptance gates.
   reply. The window still admits only one phrase, AURA does not identify the
   speaker, and Pause, sleep or closing the window revokes the opt-in. Native
   lifecycle tests cover each deadline and its exclusive boundary.
+- Implemented for the Mac preview: a visible Stop speaking control interrupts
+  local speech without pausing live sensors; microphone transcription resumes
+  only if ambient mode is still active. Stopping invalidates delayed completion
+  callbacks, so they cannot alter a later turn. If AURA is speaking a check-in
+  with sensors off, stopping leaves them off. Native tests cover stale playback
+  completion generations. No acoustic interruption test is claimed.
 - Offer natural back-and-forth speech without requiring a repeated wake phrase,
   using turn detection, echo control, speaker preference and interruption rules.
 - Learn routines only from user-approved memory and feedback. Make check-ins,
@@ -873,3 +879,14 @@ and pull-request CI in
 [40888888652](https://github.com/sujanmj/aura-companion/actions/runs/40888888652).
 The push run uploaded all three preview archives. No acoustic acceptance is
 claimed.
+
+## 2026-10-29 continuation — interrupt local speech (Phase 9)
+
+The Mac helper now has a Stop speaking button. It stops local speech while
+leaving an active ambient session running and resumes local transcription; if
+AURA was speaking a check-in with sensors off, the sensors stay off. Playback
+generation invalidation prevents an old speech completion from changing the
+state of a later turn. Local checks passed: 91 Python tests, 23 Node tests, all
+18 browser tests, native lifecycle/speech tests, frontend build/lint and an
+ad-hoc signed Mac app build. Cross-platform CI is pending; no acoustic
+interruption acceptance is claimed.

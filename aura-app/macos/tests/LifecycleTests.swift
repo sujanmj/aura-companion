@@ -35,6 +35,14 @@ struct LifecycleTests {
             precondition(!timedTurn.accepts("late follow-up", now: 100 + Double(seconds)), "The selected follow-up deadline is exclusive")
         }
 
+        var playback = SpeechPlaybackGeneration()
+        let firstPlayback = playback.begin()
+        precondition(playback.contains(firstPlayback))
+        playback.invalidate()
+        precondition(!playback.contains(firstPlayback), "Stopping speech invalidates its delayed completion")
+        let resumedPlayback = playback.begin()
+        precondition(playback.contains(resumedPlayback), "A later reply has its own playback generation")
+
         var state = AmbientLifecycle()
         precondition(state.phase == .paused)
         let first = state.begin()!
