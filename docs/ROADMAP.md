@@ -1027,3 +1027,9 @@ symlinks and unsafe POSIX key permissions. Commit `b3087c5` passed push CI in
 and pull-request CI in
 [40951731217](https://github.com/sujanmj/aura-companion/actions/runs/40951731217)
 on all three platforms; both runs uploaded preview archives.
+The final path check also rejects symlinked parent directories. Commit `b5695ac`
+passed push CI in
+[40952983216](https://github.com/sujanmj/aura-companion/actions/runs/40952983216)
+and pull-request CI in
+[40952990897](https://github.com/sujanmj/aura-companion/actions/runs/40952990897)
+on macOS, Windows and Ubuntu, with all three preview archives uploaded.
