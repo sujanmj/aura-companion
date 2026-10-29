@@ -1080,6 +1080,11 @@ retry or authorize playback from them. Focused unit and loopback handoff tests
 cover matching claims, stale/incorrect fields, non-finite expiry, conflicts and
 ambiguous network failure. Local verification passed: 94 app Python tests, 14
 room-claim/handoff tests, 28 Node tests, 18 browser tests, native lifecycle and
-speech tests, frontend lint and production build. Cross-platform CI is pending.
+speech tests, frontend lint and production build. Commit `03e1a89` passed
+macOS, Windows and Ubuntu push CI in
+[40960508464](https://github.com/sujanmj/aura-companion/actions/runs/40960508464)
+and PR CI
+[40960227044](https://github.com/sujanmj/aura-companion/actions/runs/40960227044);
+both runs uploaded all three preview archives.
 This validates the software reservation response only; no Pi service, speaker
 playback, room cancellation/fencing, or physical handoff acceptance is claimed.

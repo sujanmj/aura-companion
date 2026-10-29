@@ -39,11 +39,15 @@ These checks establish only the behavior covered by their tests:
   Both runs uploaded preview archives for all three platforms. This verifies
   software and packaging only, not room playback, Pi hardware, acoustic
   behavior, or public-release signing/notarization.
-- Current uncommitted software check: room claims fail closed unless the hub
-  acknowledges the exact requested session, generation and turn UUID with a
-  finite, unexpired lease. Focused loopback and client tests pass locally; new
-  cross-platform CI is pending. This does not establish Pi installation,
-  playback fencing, speaker output, or physical room handoff.
+- Commit `03e1a89`: room claims fail closed unless the hub acknowledges the
+  exact requested session, generation and turn UUID with a finite, unexpired
+  lease. Push CI
+  [40960508464](https://github.com/sujanmj/aura-companion/actions/runs/40960508464)
+  and PR CI
+  [40960227044](https://github.com/sujanmj/aura-companion/actions/runs/40960227044)
+  passed on macOS, Windows and Ubuntu; both runs uploaded all three preview
+  archives. This does not establish Pi installation, playback fencing, speaker
+  output, or physical room handoff.
 
 ## Required device checks
 

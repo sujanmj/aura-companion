@@ -329,6 +329,10 @@ and logical turn UUID with a finite, unexpired lease. Missing, malformed, stale
 or mismatched acknowledgements fail closed, and the client does not retry an
 ambiguous claim or authorize playback from an invalid response. Local focused
 room/handoff tests, the full app Python suite, 28 Node tests, 18 browser tests,
-native tests, lint and production build pass. Cross-platform CI is pending. No
-Pi service, speaker playback, room cancellation/fencing, or physical handoff is
-claimed by this software check.
+native tests, lint and production build pass. No Pi service, speaker playback,
+room cancellation/fencing, or physical handoff is claimed by this software
+check. Commit `03e1a89` passed all three platforms in push CI
+[40960508464](https://github.com/sujanmj/aura-companion/actions/runs/40960508464)
+and PR CI
+[40960227044](https://github.com/sujanmj/aura-companion/actions/runs/40960227044);
+both runs uploaded macOS, Windows and Ubuntu preview archives.
