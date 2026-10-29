@@ -176,6 +176,15 @@ and pull-request CI in
 [40815578985](https://github.com/sujanmj/aura-companion/actions/runs/40815578985).
 The push run uploaded all three preview archives.
 
+## 2026-10-29 — configurable solo follow-up window
+
+With solo follow-ups explicitly enabled for the current Mac ambient session,
+the owner can choose a 15, 30 or 60-second window for one phrase after a direct
+reply. Pause, sleep and closing the window revoke the invitation. AURA cannot
+identify the speaker, and accepted follow-up speech is saved in the owner's
+conversation. Native timing tests, local app build and lint pass. Cross-platform
+CI is pending; no acoustic test is claimed.
+
 The optional Ollama brain now accepts only a numeric loopback URL and fixed API
 path. It bypasses proxy settings, never follows redirects, caps prompts/replies,
 and exposes the selected `OLLAMA_MODEL` in setup readiness. Custom `OLLAMA_URL`

@@ -74,6 +74,7 @@ struct AURAAmbientApp: App {
     @Published var recentResponse = ""
     @Published var scene = ""
     @Published private(set) var followupsEnabled = false
+    @Published private(set) var followupDurationSeconds = 30
     private var conversationTurns = ConversationTurnGate()
 
     private var camera: LocalCamera?
@@ -563,7 +564,13 @@ struct AURAAmbientApp: App {
 
     func setFollowups(_ enabled: Bool) {
         followupsEnabled = enabled && isActive
-        conversationTurns.configure(followupsEnabled)
+        conversationTurns.configure(followupsEnabled, durationSeconds: followupDurationSeconds)
+    }
+
+    func setFollowupDuration(_ seconds: Int) {
+        guard ConversationTurnGate.supportedFollowupDurations.contains(seconds) else { return }
+        followupDurationSeconds = seconds
+        conversationTurns.configure(followupsEnabled && isActive, durationSeconds: seconds)
     }
 
     private func sendToCompanion(_ transcript: String, generation: UInt64, turnGeneration: UInt64) async {
@@ -618,7 +625,7 @@ struct AURAAmbientApp: App {
                 conversationTurns.replyFinished(generation: turnGeneration, now: ProcessInfo.processInfo.systemUptime)
             }
             status = followupsEnabled && turnGeneration != nil
-                ? "Listening for one follow-up for up to 30 seconds. Pause ends the conversation."
+                ? "Listening for one follow-up for up to \(followupDurationSeconds) seconds. Pause ends the conversation."
                 : "Listening locally. Say Hey AURA to address me."
         }
     }
@@ -1238,7 +1245,13 @@ private struct MenuView: View {
             } else {
                 Toggle("Allow solo follow-ups for this session", isOn: Binding(get: { monitor.followupsEnabled }, set: { monitor.setFollowups($0) }))
                     .disabled(!monitor.isActive)
-                Text("Only enable when everyone nearby agrees. After a direct reply, the next phrase within 30 seconds is sent to your configured companion and saved in your conversation. AURA cannot identify the speaker. Pause, sleep or closing the window clears this choice.")
+                Picker("Follow-up window", selection: Binding(get: { monitor.followupDurationSeconds }, set: { monitor.setFollowupDuration($0) })) {
+                    ForEach(ConversationTurnGate.supportedFollowupDurations, id: \.self) { seconds in
+                        Text("\(seconds) seconds").tag(seconds)
+                    }
+                }
+                .disabled(!monitor.isActive)
+                Text("Only enable when everyone nearby agrees. After a direct reply, one phrase within this window is sent to your configured companion and saved in your conversation. AURA cannot identify the speaker. Pause, sleep or closing the window clears this choice.")
                     .font(.system(size: 10)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Text("Paired, opted-in reminders are checked every five minutes while AURA is running. They can speak while the microphone and camera are off; Pause controls capture.")
                     .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)

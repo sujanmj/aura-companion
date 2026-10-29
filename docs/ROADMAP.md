@@ -561,6 +561,11 @@ not close the unresolved Phase 2 hardware acceptance gates.
 
 ### Phase 9 — Proactive companion conversation
 
+- Implemented for the Mac preview: with a fresh, session-only opt-in, the owner
+  can select a 15, 30 or 60-second window for one solo follow-up after a direct
+  reply. The window still admits only one phrase, AURA does not identify the
+  speaker, and Pause, sleep or closing the window revokes the opt-in. Native
+  lifecycle tests cover each deadline and its exclusive boundary.
 - Offer natural back-and-forth speech without requiring a repeated wake phrase,
   using turn detection, echo control, speaker preference and interruption rules.
 - Learn routines only from user-approved memory and feedback. Make check-ins,
@@ -854,3 +859,13 @@ or deletes the observation. No images are shown or retained. The browser test
 submits a bounded synthetic camera-summary event and verifies the displayed
 confidence; this is a UI/API test, not camera hardware acceptance.
 Commit `f4174d6` passed macOS, Ubuntu and Windows push CI in [40815574599](https://github.com/sujanmj/aura-companion/actions/runs/40815574599) and pull-request CI in [40815578985](https://github.com/sujanmj/aura-companion/actions/runs/40815578985). All three preview artifacts were uploaded from the push run. The first PR Windows browser attempt timed out in an unrelated Setup-tab click; rerunning the job passed.
+
+## 2026-10-29 continuation — configurable solo follow-up window (Phase 9)
+
+The Mac preview lets the owner choose a 15, 30 or 60-second window for one
+follow-up after a direct reply. Solo follow-ups remain off until explicitly
+enabled for the current ambient session; AURA does not identify who is speaking.
+Pause, sleep and closing the window revoke the invitation. Native tests cover
+all supported timeout boundaries. Local native lifecycle/speech tests, frontend
+build and lint passed. Cross-platform CI is pending; no acoustic acceptance is
+claimed.

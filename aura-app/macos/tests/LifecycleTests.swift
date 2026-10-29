@@ -25,6 +25,16 @@ struct LifecycleTests {
         turns.configure(false)
         precondition(turns.accepts("AURA, are you there?", now: 102))
 
+        for seconds in ConversationTurnGate.supportedFollowupDurations {
+            var timedTurn = ConversationTurnGate()
+            timedTurn.configure(true, durationSeconds: seconds)
+            let token = timedTurn.generation
+            timedTurn.replyFinished(generation: token, now: 100)
+            precondition(timedTurn.accepts("follow-up", now: 100 + Double(seconds) - 0.01), "The selected follow-up window stays open until its deadline")
+            timedTurn.replyFinished(generation: token, now: 100)
+            precondition(!timedTurn.accepts("late follow-up", now: 100 + Double(seconds)), "The selected follow-up deadline is exclusive")
+        }
+
         var state = AmbientLifecycle()
         precondition(state.phase == .paused)
         let first = state.begin()!

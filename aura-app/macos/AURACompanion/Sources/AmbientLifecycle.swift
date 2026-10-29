@@ -268,12 +268,17 @@ enum PermissionSettings {
 
 // No speaker identity is inferred. Follow-ups require a fresh, per-session opt-in.
 struct ConversationTurnGate {
+    static let supportedFollowupDurations = [15, 30, 60]
     private(set) var enabled = false
     private(set) var generation: UInt64 = 0
+    private var followupDuration: TimeInterval = 30
     private var deadline: TimeInterval?
 
-    mutating func configure(_ enabled: Bool) {
+    mutating func configure(_ enabled: Bool, durationSeconds: Int = 30) {
         self.enabled = enabled
+        followupDuration = Self.supportedFollowupDurations.contains(durationSeconds)
+            ? TimeInterval(durationSeconds)
+            : 30
         generation &+= 1
         deadline = nil
     }
@@ -287,6 +292,6 @@ struct ConversationTurnGate {
 
     mutating func replyFinished(generation token: UInt64, now: TimeInterval) {
         guard enabled, token == generation else { return }
-        deadline = now + 30
+        deadline = now + followupDuration
     }
 }
