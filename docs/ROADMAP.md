@@ -1052,3 +1052,14 @@ and pull-request CI in
 on macOS, Windows and Ubuntu. Both runs uploaded all three preview archives.
 This is software control-plane coverage, not Pi or multi-room hardware
 acceptance; room invitations still do not control capture, speech or playback.
+
+## 2026-10-30 continuation — dashboard room invitation controls (Phase 5)
+
+Added an owner-only Room Invitation panel to the local Command Center. It lists
+enrolled nodes without displaying their credentials, displays the current
+session, and supports invite, transfer and stop with exact typed confirmation.
+Requests stay same-origin, bypass browser redirects, and never activate a
+camera, microphone, speech or playback. Focused dashboard logic tests cover
+consent, one-shot mutation requests, uncertain outcomes and status refresh; a
+loopback API check verifies script serving. Full cross-platform CI is pending;
+no physical room handoff is claimed.

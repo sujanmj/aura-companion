@@ -38,6 +38,10 @@ WEB_STATIC_FILES = {
         PROJECT_ROOT / "web" / "dashboard.js",
         "application/javascript; charset=utf-8",
     ),
+    "/static/room-invitation.js": (
+        PROJECT_ROOT / "web" / "room_invitation.js",
+        "application/javascript; charset=utf-8",
+    ),
 }
 
 _RUNTIME_SPEAKER = None

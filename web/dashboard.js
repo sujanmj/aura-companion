@@ -39,6 +39,7 @@
     }
     localStorage.setItem(TOKEN_KEY, value);
     setTokenMessage("Token saved in this browser.");
+    window.dispatchEvent(new Event("aura-token-changed"));
     refreshDashboard();
   }
 
@@ -46,6 +47,7 @@
     localStorage.removeItem(TOKEN_KEY);
     tokenInput.value = "";
     setTokenMessage("Token cleared.");
+    window.dispatchEvent(new Event("aura-token-changed"));
     refreshDashboard();
   }
 

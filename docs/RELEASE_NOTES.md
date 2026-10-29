@@ -310,3 +310,9 @@ and PR CI in
 on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
 Pi installation, room playback, acoustic acceptance, macOS hardware acceptance,
 and Developer ID signing/notarization remain open.
+
+The same owner-approved invitation controls are now available in the local
+Command Center. The panel displays an active session, lists enrolled room names
+without node credentials, and requires exact typed confirmation for invite,
+transfer and stop. It does not start sensors or audio. Local automated tests and
+cross-platform CI for this dashboard addition are pending.

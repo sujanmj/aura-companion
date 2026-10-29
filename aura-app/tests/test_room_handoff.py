@@ -171,6 +171,11 @@ class RoomHandoffTests(unittest.TestCase):
             with response:
                 return response.status, json.loads(response.read())
         try:
+            with opener.open(f'http://127.0.0.1:{server.server_port}/dashboard') as response:
+                self.assertIn('/static/room-invitation.js', response.read().decode())
+            with opener.open(f'http://127.0.0.1:{server.server_port}/static/room-invitation.js') as response:
+                self.assertEqual(response.headers.get_content_type(), 'application/javascript')
+                self.assertIn('redirect: "error"', response.read().decode())
             with patch.dict(os.environ, {'AURA_SENSOR_API_TOKEN': admin}), patch('api.sensor_api_server.beat_sensor_api_heartbeat'):
                 self.assertEqual(post('start', {}, '')[0], 401)
                 self.assertEqual(post('start', {'approved': True}, self.tokens['bedroom'])[0], 401)

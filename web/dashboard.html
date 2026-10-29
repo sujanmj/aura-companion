@@ -6,6 +6,7 @@
   <title>AURA Command Center</title>
   <link rel="stylesheet" href="/static/dashboard.css">
   <script src="/static/dashboard.js" defer></script>
+  <script src="/static/room-invitation.js" defer></script>
 </head>
 <body>
   <header class="header">
@@ -28,6 +29,31 @@
       <button id="clear-token-btn" type="button" class="btn-secondary">Clear Token</button>
     </div>
     <p id="token-message" class="token-message"></p>
+  </section>
+
+  <section class="card card-wide room-invitation-panel" aria-labelledby="room-invitation-heading">
+    <h2 id="room-invitation-heading">Room Invitation</h2>
+    <p class="panel-hint">Reserve one reply for an enrolled room for up to five minutes. This does not turn on a camera or microphone, create speech, or play audio.</p>
+    <div class="room-invitation-status" id="room-invitation-status" role="status" aria-live="polite">Connect with the API token to manage room invitations.</div>
+    <div class="room-invitation-details" id="room-invitation-details"></div>
+    <div class="room-invitation-controls">
+      <label for="room-invite-node">Invite room</label>
+      <select id="room-invite-node" disabled>
+        <option value="">Load enrolled rooms</option>
+      </select>
+      <button type="button" id="room-invite-btn" disabled>Invite for 5 minutes</button>
+    </div>
+    <div class="room-invitation-controls">
+      <label for="room-transfer-node">Move invitation</label>
+      <select id="room-transfer-node" disabled>
+        <option value="">Load enrolled rooms</option>
+      </select>
+      <button type="button" id="room-transfer-btn" disabled>Move invitation</button>
+    </div>
+    <div class="room-invitation-actions">
+      <button type="button" id="room-refresh-btn" class="btn-secondary">Refresh invitation status</button>
+      <button type="button" id="room-stop-btn" class="btn-danger" disabled>End invitation</button>
+    </div>
   </section>
 
   <section class="card card-wide runtime-health-panel">

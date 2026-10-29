@@ -37,6 +37,15 @@ displays only the node, session, generation and expiry fields. These commands
 manage the five-minute invitation only; they do not activate sensors, speech,
 memory recall or playback.
 
+The local Command Center also has a **Room Invitation** panel. Paste the hub
+administrator token into the existing token field, refresh invitation status,
+and select an enrolled room. Invite, move and end each require the exact phrase
+shown in the confirmation prompt. If the response is lost, refresh status before
+trying another change. The browser keeps the token in its existing local-only
+storage, sends requests directly to the same hub without following redirects,
+and does not expose node credentials in the panel. The panel only manages the
+reservation; it does not control capture, speech or playback.
+
 Use the existing private sensor hub deployment and authentication. The hub's
 master `X-AURA-API-Token` controls invitations. Enrolled nodes use their separate
 credentials only to claim turns; possession of a node token cannot start,
@@ -108,3 +117,8 @@ The owner controller is covered with `python3 scripts/test_room_invitation.py`
 and the loopback API integration test above. It checks typed consent, admin
 credential use, HTTPS policy, safe status output and one-request failure
 handling. No deployed hub or physical device is exercised.
+
+The dashboard invitation panel's request logic is covered by
+`aura-app/tests/room-invitation-ui.test.mjs`: exact confirmation for each
+change, one request after a lost mutation response, status refresh, and safe
+rendering. The loopback API test checks that the dashboard serves this script.
