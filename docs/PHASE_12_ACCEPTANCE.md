@@ -31,6 +31,14 @@ These checks establish only the behavior covered by their tests:
   passed on macOS, Windows and Ubuntu and uploaded preview archives for all
   three platforms. This reserves replies in software only; it does not exercise
   Pi hardware or connect reservations to speaker playback.
+- Commit `62adb72`: the Command Center room-invitation panel and SQLite
+  worker-shutdown regression fix passed macOS, Windows and Ubuntu push CI
+  [40959155691](https://github.com/sujanmj/aura-companion/actions/runs/40959155691)
+  and PR CI
+  [40959164879](https://github.com/sujanmj/aura-companion/actions/runs/40959164879).
+  Both runs uploaded preview archives for all three platforms. This verifies
+  software and packaging only, not room playback, Pi hardware, acoustic
+  behavior, or public-release signing/notarization.
 
 ## Required device checks
 

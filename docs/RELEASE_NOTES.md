@@ -314,5 +314,11 @@ and Developer ID signing/notarization remain open.
 The same owner-approved invitation controls are now available in the local
 Command Center. The panel displays an active session, lists enrolled room names
 without node credentials, and requires exact typed confirmation for invite,
-transfer and stop. It does not start sensors or audio. Local automated tests and
-cross-platform CI for this dashboard addition are pending.
+transfer and stop. It does not start sensors or audio. Commit `62adb72` passed
+push CI [40959155691](https://github.com/sujanmj/aura-companion/actions/runs/40959155691)
+and PR CI
+[40959164879](https://github.com/sujanmj/aura-companion/actions/runs/40959164879)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+The commit also fixes SQLite worker shutdown ordering with a regression test.
+These results cover software and packaging, not Pi hardware, room playback,
+acoustics, or public-release signing/notarization.

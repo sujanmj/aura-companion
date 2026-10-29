@@ -1061,5 +1061,11 @@ session, and supports invite, transfer and stop with exact typed confirmation.
 Requests stay same-origin, bypass browser redirects, and never activate a
 camera, microphone, speech or playback. Focused dashboard logic tests cover
 consent, one-shot mutation requests, uncertain outcomes and status refresh; a
-loopback API check verifies script serving. Full cross-platform CI is pending;
-no physical room handoff is claimed.
+loopback API check verifies script serving. Commit `62adb72` passed push CI
+[40959155691](https://github.com/sujanmj/aura-companion/actions/runs/40959155691)
+and PR CI
+[40959164879](https://github.com/sujanmj/aura-companion/actions/runs/40959164879)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+That commit also fixes SQLite worker shutdown ordering, covered by a regression
+test. These runs validate software and packaging only; no physical room handoff,
+Pi, sensor, playback, acoustic or public-signing acceptance is claimed.
