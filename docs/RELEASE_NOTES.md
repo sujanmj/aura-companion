@@ -338,7 +338,8 @@ and PR CI
 both runs uploaded macOS, Windows and Ubuntu preview archives.
 
 The Pi simulator's authenticated event, heartbeat and room-claim requests, plus
-sensor enrollment and dashboard-status utilities, now use a shared transport
+sensor enrollment, dashboard status and the documented sensor API test client,
+now use a shared transport
 that bypasses system proxies and refuses redirects. Remote HTTP is rejected
 before credentials are sent; remote hubs require HTTPS. Focused tests and all
 94 app Python tests pass locally. No Pi installation or deployed network hub is

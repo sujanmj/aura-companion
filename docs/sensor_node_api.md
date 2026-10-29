@@ -27,6 +27,11 @@ python scripts/test_sensor_api_client.py
 python scripts/test_sensor_api_auth.py
 ```
 
+`test_sensor_api_client.py` accepts an optional hub URL. HTTP is allowed only
+for loopback development; remote hubs must use HTTPS. Hub clients connect
+directly and refuse redirects so administrator and node credentials are not
+forwarded through a machine-wide proxy or to another URL.
+
 ## Authentication (v0.4)
 
 Protected data routes require a strong token. The hub's `AURA_SENSOR_API_TOKEN`

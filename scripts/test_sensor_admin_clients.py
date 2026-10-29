@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from scripts import enroll_sensor_node, show_dashboard_status
+from scripts import enroll_sensor_node, show_dashboard_status, test_sensor_api_client
 
 
 ADMIN_TOKEN = "sensor-admin-token-long-enough-for-tests-123"
@@ -92,6 +92,50 @@ class SensorAdminClientTests(unittest.TestCase):
             redirect_stdout(io.StringIO()),
         ):
             show_dashboard_status.main()
+        open_request.assert_not_called()
+
+    def test_sensor_api_example_client_uses_direct_authenticated_transport(self) -> None:
+        responses = [
+            response(200, {"ok": True}),
+            response(201, {"ok": True, "id": 7}),
+            response(200, {"ok": True, "events": []}),
+        ]
+        with (
+            patch.object(test_sensor_api_client, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch.object(
+                test_sensor_api_client,
+                "open_sensor_api_request",
+                side_effect=responses,
+            ) as open_request,
+            patch.object(sys, "argv", [
+                "test_sensor_api_client.py", "http://127.0.0.1:8787/",
+            ]),
+            redirect_stdout(io.StringIO()),
+        ):
+            test_sensor_api_client.main()
+
+        requests = [call.args[0] for call in open_request.call_args_list]
+        self.assertEqual([request.full_url for request in requests], [
+            "http://127.0.0.1:8787/health",
+            "http://127.0.0.1:8787/events",
+            "http://127.0.0.1:8787/events/latest",
+        ])
+        self.assertEqual(open_request.call_count, 3)
+        for request in requests[1:]:
+            self.assertEqual(request.get_header("X-aura-api-token"), ADMIN_TOKEN)
+
+    def test_sensor_api_example_client_refuses_remote_http_before_request(self) -> None:
+        with (
+            patch.object(test_sensor_api_client, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch.object(test_sensor_api_client, "open_sensor_api_request") as open_request,
+            patch.object(sys, "argv", [
+                "test_sensor_api_client.py", "http://192.168.1.20:8787",
+            ]),
+            redirect_stdout(io.StringIO()),
+        ):
+            test_sensor_api_client.main()
         open_request.assert_not_called()
 
 
