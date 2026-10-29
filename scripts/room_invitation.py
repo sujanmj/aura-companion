@@ -26,6 +26,11 @@ class InvitationClientError(RuntimeError):
     pass
 
 
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def post_invitation_request(
     hub_url: str,
     token: str,
@@ -46,7 +51,8 @@ def post_invitation_request(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
+        opener = urllib.request.build_opener(_NoRedirectHandler)
+        with opener.open(request, timeout=10) as response:
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         status = exc.code

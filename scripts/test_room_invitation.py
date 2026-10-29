@@ -53,28 +53,31 @@ class RoomInvitationTests(unittest.TestCase):
         return result, output.getvalue()
 
     def test_start_requires_exact_typed_consent_and_sends_admin_request(self) -> None:
-        with patch("urllib.request.urlopen") as urlopen:
+        with patch("urllib.request.build_opener") as build_opener:
             result, output = self.invoke(["start", "bedroom"], "invite bedroom")
         self.assertEqual(result, 1)
         self.assertIn("CANCELLED", output)
-        urlopen.assert_not_called()
+        build_opener.assert_not_called()
 
-        with patch("urllib.request.urlopen", return_value=response()) as urlopen:
+        with patch("urllib.request.build_opener") as build_opener:
+            build_opener.return_value.open.return_value = response()
             result, output = self.invoke(["start", "bedroom"], "INVITE bedroom")
         self.assertEqual(result, 0)
         self.assertIn(f"session_id={SESSION}", output)
-        request = urlopen.call_args.args[0]
+        request = build_opener.return_value.open.call_args.args[0]
+        self.assertIs(build_opener.call_args.args[0], room_invitation._NoRedirectHandler)
         self.assertEqual(request.full_url, f"{HUB}/rooms/start")
         self.assertEqual(request.get_header("X-aura-api-token"), TOKEN)
         self.assertEqual(json.loads(request.data), {"node_id": "bedroom", "approved": True})
 
     def test_transfer_and_stop_require_action_specific_confirmation(self) -> None:
-        with patch("urllib.request.urlopen", return_value=response()) as urlopen:
+        with patch("urllib.request.build_opener") as build_opener:
+            build_opener.return_value.open.return_value = response()
             result, _ = self.invoke(
                 ["transfer", SESSION, "1", "kitchen"], "TRANSFER kitchen"
             )
         self.assertEqual(result, 0)
-        transfer = urlopen.call_args.args[0]
+        transfer = build_opener.return_value.open.call_args.args[0]
         self.assertEqual(transfer.full_url, f"{HUB}/rooms/transfer")
         self.assertEqual(json.loads(transfer.data), {
             "session_id": SESSION,
@@ -83,11 +86,12 @@ class RoomInvitationTests(unittest.TestCase):
             "approved": True,
         })
 
-        with patch("urllib.request.urlopen", return_value=response({"ok": True, "session": None})) as urlopen:
+        with patch("urllib.request.build_opener") as build_opener:
+            build_opener.return_value.open.return_value = response({"ok": True, "session": None})
             result, output = self.invoke(["stop", SESSION, "2"], f"STOP {SESSION}")
         self.assertEqual(result, 0)
         self.assertIn("STOPPED", output)
-        stop = urlopen.call_args.args[0]
+        stop = build_opener.return_value.open.call_args.args[0]
         self.assertEqual(stop.full_url, f"{HUB}/rooms/stop")
         self.assertEqual(json.loads(stop.data), {"session_id": SESSION, "generation": 2})
 
@@ -100,10 +104,11 @@ class RoomInvitationTests(unittest.TestCase):
             "user_id": 77,
             "token": "must-not-print",
         }}
-        with patch("urllib.request.urlopen", return_value=response(body)) as urlopen:
+        with patch("urllib.request.build_opener") as build_opener:
+            build_opener.return_value.open.return_value = response(body)
             result, output = self.invoke(["status"])
         self.assertEqual(result, 0)
-        self.assertEqual(urlopen.call_args.args[0].full_url, f"{HUB}/rooms/status")
+        self.assertEqual(build_opener.return_value.open.call_args.args[0].full_url, f"{HUB}/rooms/status")
         self.assertIn("generation=3", output)
         self.assertNotIn("user_id", output)
         self.assertNotIn("must-not-print", output)
@@ -113,14 +118,14 @@ class RoomInvitationTests(unittest.TestCase):
             patch.object(room_invitation, "load_env_file"),
             patch.dict(os.environ, {}, clear=True),
             patch("builtins.input") as prompt,
-            patch("urllib.request.urlopen") as urlopen,
+            patch("urllib.request.build_opener") as build_opener,
         ):
             result = room_invitation.main(["start", "bedroom"])
         self.assertEqual(result, 1)
         prompt.assert_not_called()
-        urlopen.assert_not_called()
+        build_opener.assert_not_called()
 
-        with patch("urllib.request.urlopen") as urlopen:
+        with patch("urllib.request.build_opener") as build_opener:
             output = io.StringIO()
             with (
                 patch.object(room_invitation, "load_env_file"),
@@ -132,23 +137,30 @@ class RoomInvitationTests(unittest.TestCase):
                     "--hub-url", "http://192.168.1.20:8787", "start", "bedroom"
                 ])
         self.assertEqual(result, 1)
-        urlopen.assert_not_called()
+        build_opener.assert_not_called()
 
     def test_http_and_unknown_network_results_are_safe_and_never_retried(self) -> None:
         rejected = urllib.error.HTTPError(
             f"{HUB}/rooms/start", 409, "conflict", {}, io.BytesIO(b"private hub detail")
         )
         for error in (rejected, TimeoutError("private network detail")):
-            with patch("urllib.request.urlopen", side_effect=error) as urlopen:
+            with patch("urllib.request.build_opener") as build_opener:
+                build_opener.return_value.open.side_effect = error
                 result, output = self.invoke(["status"])
             self.assertEqual(result, 1)
-            urlopen.assert_called_once()
+            build_opener.return_value.open.assert_called_once()
             self.assertNotIn("private hub detail", output)
             self.assertNotIn("private network detail", output)
             if isinstance(error, urllib.error.HTTPError):
                 self.assertIn("HTTP 409", output)
             else:
                 self.assertIn("check invitation status before trying again", output)
+
+    def test_redirect_handler_never_forwards_the_admin_token(self) -> None:
+        handler = room_invitation._NoRedirectHandler()
+        self.assertIsNone(handler.redirect_request(
+            None, None, 307, "Temporary Redirect", {}, "https://other.example/rooms/status"
+        ))
 
 
 if __name__ == "__main__":
