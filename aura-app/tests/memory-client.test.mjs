@@ -16,6 +16,16 @@ test("worker exit rejects pending and future requests", async () => {
     /unavailable/,
   );
 });
+test("close waits for the SQLite worker process to exit", async () => {
+  const client = new MemoryClient({
+    command: process.execPath,
+    args: ["-e", "setInterval(() => {}, 1000)"],
+  });
+  const workerPid = client.worker.pid;
+  await client.close();
+  assert.equal(client.worker.pid, workerPid);
+  assert.ok(client.worker.exitCode !== null || client.worker.signalCode !== null);
+});
 test("missing Python executable is handled without an unhandled stream error", async () => {
   const client = new MemoryClient({
     command: "/nonexistent/aura-python",

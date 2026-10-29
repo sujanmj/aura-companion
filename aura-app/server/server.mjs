@@ -626,12 +626,16 @@ server.listen(port, "127.0.0.1", () => {
     `AURA Companion · http://${host}\nSession code: ${token}\nActions: ${gate.enabled ? "explicit tools, each requires approval" : "disabled"}`,
   );
 });
-function stop() {
+let stopping = false;
+async function stop() {
+  if (stopping) return;
+  stopping = true;
   controller?.abort();
   gate.close();
-  memoryClient.close();
-  server.close();
-  setTimeout(() => process.exit(0), 100).unref();
+  const workerClosed = memoryClient.close();
+  const serverClosed = new Promise((resolve) => server.close(resolve));
+  await Promise.all([workerClosed, serverClosed]);
+  process.exit(0);
 }
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);

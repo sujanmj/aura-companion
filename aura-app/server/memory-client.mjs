@@ -44,7 +44,7 @@ export class MemoryClient {
     });
   }
   close() {
-    if (this.closed) return;
+    if (this.closed) return this.shutdownPromise || Promise.resolve();
     this.closed = true;
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
@@ -52,6 +52,15 @@ export class MemoryClient {
     }
     this.pending.clear();
     // Do not retry writes: a failed request may already have committed to SQLite.
-    this.worker.kill();
+    this.shutdownPromise = new Promise((resolve) => {
+      if (!this.worker.pid || this.worker.exitCode !== null || this.worker.signalCode !== null) {
+        resolve();
+        return;
+      }
+      this.worker.once("exit", resolve);
+      this.worker.once("error", resolve);
+      this.worker.kill();
+    });
+    return this.shutdownPromise;
   }
 }
