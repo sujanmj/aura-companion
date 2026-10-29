@@ -378,5 +378,11 @@ and PR CI
 passed on macOS, Windows and Ubuntu; both uploaded all three preview archives.
 
 Incident, confirmation, dashboard and runtime-heartbeat probes now follow the
-same direct transport rule. Twelve focused admin-client tests pass locally;
-cross-platform verification is pending.
+same direct transport rule. The Windows loopback integration test explicitly
+bypasses system proxies. Twelve focused admin-client tests, 51 focused
+room/transport tests and all 94 app Python tests pass locally. Commit `79b8f40`
+passed macOS, Windows and Ubuntu push CI
+[40970180323](https://github.com/sujanmj/aura-companion/actions/runs/40970180323)
+and PR CI
+[40970187073](https://github.com/sujanmj/aura-companion/actions/runs/40970187073);
+both runs uploaded all three preview archives.

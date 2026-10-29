@@ -414,7 +414,11 @@ Status: foundations exist in the original reaction/memory engines.
 - Implemented: Memory can clear all saved observations and explicit event notes
   for the signed-in account in one confirmed action. Other memory categories
   remain intact. The operation is authenticated, CSRF-protected, owner-scoped,
-  and covered by storage, API, and browser tests; CI verification is pending.
+  and covered by storage, API, and browser tests. Latest cross-platform push
+  [40970180323](https://github.com/sujanmj/aura-companion/actions/runs/40970180323)
+  and PR CI
+  [40970187073](https://github.com/sujanmj/aura-companion/actions/runs/40970187073)
+  passed on macOS, Windows and Ubuntu.
 - Implemented and CI-verified in commit `eadd6a6`: saved observations can also
   be corrected in Memory. A correction replaces the selected SQLite row, is
   marked `user_correction` with explicit user-authored wording, and enters a
@@ -523,8 +527,9 @@ not close the unresolved Phase 2 hardware acceptance gates.
   re-entry, and says it cannot identify who is present. It does not claim a
   visitor is unknown, stores no identity, and runs only during explicitly
   started ambient mode. Native tests cover opt-out, debounce, re-arming, and
-  one notice per entry; push CI passed in run 39617638169, while pull-request
-  CI and live false-positive acceptance remain pending.
+  one notice per entry; current push and PR CI also pass on all three desktop
+  platforms in runs 40970180323 and 40970187073. Live false-positive
+  acceptance remains pending.
 - Finish and validate continuous perception on Mac first, with explicit
   camera/microphone indicators, a visible pause, resource limits, and reliable
   offline behavior; port the validated runtime to Pi afterward.
@@ -1138,5 +1143,13 @@ passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
 
 The incident, confirmation, dashboard and runtime-heartbeat probes now use the
 same no-proxy, no-redirect transport and reject remote HTTP before sending the
-admin token. Twelve focused admin-client tests pass locally; cross-platform CI
-is pending for this final client group.
+admin token. The Windows loopback integration test now explicitly bypasses
+system proxies, avoiding an intermittent connection-abort while validating
+unauthenticated routes. Twelve focused admin-client tests, the 51-test
+room/transport group and all 94 app Python tests pass locally. Commit `79b8f40`
+passed macOS, Windows and Ubuntu push CI in
+[40970180323](https://github.com/sujanmj/aura-companion/actions/runs/40970180323)
+and PR CI
+[40970187073](https://github.com/sujanmj/aura-companion/actions/runs/40970187073);
+both runs uploaded all three preview archives. This client-side check does not
+validate a deployed hub or Pi device.

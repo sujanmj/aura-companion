@@ -74,6 +74,15 @@ These checks establish only the behavior covered by their tests:
   [40968385143](https://github.com/sujanmj/aura-companion/actions/runs/40968385143)
   passed on macOS, Windows and Ubuntu; both uploaded all three preview
   archives. This remains software verification only.
+- Commit `79b8f40` completes direct, no-proxy transport coverage for the
+  credentialed sensor API test probes and makes the Windows loopback integration
+  test bypass system proxies. Twelve focused admin-client tests, 51 focused
+  room/transport tests and all 94 app Python tests pass locally. Push CI
+  [40970180323](https://github.com/sujanmj/aura-companion/actions/runs/40970180323)
+  and PR CI
+  [40970187073](https://github.com/sujanmj/aura-companion/actions/runs/40970187073)
+  passed on macOS, Windows and Ubuntu; both uploaded all three preview
+  archives. This is software-only evidence.
 - Commit `154af25`: Pi event, heartbeat and room-claim requests use a direct
   no-proxy opener and refuse redirects before credentials can be sent to
   another destination. Push CI
