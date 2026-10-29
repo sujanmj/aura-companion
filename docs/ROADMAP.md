@@ -1099,4 +1099,9 @@ to a redirect destination. Focused tests verify the direct no-proxy opener,
 redirect refusal and existing retry/claim behavior. Local verification passes:
 94 app Python tests and 39 focused room, invitation, heartbeat, service and
 sensor-transport tests. Cross-platform CI is pending. Remote sensor hubs still
-require HTTPS, and no Pi installation or network deployment is claimed.
+require HTTPS, and no Pi installation or network deployment is claimed. Commit
+`154af25` passed macOS, Windows and Ubuntu push CI in
+[40962677800](https://github.com/sujanmj/aura-companion/actions/runs/40962677800)
+and PR CI
+[40962684508](https://github.com/sujanmj/aura-companion/actions/runs/40962684508);
+both runs uploaded preview archives for all three platforms.
