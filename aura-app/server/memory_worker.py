@@ -245,7 +245,7 @@ def main():
                         req.get('confidence'),
                     )
                 elif op == 'shared_chat':
-                    result = shared_contribution(req.get('message'), req.get('consent'))
+                    result = shared_contribution(req.get('message'), req.get('consent'), req.get('history'))
                 elif op == 'chat':
                     message = req['message']
                     if not isinstance(message, str) or not 0 < len(message.strip()) <= 8000:

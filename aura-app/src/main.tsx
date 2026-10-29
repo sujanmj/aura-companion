@@ -223,7 +223,8 @@ function App() {
     [sharedQuestion, setSharedQuestion] = useState(""),
     [sharedConsent, setSharedConsent] = useState(false),
     [sharedBusy, setSharedBusy] = useState(false),
-    [sharedReply, setSharedReply] = useState<{ response: string; provider: string } | null>(null),
+    [sharedTurns, setSharedTurns] = useState<{ role: "user" | "assistant"; message: string }[]>([]),
+    [sharedProvider, setSharedProvider] = useState("local"),
     [personName, setPersonName] = useState(""),
     [personRelation, setPersonRelation] = useState(""),
     [personConsent, setPersonConsent] = useState(false),
@@ -661,25 +662,25 @@ function App() {
                 </details>
                 <details className="memory-review" name="conversation-extras">
                   <summary>Invite AURA to answer a shared question</summary>
-                  <p>Review and type only what everyone agrees to share. This sends the question to the configured provider ({status.provider}), without your private memories. AURA does not save this question or reply; the provider may retain requests under its own policy. No microphone, camera, tools or online lookup are started.</p>
+                  <p>Review each turn with everyone. Each turn sends the current question and up to three earlier shared exchanges to the configured provider ({status.provider}), without private memories. AURA keeps this short exchange in temporary page state only; it is not added to memory or chat history. The provider may retain requests under its own policy. No microphone, camera, tools or online lookup are started.</p>
                   <form onSubmit={async event => {
                     event.preventDefault();
                     if (!sharedConsent || sharedBusy) return;
                     setSharedBusy(true);
-                    setSharedReply(null);
                     try {
-                      const reply = await api<{ response: string; provider: string }>("shared", { message: sharedQuestion, consent: true });
-                      setSharedReply(reply);
+                      const reply = await api<{ response: string; provider: string }>("shared", { message: sharedQuestion, history: sharedTurns, consent: true });
+                      setSharedTurns(turns => [...turns, { role: "user" as const, message: sharedQuestion.trim() }, { role: "assistant" as const, message: reply.response }].slice(-6));
+                      setSharedProvider(reply.provider);
                       setSharedQuestion("");
                     } catch (e) { setError(String(e)); }
                     finally { setSharedBusy(false); setSharedConsent(false); }
                   }}>
                     <label htmlFor="shared-question">Reviewed shared question</label>
                     <textarea id="shared-question" maxLength={4000} value={sharedQuestion} onChange={event => { setSharedQuestion(event.target.value); setSharedConsent(false); }} disabled={sharedBusy} required />
-                    <label><input type="checkbox" checked={sharedConsent} onChange={event => setSharedConsent(event.target.checked)} disabled={sharedBusy} />Everyone agrees to send this question to the configured provider.</label>
-                    <button disabled={!sharedConsent || sharedBusy || !sharedQuestion.trim()}>{sharedBusy ? "Waiting for contribution…" : "Invite one contribution"}</button>
+                    <label><input type="checkbox" checked={sharedConsent} onChange={event => setSharedConsent(event.target.checked)} disabled={sharedBusy} />Everyone agrees to send this question and the displayed shared exchange to the configured provider.</label>
+                    <button disabled={!sharedConsent || sharedBusy || !sharedQuestion.trim() || sharedTurns.length >= 6}>{sharedBusy ? "Waiting for contribution…" : "Invite AURA to respond"}</button>
                   </form>
-                  {sharedReply && <article><small>{sharedReply.provider} · not saved · online sources not checked</small><p>{sharedReply.response}</p><button onClick={() => setSharedReply(null)}>Clear shared reply</button></article>}
+                  {sharedTurns.length > 0 && <article><small>{sharedProvider} · temporary shared exchange · not in AURA memory · online sources not checked</small>{sharedTurns.map((turn, index) => <p key={index}><strong>{turn.role === "user" ? "Group" : "AURA"}:</strong> {turn.message}</p>)}<button onClick={() => { setSharedTurns([]); setSharedQuestion(""); setSharedConsent(false); }}>Clear shared conversation</button></article>}
                 </details>
                 <div className="panel-heading">
                   <h3>Our conversation</h3>

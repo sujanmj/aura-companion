@@ -895,3 +895,23 @@ which uploaded all three preview archives. The push run passed Ubuntu and
 Windows in [40900342769](https://github.com/sujanmj/aura-companion/actions/runs/40900342769);
 its macOS job remained queued when this evidence was recorded. No acoustic
 interruption acceptance is claimed.
+
+## 2026-10-29 continuation — temporary invited group exchange (Phase 10)
+
+The shared contribution panel now supports up to three short question-and-answer
+pairs in one page session. Every new question requires fresh agreement from the
+group and sends the displayed exchange plus the new question to the configured
+provider. The exchange stays in browser page state, is excluded from AURA's
+memory and saved chat history, and can be cleared; a refresh also clears it.
+The provider may retain requests under its own policy. Server validation limits
+the exchange to six alternating messages, validates every message bound, and
+rejects malformed histories before provider access. Provider prompts label the
+entire transcript as untrusted content and prohibit private-memory access,
+identity inference, and tools. Online lookup remains disabled for this path.
+
+Local verification: 92 Python tests, 23 Node tests, all 18 browser tests,
+frontend lint and production build pass. The first browser run used stale built
+assets and failed on the old button label; rebuilding and rerunning the full
+suite passed. CI and preview artifacts will be recorded after the branch push.
+No real provider retention, multi-person consent, or acoustic behavior is
+verified by these software tests.

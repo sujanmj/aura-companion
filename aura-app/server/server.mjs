@@ -519,11 +519,12 @@ const server = http.createServer(async (req, res) => {
         } finally { busy = false; }
       }
       if (url.pathname === "/api/shared") {
-        if (data.consent !== true || data.message.trim().length > 4000)
+        if (data.consent !== true || data.message.trim().length > 4000 ||
+            (data.history !== undefined && (!Array.isArray(data.history) || data.history.length > 6)))
           return json(res, 400, { error: "Review the shared question and confirm participants agree." });
         busy = true;
         try {
-          return json(res, 200, await memory("shared_chat", { message: data.message, consent: true }));
+          return json(res, 200, await memory("shared_chat", { message: data.message, history: data.history || [], consent: true }));
         } finally { busy = false; }
       }
       if (["/api/chat", "/api/ambient"].includes(url.pathname)) {

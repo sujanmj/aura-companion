@@ -223,3 +223,14 @@ passed macOS, Ubuntu, and Windows push CI in run
 and pull-request CI in
 [40810695923](https://github.com/sujanmj/aura-companion/actions/runs/40810695923).
 All three preview artifacts were uploaded from the push run.
+
+## 2026-10-29 — temporary invited group exchange
+
+The shared question panel can continue for up to three exchanges. Everyone must
+agree again for each question, and AURA sends only the displayed shared
+exchange and the newly reviewed question to the selected provider. The exchange
+is temporary in the page and is absent from saved memory and chat history; the
+provider may retain its request. It can be cleared at any time, and no online
+lookup, microphone, camera or tools are started. Local verification passes 92
+Python, 23 Node and 18 browser tests plus lint and production build. Cross-platform
+CI results and preview artifacts are pending for this commit.

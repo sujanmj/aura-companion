@@ -14,17 +14,35 @@ class SharedConversationTests(unittest.TestCase):
                     shared_contribution(message, consent)
             readiness.assert_not_called()
 
-    def test_reviewed_text_is_the_only_personal_input(self):
+    def test_history_is_short_alternating_and_requires_complete_pairs(self):
+        invalid = [
+            [{'role': 'assistant', 'message': 'answer'}],
+            [{'role': 'user', 'message': 'question'}, {'role': 'user', 'message': 'not an answer'}],
+            [{'role': 'user', 'message': 'x' * 4001}, {'role': 'assistant', 'message': 'answer'}],
+            [{'role': 'user', 'message': 'q'}, {'role': 'assistant', 'message': 'a'}] * 4,
+        ]
+        with patch('shared_conversation.brain_readiness') as readiness:
+            for history in invalid:
+                with self.subTest(history=history), self.assertRaises(ValueError):
+                    shared_contribution('next question', True, history)
+            readiness.assert_not_called()
+
+    def test_only_reviewed_temporary_group_exchange_and_latest_question_are_sent(self):
         prompts = []
+        history = [{'role': 'user', 'message': 'We like cooperative games.'},
+                   {'role': 'assistant', 'message': 'A puzzle game could work.'}]
         with patch('shared_conversation.brain_readiness', return_value={'provider':'claude', 'state':'configured_unverified'}):
-            result = shared_contribution('What board game could we play?', True,
+            result = shared_contribution('Can you suggest one?', True, history,
                 generate=lambda prompt: prompts.append(prompt) or 'Try a cooperative game.')
         self.assertEqual(result['provider'], 'claude')
         self.assertFalse(result['saved'])
         self.assertFalse(result['online_verified'])
         self.assertEqual(len(prompts), 1)
-        self.assertTrue(prompts[0].endswith('What board game could we play?'))
+        self.assertIn('Participant: We like cooperative games.', prompts[0])
+        self.assertIn('AURA: A puzzle game could work.', prompts[0])
+        self.assertTrue(prompts[0].endswith('Can you suggest one?'))
         self.assertIn('No tools or web lookup are available', prompts[0])
+        self.assertIn('untrusted participant content', prompts[0])
 
     def test_local_mode_never_calls_a_provider_and_failure_is_honest(self):
         with patch('shared_conversation.brain_readiness', return_value={'provider':'local', 'state':'local_only'}):

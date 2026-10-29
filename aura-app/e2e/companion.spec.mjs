@@ -562,13 +562,13 @@ test("note expiry previews a change and persists only after confirmation", async
 });
 
 
-test("a shared contribution needs fresh agreement and stays out of memory", async ({ page }) => {
+test("a short shared conversation needs fresh agreement per turn and stays out of memory", async ({ page }) => {
   await connect(page);
   await page.getByText("Invite AURA to answer a shared question", { exact: true }).click();
   const question = page.getByLabel("Reviewed shared question");
   await question.fill("What game can we play together?");
-  const send = page.getByRole("button", { name: "Invite one contribution" });
-  const consent = page.getByLabel("Everyone agrees to send this question to the configured provider.");
+  const send = page.getByRole("button", { name: "Invite AURA to respond" });
+  const consent = page.getByLabel("Everyone agrees to send this question and the displayed shared exchange to the configured provider.");
   await expect(send).toBeDisabled();
   await consent.check();
   await question.fill("What board game can we play together?");
@@ -576,12 +576,19 @@ test("a shared contribution needs fresh agreement and stays out of memory", asyn
   await consent.check();
   const before = await page.evaluate(async () => (await (await fetch("/api/status")).json()).conversations);
   await send.click();
-  await expect(page.getByText("local · not saved · online sources not checked")).toBeVisible();
+  await expect(page.getByText("local · temporary shared exchange · not in AURA memory · online sources not checked")).toBeVisible();
   await expect(consent).not.toBeChecked();
   const after = await page.evaluate(async () => (await (await fetch("/api/status")).json()).conversations);
   expect(after).toEqual(before);
-  await page.getByRole("button", { name: "Clear shared reply" }).click();
-  await expect(page.getByText("local · not saved · online sources not checked")).toHaveCount(0);
+  await question.fill("Can you suggest one specific game?");
+  await expect(send).toBeDisabled();
+  await consent.check();
+  await send.click();
+  await expect(page.getByText("Group:", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("AURA:", { exact: false }).first()).toBeVisible();
+  await expect(consent).not.toBeChecked();
+  await page.getByRole("button", { name: "Clear shared conversation" }).click();
+  await expect(page.getByText("local · temporary shared exchange · not in AURA memory · online sources not checked")).toHaveCount(0);
 });
 
 
