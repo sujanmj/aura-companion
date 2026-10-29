@@ -918,6 +918,25 @@ Both runs uploaded all three preview archives. The first browser run used stale
 built assets and failed on the old button label; rebuilding and rerunning passed.
 A follow-up caps provider replies at 4,000 characters, so they fit in the next
 turn's bounded history. Local verification after that fix: 93 Python tests, 23
-Node tests, all 18 browser tests, frontend lint and production build pass. Its
-cross-platform CI is pending. No real provider retention, multi-person consent,
-or acoustic behavior is verified by these software tests.
+Node tests, all 18 browser tests, frontend lint and production build pass. The
+follow-up CI and preview evidence is recorded in the next milestone entry. No
+real provider retention, multi-person consent, or acoustic behavior is verified
+by these software tests.
+
+## 2026-10-29 continuation — bounded reply and preview acceptance (Phases 10, 12)
+
+The shared-conversation provider reply is capped at the same 4,000-character
+limit used for transcript messages, so one long response cannot invalidate the
+next turn. A regression test covers the cap. On the pushed source commit
+`76ce6e6`, local verification passed: 93 Python tests, 23 Node tests, all 18
+browser tests, lint, production build and preview bundle. The Darwin bundle
+manifest names that source commit, records ad-hoc native signing, and leaves
+notarization and hardware acceptance explicitly unverified.
+
+Commit `76ce6e6` passed all three push CI jobs in
+[40904869469](https://github.com/sujanmj/aura-companion/actions/runs/40904869469).
+CI uploaded macOS, Windows and Ubuntu previews. This completes software-only
+validation for the current group exchange and preview packaging changes. A
+signed/notarized public release, installed-device permission and acoustic tests,
+Pi capture, multi-room handoff and home acceptance still require the relevant
+credentials and physical devices; none is claimed by this CI run.

@@ -240,4 +240,8 @@ and pull-request CI in
 Both runs uploaded preview archives for all three platforms. A follow-up caps
 shared provider replies at 4,000 characters so a long answer cannot break the
 next turn's bounded transcript. Local Python, Node, browser, lint and production
-build checks pass for the follow-up; its cross-platform CI is pending.
+build checks passed. The preview bundle manifest records the source commit,
+Darwin platform, ad-hoc signing, and no notarization or hardware acceptance.
+Commit `76ce6e6` passed all three push CI jobs in
+[40904869469](https://github.com/sujanmj/aura-companion/actions/runs/40904869469),
+which uploaded macOS, Windows and Ubuntu previews.
