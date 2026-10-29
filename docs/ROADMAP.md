@@ -1013,3 +1013,10 @@ missing certificate or a world-accessible private key before startup. Updated
 the Pi instructions to require a trusted certificate and HTTPS. Automated tests
 cover transport URL policy, loopback exceptions, server TLS setup and service
 preflight; no live certificate, Pi install or network deployment is claimed.
+Commit `d1c7d5d` passed push CI in
+[40950505353](https://github.com/sujanmj/aura-companion/actions/runs/40950505353)
+and pull-request CI in
+[40950517278](https://github.com/sujanmj/aura-companion/actions/runs/40950517278)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+The Pi certificate installation, trust-store setup and network deployment
+remain untested.
