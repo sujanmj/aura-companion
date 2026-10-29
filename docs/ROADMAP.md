@@ -946,6 +946,8 @@ credentials and physical devices; none is claimed by this CI run.
 Added a regression test with an already-due check-in, proving that overnight
 quiet hours suppress it at 23:00 and 07:59 and permit it exactly at the 08:00
 end boundary. This isolates quiet-hour behavior from the separate cooldown
-condition. The full local Python suite passes 94 tests; cross-platform CI is
-pending for this test-only change. It does not represent local-timezone/DST or
-live speaker acceptance.
+condition. The full local Python suite passes 94 tests. Commit `9ed1705` passed
+macOS, Ubuntu and Windows push CI in
+[40906445069](https://github.com/sujanmj/aura-companion/actions/runs/40906445069),
+which uploaded previews for all three platforms. This does not represent
+local-timezone/DST or live speaker acceptance.

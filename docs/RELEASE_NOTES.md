@@ -248,5 +248,7 @@ which uploaded macOS, Windows and Ubuntu previews.
 
 Phase 11 reminder verification now independently tests a due check-in across an
 overnight quiet-hours interval and its exact end boundary. The 94-test Python
-suite passes locally; CI is pending. This does not establish speaker, timezone
-or daylight-saving acceptance.
+suite passes locally. Commit `9ed1705` passed all three push CI jobs in
+[40906445069](https://github.com/sujanmj/aura-companion/actions/runs/40906445069),
+with preview archives for macOS, Windows and Ubuntu. This does not establish
+speaker, timezone or daylight-saving acceptance.
