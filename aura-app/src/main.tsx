@@ -41,6 +41,7 @@ type Status = {
     id: number;
     label: string;
     local_time: string;
+    days_of_week: string;
     enabled: boolean;
     last_delivered_on: string | null;
     dismissed_on: string | null;
@@ -227,6 +228,7 @@ function App() {
     [personConsent, setPersonConsent] = useState(false),
     [reminderLabel, setReminderLabel] = useState(""),
     [reminderTime, setReminderTime] = useState("20:00"),
+    [reminderDays, setReminderDays] = useState([1, 2, 3, 4, 5, 6, 7]),
     [reminderConsent, setReminderConsent] = useState(false);
   const stopListen = useRef<(() => void) | null>(null),
     bottom = useRef<HTMLDivElement>(null),
@@ -1208,7 +1210,7 @@ function App() {
                   ))
                 )}
                 <section className="memory-review">
-                  <h3>Daily reminders</h3>
+                  <h3>Scheduled reminders</h3>
                   <p>
                     These run on this Mac while AURA is open or ambient mode is
                     active. A reminder is not confirmation that you completed
@@ -1222,11 +1224,13 @@ function App() {
                         await api("reminder/create", {
                           label: reminderLabel,
                           local_time: reminderTime,
+                          days_of_week: reminderDays,
                           enabled: reminderConsent,
                         });
                         await refresh();
                         setReminderLabel("");
                         setReminderTime("20:00");
+                        setReminderDays([1, 2, 3, 4, 5, 6, 7]);
                         setReminderConsent(false);
                         setError("Daily reminder saved.");
                       } catch (e) {
@@ -1250,19 +1254,40 @@ function App() {
                       onChange={(event) => setReminderTime(event.target.value)}
                       required
                     />
+                    <fieldset>
+                      <legend>Repeat on</legend>
+                      <div className="weekday-options">
+                        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => {
+                          const value = index + 1;
+                          return (
+                            <label key={day}>
+                              <input
+                                type="checkbox"
+                                checked={reminderDays.includes(value)}
+                                onChange={(event) => setReminderDays((current) =>
+                                  event.target.checked
+                                    ? [...current, value].sort()
+                                    : current.filter((selected) => selected !== value))}
+                              />
+                              {day}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
                     <label className="person-consent">
                       <input
                         type="checkbox"
                         checked={reminderConsent}
                         onChange={(event) => setReminderConsent(event.target.checked)}
                       />
-                      Enable this daily reminder on this Mac.
+                      Enable this reminder on this Mac.
                     </label>
                     <button
                       className="primary"
                       disabled={!reminderLabel.trim() || !reminderConsent}
                     >
-                      Add daily reminder
+                      Add scheduled reminder
                     </button>
                   </form>
                   {status.reminders.length === 0 ? (
@@ -1271,7 +1296,7 @@ function App() {
                     status.reminders.map((reminder) => (
                       <article className="fact" key={reminder.id}>
                         <small>
-                          Daily · {reminder.local_time} local time ·{" "}
+                          {reminder.days_of_week.split(",").map((day) => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][Number(day) - 1]).join(", ")} · {reminder.local_time} local time ·{" "}
                           {reminder.enabled ? "active" : "paused"}
                         </small>
                         <p>{reminder.label}</p>
@@ -1323,7 +1348,7 @@ function App() {
                             onClick={async () => {
                               if (
                                 !window.confirm(
-                                  `Delete the daily reminder “${reminder.label}”? This cannot be undone.`,
+                                  `Delete the scheduled reminder “${reminder.label}”? This cannot be undone.`,
                                 )
                               ) return;
                               try {

@@ -356,7 +356,12 @@ const server = http.createServer(async (req, res) => {
           !data.label.trim() ||
           data.label.trim().length > 120 ||
           typeof data.local_time !== "string" ||
-          !/^([01]\d|2[0-3]):[0-5]\d$/.test(data.local_time)
+          !/^([01]\d|2[0-3]):[0-5]\d$/.test(data.local_time) ||
+          !Array.isArray(data.days_of_week) ||
+          data.days_of_week.length < 1 ||
+          data.days_of_week.length > 7 ||
+          data.days_of_week.some((day) => !Number.isInteger(day) || day < 1 || day > 7) ||
+          new Set(data.days_of_week).size !== data.days_of_week.length
         )
           return json(res, 400, { error: "Enter a reminder and a valid local time." });
         if (data.enabled !== true)
@@ -368,6 +373,7 @@ const server = http.createServer(async (req, res) => {
             await memory("create_reminder", {
               label: data.label,
               local_time: data.local_time,
+              days_of_week: data.days_of_week,
             }),
           );
         } catch {

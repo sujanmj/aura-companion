@@ -514,7 +514,7 @@ ready solely because it compiles or passes CI.
 ## Future companion capability phases
 
 These phases extend the delivery work above. They are not complete, and they do
-do not close the unresolved Phase 2 hardware acceptance gates.
+not close the unresolved Phase 2 hardware acceptance gates.
 
 ### Phase 7 — Continuous, private perception
 
@@ -585,6 +585,12 @@ do not close the unresolved Phase 2 hardware acceptance gates.
   helper polls while paired and running, including with ambient sensors paused.
   Pull-request and push CI passed on both platforms in runs 39615337678 and
   39615327822. Live speaker acceptance remains pending.
+- Implemented: local reminders can repeat on selected weekdays at a user-set
+  local time. Existing reminders migrate to all seven days without changing
+  their label, time, delivery history, or enabled state. Empty/duplicate days
+  and out-of-range values are rejected; reminders remain owner-scoped and
+  deliver once per selected local date while the app/helper is running. This is
+  a general reminder schedule, not a medication tracker or proof of completion.
 - Add optional, user-controlled links to iPhone or wearable health data where
   supported, and show what is collected, where it is stored and how to remove it.
 - Summarize trends in sleep, activity and meals as non-diagnostic observations
@@ -793,7 +799,23 @@ which skipped the configured provider; greeting detection now compares words.
 
 Local evidence: 85 Python, 23 Node, 18 browser; native lifecycle tests, Mac
 ad-hoc app build, lint, provider/cloud/node regressions and frontend build pass.
-New-commit CI is pending. The temporary Ollama service is simulated and does
+Commit `3fa324e` passed macOS, Ubuntu and Windows push CI in [40810690005](https://github.com/sujanmj/aura-companion/actions/runs/40810690005) and pull-request CI in [40810695923](https://github.com/sujanmj/aura-companion/actions/runs/40810695923), with all three preview artifacts uploaded from the push run. The temporary Ollama service is simulated and does
 not represent a live model quality or device-privacy acceptance result. The
 Ollama guard itself passed macOS, Ubuntu and Windows CI in [40810170044](https://github.com/sujanmj/aura-companion/actions/runs/40810170044),
 with preview packages uploaded for all three runners.
+
+## 2026-10-29 continuation — weekday reminder schedules (Phase 11)
+
+Added selected-weekday repetition to local reminders, retaining the existing
+once-per-selected-day behavior and local-time schedule. The authenticated API
+validates a non-empty unique weekday list. SQLite migrates existing daily
+reminders to every weekday while preserving each row, and the Memory UI shows
+the selected days. AURA delivers only while the app or paired Mac helper is
+running and cannot confirm that a task or dose was completed.
+
+Local verification: 88 Python tests, 23 Node tests, all 18 browser tests,
+native lifecycle/speech tests, provider/cloud/Pi heartbeat regressions, frontend
+build/lint and an ad-hoc signed Mac app build pass. Migration tests preserve
+legacy reminders, and simulated weekday tests confirm local weekday gating.
+Push and pull-request CI will be triggered after this continuation is committed.
+No speaker or medical integration test is claimed.

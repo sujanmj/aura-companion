@@ -332,17 +332,19 @@ test("people are added only with recorded consent and can be forgotten", async (
   await expect(person).toHaveCount(0);
 });
 
-test("daily reminders require opt-in and can be deleted", async ({ page }) => {
+test("scheduled reminders require opt-in, support selected weekdays, and can be deleted", async ({ page }) => {
   await connect(page);
   await page.getByRole("button", { name: "Memory 02" }).click();
   await page.getByLabel("What should AURA remind you about?").fill("Stretch");
   await page.getByLabel("Local reminder time").fill("21:00");
-  const add = page.getByRole("button", { name: "Add daily reminder" });
+  await page.locator(".weekday-options input").nth(5).uncheck();
+  const add = page.getByRole("button", { name: "Add scheduled reminder" });
   await expect(add).toBeDisabled();
-  await page.getByLabel("Enable this daily reminder on this Mac.").check();
+  await page.getByLabel("Enable this reminder on this Mac.").check();
   await add.click();
   const reminder = page.locator(".fact").filter({ hasText: "Stretch" });
   await expect(reminder).toContainText("21:00 local time");
+  await expect(reminder).toContainText("Mon, Tue, Wed, Thu, Fri, Sun");
   await expect(
     page.getByText("A reminder is not confirmation that you completed the task or took a dose."),
   ).toBeVisible();
@@ -353,7 +355,7 @@ test("daily reminders require opt-in and can be deleted", async ({ page }) => {
   await expect(reminder).toContainText("active");
   await expect(page.getByRole("status")).toContainText("Daily reminder enabled");
   page.once("dialog", (dialog) => {
-    expect(dialog.message()).toContain("Delete the daily reminder");
+    expect(dialog.message()).toContain("Delete the scheduled reminder");
     void dialog.accept();
   });
   await reminder.getByRole("button", { name: "Delete reminder" }).click();

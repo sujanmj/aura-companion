@@ -102,6 +102,7 @@ def main():
                         user,
                         req.get('label'),
                         req.get('local_time'),
+                        req.get('days_of_week'),
                     )
                     result = {'created': True, 'reminder_id': reminder_id}
                 elif op == 'delete_reminder':

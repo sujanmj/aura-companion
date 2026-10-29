@@ -792,6 +792,22 @@ footer {
   gap: 8px;
   line-height: 1.5;
 }
+.memory-review > .person-form fieldset {
+  border: 1px solid #303b4b;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.weekday-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.weekday-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0;
+}
 .person-consent input {
   margin-top: 3px;
   accent-color: var(--accent);

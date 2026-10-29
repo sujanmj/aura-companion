@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import sqlite3
 from datetime import datetime, timedelta, timezone
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -99,6 +100,50 @@ class MemoryControlsTest(unittest.TestCase):
         self.assertIsNotNone(self.store.create_due_routine_reminder(self.owner, first_day))
         next_day = first_day + timedelta(days=1)
         self.assertIsNotNone(self.store.create_due_routine_reminder(self.owner, next_day))
+
+    def test_weekly_reminder_runs_only_on_selected_local_weekdays(self):
+        reminder_id = self.store.add_routine_reminder(
+            self.owner, 'Call clinic', '09:00', [1, 3, 5]
+        )
+        monday = datetime(2026, 10, 19, 9, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+        self.assertEqual(self.store.create_due_routine_reminder(self.owner, monday)['reminder_id'], reminder_id)
+        self.assertIsNone(self.store.create_due_routine_reminder(self.owner, monday + timedelta(days=1)))
+        self.assertEqual(self.store.create_due_routine_reminder(self.owner, monday + timedelta(days=2))['reminder_id'], reminder_id)
+        self.assertIsNone(self.store.create_due_routine_reminder(self.owner, monday + timedelta(days=3)))
+        self.assertEqual(self.store.create_due_routine_reminder(self.owner, monday + timedelta(days=4))['reminder_id'], reminder_id)
+        self.assertEqual(self.store.get_routine_reminders(self.owner)[0]['days_of_week'], '1,3,5')
+
+    def test_weekly_reminder_rejects_empty_duplicate_and_out_of_range_days(self):
+        for days in ([], [1, 1], [0], [8], [True]):
+            with self.assertRaises(ValueError):
+                self.store.add_routine_reminder(self.owner, 'Reminder', '09:00', days)
+
+    def test_existing_daily_reminders_migrate_to_all_weekdays(self):
+        legacy_path = Path(self.temp.name) / 'legacy.db'
+        legacy = sqlite3.connect(legacy_path)
+        legacy.executescript('''
+            CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, preferred_name TEXT,
+                comfort_style TEXT);
+            INSERT INTO users (id, name) VALUES (1, 'Owner');
+            CREATE TABLE routine_reminders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+                label TEXT NOT NULL, local_time TEXT NOT NULL,
+                enabled INTEGER NOT NULL DEFAULT 1, last_delivered_on TEXT,
+                dismissed_on TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO routine_reminders (user_id, label, local_time)
+                VALUES (1, 'Existing reminder', '08:00');
+        ''')
+        legacy.close()
+        migrated = AuraMemoryStore(legacy_path)
+        try:
+            migrated.apply_schema()
+            reminders = migrated.get_routine_reminders(1)
+            self.assertEqual(len(reminders), 1)
+            self.assertEqual(reminders[0]['label'], 'Existing reminder')
+            self.assertEqual(reminders[0]['days_of_week'], '1,2,3,4,5,6,7')
+        finally:
+            migrated.close()
 
     def test_daily_reminders_can_be_paused_and_reenabled_without_cross_user_access(self):
         reminder_id = self.store.add_routine_reminder(self.owner, 'Walk', '09:30')

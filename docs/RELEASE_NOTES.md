@@ -138,6 +138,13 @@ not install or invoke an Ollama model. A live Ollama model check still requires
 one installed on the user's Mac or Windows device. Commit `be8430e` passed
 macOS, Ubuntu and Windows CI in run 40810170044 with preview packages.
 
+## 2026-10-29 — weekday reminder schedules
+
+Local reminders can now repeat on selected weekdays. Existing daily reminders
+are preserved and migrate to all seven days. The schedule stays in local SQLite
+and is delivered once per selected local date while AURA is running. This does
+not confirm a task or dose, and includes no medication or health-data integration.
+
 The optional Ollama brain now accepts only a numeric loopback URL and fixed API
 path. It bypasses proxy settings, never follows redirects, caps prompts/replies,
 and exposes the selected `OLLAMA_MODEL` in setup readiness. Custom `OLLAMA_URL`
@@ -151,6 +158,9 @@ reply stay in the current page until cleared or refreshed. The selected provider
 receives the message and may have its own retention policy. This is not an
 ongoing private chat. A regression in greeting matching was fixed so common
 words containing “hi” no longer silently force local fallback. Local tests: 85
-Python, 23 Node, 18 browser, native lifecycle, build and lint. New CI is pending.
-
-The private-turn changes are undergoing a new cross-platform CI run.
+Python, 23 Node, 18 browser, native lifecycle, build and lint. Commit `3fa324e`
+passed macOS, Ubuntu, and Windows push CI in run
+[40810690005](https://github.com/sujanmj/aura-companion/actions/runs/40810690005)
+and pull-request CI in
+[40810695923](https://github.com/sujanmj/aura-companion/actions/runs/40810695923).
+All three preview artifacts were uploaded from the push run.

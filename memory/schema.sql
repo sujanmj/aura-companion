@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS routine_reminders (
     user_id INTEGER NOT NULL,
     label TEXT NOT NULL,
     local_time TEXT NOT NULL,
+    days_of_week TEXT NOT NULL DEFAULT '1,2,3,4,5,6,7',
     enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
     last_delivered_on TEXT,
     dismissed_on TEXT,

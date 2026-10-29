@@ -659,9 +659,19 @@ test("people memory is private and forget removes its associated timeline", asyn
       ).status,
       400,
     );
+    assert.equal(
+      (
+        await post(
+          "reminder/create",
+          { label: "Take medication", local_time: "20:00", days_of_week: [0, 8], enabled: true },
+          cookie,
+        )
+      ).status,
+      400,
+    );
     const reminderResponse = await post(
       "reminder/create",
-      { label: "Take medication", local_time: "20:00", enabled: true },
+      { label: "Take medication", local_time: "20:00", days_of_week: [1, 3, 5], enabled: true },
       cookie,
     );
     assert.equal(reminderResponse.status, 201);
@@ -682,6 +692,7 @@ test("people memory is private and forget removes its associated timeline", asyn
       await fetch(base + "/api/status", { headers: { Cookie: cookie } })
     ).json();
     assert.equal(reminderStatus.reminders[0].label, "Take medication");
+    assert.equal(reminderStatus.reminders[0].days_of_week, "1,3,5");
     assert.equal(reminderStatus.reminders[0].enabled, false);
     assert.equal(
       (await post("reminder/enabled", { reminder_id: reminder.reminder_id, enabled: true }, cookie)).status,

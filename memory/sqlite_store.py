@@ -32,6 +32,14 @@ class AuraMemoryStore:
         }
         if "external_event_id" not in device_event_columns:
             self.conn.execute("ALTER TABLE device_events ADD COLUMN external_event_id TEXT")
+        reminder_columns = {
+            row["name"]
+            for row in self.conn.execute("PRAGMA table_info(routine_reminders)").fetchall()
+        }
+        if "days_of_week" not in reminder_columns:
+            self.conn.execute(
+                "ALTER TABLE routine_reminders ADD COLUMN days_of_week TEXT NOT NULL DEFAULT '1,2,3,4,5,6,7'"
+            )
         self.conn.execute(
             """CREATE UNIQUE INDEX IF NOT EXISTS idx_device_events_external_id
                ON device_events(user_id, source, external_event_id)"""
@@ -251,7 +259,7 @@ class AuraMemoryStore:
 
     def get_routine_reminders(self, user_id: int) -> list[dict[str, Any]]:
         rows = self.conn.execute(
-            """SELECT id, label, local_time, enabled, last_delivered_on,
+            """SELECT id, label, local_time, days_of_week, enabled, last_delivered_on,
                       dismissed_on, created_at
                FROM routine_reminders WHERE user_id=? ORDER BY local_time, id""",
             (user_id,),
@@ -262,7 +270,8 @@ class AuraMemoryStore:
         return reminders
 
     def add_routine_reminder(
-        self, user_id: int, label: str, local_time: str
+        self, user_id: int, label: str, local_time: str,
+        days_of_week: list[int] | None = None,
     ) -> int:
         label = label.strip() if isinstance(label, str) else ""
         if not 1 <= len(label) <= 120:
@@ -273,6 +282,15 @@ class AuraMemoryStore:
             raise ValueError("Reminder time must use HH:MM") from None
         if parsed_time.second or parsed_time.microsecond or parsed_time.tzinfo:
             raise ValueError("Reminder time must use HH:MM")
+        days = list(range(1, 8)) if days_of_week is None else days_of_week
+        if (
+            not isinstance(days, list)
+            or not days
+            or any(type(day) is not int or day < 1 or day > 7 for day in days)
+            or len(set(days)) != len(days)
+        ):
+            raise ValueError("Reminder days must be a non-empty list of unique weekdays")
+        days_text = ",".join(str(day) for day in sorted(days))
         count = self.conn.execute(
             "SELECT COUNT(*) FROM routine_reminders WHERE user_id=? AND enabled=1",
             (user_id,),
@@ -280,9 +298,10 @@ class AuraMemoryStore:
         if count >= 20:
             raise ValueError("A maximum of 20 active reminders is allowed")
         cur = self.conn.execute(
-            """INSERT INTO routine_reminders (user_id, label, local_time, enabled)
-               VALUES (?, ?, ?, 1)""",
-            (user_id, label, parsed_time.strftime("%H:%M")),
+            """INSERT INTO routine_reminders
+               (user_id, label, local_time, days_of_week, enabled)
+               VALUES (?, ?, ?, ?, 1)""",
+            (user_id, label, parsed_time.strftime("%H:%M"), days_text),
         )
         self.conn.commit()
         return int(cur.lastrowid)
@@ -349,10 +368,11 @@ class AuraMemoryStore:
         rows = self.conn.execute(
             """SELECT id, label FROM routine_reminders
                WHERE user_id=? AND enabled=1 AND local_time<=?
+                 AND instr(',' || days_of_week || ',', ',' || ? || ',') > 0
                  AND (last_delivered_on IS NULL OR last_delivered_on<>?)
                  AND (dismissed_on IS NULL OR dismissed_on<>?)
                ORDER BY local_time, id""",
-            (user_id, local_now.strftime("%H:%M"), today, today),
+            (user_id, local_now.strftime("%H:%M"), str(local_now.isoweekday()), today, today),
         ).fetchall()
         if not rows:
             return None
@@ -371,8 +391,9 @@ class AuraMemoryStore:
                 """UPDATE routine_reminders SET last_delivered_on=?
                    WHERE id=? AND user_id=? AND enabled=1
                      AND (last_delivered_on IS NULL OR last_delivered_on<>?)
+                     AND instr(',' || days_of_week || ',', ',' || ? || ',') > 0
                      AND (dismissed_on IS NULL OR dismissed_on<>?)""",
-                (today, reminder["id"], user_id, today, today),
+                (today, reminder["id"], user_id, today, str(local_now.isoweekday()), today),
             )
             if claimed.rowcount != 1:
                 return None
