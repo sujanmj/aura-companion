@@ -369,3 +369,10 @@ push CI
 and PR CI
 [40967416698](https://github.com/sujanmj/aura-companion/actions/runs/40967416698);
 both runs uploaded all three preview archives.
+
+Commit `5120a4d` makes unsafe hub URL rejection visible to automation by
+returning a non-zero exit code before opening a request. Push CI
+[40968379151](https://github.com/sujanmj/aura-companion/actions/runs/40968379151)
+and PR CI
+[40968385143](https://github.com/sujanmj/aura-companion/actions/runs/40968385143)
+passed on macOS, Windows and Ubuntu; both uploaded all three preview archives.

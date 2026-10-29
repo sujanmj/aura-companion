@@ -67,6 +67,13 @@ These checks establish only the behavior covered by their tests:
   [40967416698](https://github.com/sujanmj/aura-companion/actions/runs/40967416698)
   passed on macOS, Windows and Ubuntu; both uploaded all three preview
   archives. This does not validate a deployed hub or physical Pi behavior.
+- Commit `5120a4d` makes unsafe hub URL rejection return a non-zero status before
+  opening a request. Push CI
+  [40968379151](https://github.com/sujanmj/aura-companion/actions/runs/40968379151)
+  and PR CI
+  [40968385143](https://github.com/sujanmj/aura-companion/actions/runs/40968385143)
+  passed on macOS, Windows and Ubuntu; both uploaded all three preview
+  archives. This remains software verification only.
 - Commit `154af25`: Pi event, heartbeat and room-claim requests use a direct
   no-proxy opener and refuse redirects before credentials can be sent to
   another destination. Push CI

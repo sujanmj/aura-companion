@@ -1128,3 +1128,10 @@ and PR CI
 [40967416698](https://github.com/sujanmj/aura-companion/actions/runs/40967416698);
 both runs uploaded all three preview archives. This remains a client transport
 check and does not validate a deployed hub or Pi device.
+
+Follow-up commit `5120a4d` makes the three probes exit non-zero when their hub
+URL violates the HTTPS/loopback policy. Push CI
+[40968379151](https://github.com/sujanmj/aura-companion/actions/runs/40968379151)
+and PR CI
+[40968385143](https://github.com/sujanmj/aura-companion/actions/runs/40968385143)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
