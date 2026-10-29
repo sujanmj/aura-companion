@@ -78,12 +78,15 @@ class ContextRelevanceFilter:
         if any(keyword in normalized for keyword in EMOTIONAL_KEYWORDS | WORK_KEYWORDS):
             return False
 
-        if any(phrase in normalized for phrase in GREETING_PHRASES):
+        if normalized in GREETING_PHRASES:
             return True
 
         words = set(normalized.split())
         greeting_words = {"hello", "hi", "hey", "aura", "morning", "evening", "afternoon"}
-        return bool(words) and words.issubset(greeting_words | STOPWORDS | {"you", "are", "doing", "well"})
+        allowed_short_greeting = (
+            greeting_words | STOPWORDS | {"good", "doing", "well", "fine", "thanks", "thank"}
+        )
+        return bool(words) and bool(words & greeting_words) and words.issubset(allowed_short_greeting)
 
     def score_memory_relevance(
         self,

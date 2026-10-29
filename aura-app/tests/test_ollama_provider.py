@@ -83,6 +83,19 @@ class OllamaTransportTests(unittest.TestCase):
             self.assertIsNone(OllamaProvider(ollama_url=self.base + '/api/generate').generate('hello'))
         self.assertEqual([p for p, _ in self.requests], ['/api/generate'] * 4)
 
+    def test_greeting_detection_uses_words_not_substrings(self):
+        sys.path.insert(0, str(ROOT))
+        from companion.context_relevance import ContextRelevanceFilter
+        relevance = ContextRelevanceFilter()
+        for greeting in ('hi', 'hello aura', 'how are you?', 'good morning aura'):
+            self.assertTrue(relevance.is_generic_greeting(greeting), greeting)
+        for ordinary_message in (
+            'this matters to me',
+            'I have been thinking about the day',
+            'which option seems safer?',
+        ):
+            self.assertFalse(relevance.is_generic_greeting(ordinary_message), ordinary_message)
+
     def test_readiness_reports_the_selected_ollama_model_without_probing(self):
         path = ROOT / 'aura-app' / 'server' / 'readiness.py'
         spec = importlib.util.spec_from_file_location('aura_readiness_test', path)

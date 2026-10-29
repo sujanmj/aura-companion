@@ -768,3 +768,32 @@ tests, lint, the provider/cloud/node regressions and Mac native tests/build.
 These HTTP tests do not verify an installed Ollama model, its quality, or its
 availability on a physical device. That live check remains optional and must be
 run by the user with a model installed.
+
+## 2026-10-29 continuation — one unsaved private turn (Phases 4, 9, 10)
+
+Conversation view now offers a separate, explicitly approved private question.
+AURA builds that reply in a new SQLite `:memory:` database and uses only the one
+reviewed message. It does not query or expire the user's saved memory, extract
+facts/routines, write the saved conversation/observation tables, create a backup,
+or enqueue cloud sync. The transcript stays in the current browser state and can
+be cleared; refreshing the tab clears it. Tools, microphones, cameras, and online
+lookup are not started. The selected provider receives the text; when remote,
+its own handling and retention policy still applies.
+
+The message and reply survive no page refresh and are not part of chat export or
+memory retrieval. This is one turn, not a continuous private conversation. The
+server requires literal fresh consent, authentication and the existing CSRF
+origin check. A temporary Ollama HTTP service integration test seeds sentinels
+in the owner's facts, conversation, observations and routines, verifies none
+reach the model prompt, and confirms each saved-table count stays unchanged.
+Browser tests verify approval reset, reply clearing and no saved history. A
+related context-filter bug was fixed: substring matching had mistaken `hi`
+inside ordinary words such as “this” and “thinking” for a generic greeting,
+which skipped the configured provider; greeting detection now compares words.
+
+Local evidence: 85 Python, 23 Node, 18 browser; native lifecycle tests, Mac
+ad-hoc app build, lint, provider/cloud/node regressions and frontend build pass.
+New-commit CI is pending. The temporary Ollama service is simulated and does
+not represent a live model quality or device-privacy acceptance result. The
+Ollama guard itself passed macOS, Ubuntu and Windows CI in [40810170044](https://github.com/sujanmj/aura-companion/actions/runs/40810170044),
+with preview packages uploaded for all three runners.

@@ -746,3 +746,63 @@ test("online route needs approval, isolates memory and bounds repeated requests"
     assert.deepEqual(after.records, before.records);
   } finally { await stop(); await rm(dir, { recursive: true, force: true }); }
 });
+
+
+test("private message uses only temporary SQLite context and never enters saved history", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "aura-private-test-"));
+  const db = path.join(dir, "memory.db");
+  let modelRequests = [];
+  const model = http.createServer(async (req, res) => {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    modelRequests.push(JSON.parse(body));
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ response: "A temporary reply, kept on screen only." }));
+  });
+  await new Promise(resolve => model.listen(0, "127.0.0.1", resolve));
+  const url = `http://127.0.0.1:${model.address().port}/api/generate`;
+  try {
+    const createMemory = [
+      "import sys",
+      "sys.path.insert(0, '..')",
+      "from memory.sqlite_store import AuraMemoryStore",
+      "store = AuraMemoryStore(sys.argv[1])",
+      "store.apply_schema()",
+      "user = store.get_or_create_user('Sujan M J', 'Sujan')",
+      "store.remember_fact(user, 'private_test_sentinel', 'saved-memory-sentinel')",
+      "store.add_conversation(user, 'user', 'saved-conversation-sentinel')",
+      "store.add_observation(user, 'private_test', 'saved-observation-sentinel', source='user_explicit')",
+      "store.remember_routine(user, 'private_test_routine', 'saved-routine-sentinel')",
+      "store.close()",
+    ].join("\n");
+    execFileSync(pythonCommand(), ["-c", createMemory, db], { env: pythonEnvironment(), encoding: "utf8" });
+    await start(db, { AURA_BRAIN_PROVIDER: "ollama", OLLAMA_MODEL: "test-model", OLLAMA_URL: url });
+    const cookie = await login();
+    assert.equal((await post("private", { message: "Keep this temporary", consent: "true" }, cookie)).status, 400);
+    assert.equal((await post("private", { message: "Keep this temporary", consent: true })).status, 401);
+    assert.equal((await post("private", { message: "Keep this temporary", consent: true }, cookie, "https://evil.test")).status, 403);
+    assert.equal(modelRequests.length, 0);
+    const message = "I want a private reply about this moment only.";
+    const response = await post("private", { message, consent: true }, cookie);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      response: "A temporary reply, kept on screen only.", provider: "ollama", tone: "calm_warm",
+    });
+    assert.equal(modelRequests.length, 1);
+    assert.equal(modelRequests[0].model, "test-model");
+    assert.match(modelRequests[0].prompt, /I want a private reply about this moment only/);
+    for (const sentinel of ["saved-memory-sentinel", "saved-conversation-sentinel", "saved-observation-sentinel", "saved-routine-sentinel"])
+      assert.doesNotMatch(modelRequests[0].prompt, new RegExp(sentinel));
+    const counts = execFileSync(pythonCommand(), ["-c", [
+      "import sqlite3, sys",
+      "from pathlib import Path",
+      "db = sqlite3.connect(Path(sys.argv[1]).resolve().as_uri() + '?mode=ro', uri=True)",
+      "print(*db.execute('select (select count(*) from conversation_logs), (select count(*) from memory_facts), (select count(*) from observations), (select count(*) from routine_memory)').fetchone())",
+    ].join("\n"), db], { env: pythonEnvironment(), encoding: "utf8" }).trim();
+    assert.equal(counts, "1 1 1 1");
+  } finally {
+    await stop();
+    await new Promise(resolve => model.close(resolve));
+    await rm(dir, { recursive: true, force: true });
+  }
+});

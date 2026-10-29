@@ -214,6 +214,10 @@ function App() {
     [editingObservation, setEditingObservation] = useState<number | null>(null),
     [observationDraft, setObservationDraft] = useState(""),
     [retentionDays, setRetentionDays] = useState("30"),
+    [privateQuestion, setPrivateQuestion] = useState(""),
+    [privateConsent, setPrivateConsent] = useState(false),
+    [privateBusy, setPrivateBusy] = useState(false),
+    [privateReply, setPrivateReply] = useState<{ response: string; provider: string } | null>(null),
     [sharedQuestion, setSharedQuestion] = useState(""),
     [sharedConsent, setSharedConsent] = useState(false),
     [sharedBusy, setSharedBusy] = useState(false),
@@ -631,6 +635,27 @@ function App() {
             ) : tab === "conversation" ? (
               <>
                 <OnlineLookup />
+                <details className="memory-review" name="conversation-extras">
+                  <summary>Ask one private question without saved memories</summary>
+                  <p>This turn uses only this message and a temporary in-memory session. AURA will not read or write your saved conversations, facts, observations, routines, backups or cloud history. The message and reply stay in this browser view until you clear them or close/refresh the tab. The selected provider is {status.provider}; a non-local provider receives this message and may process or retain it under its own policy. No tools, microphone, camera or online lookup are started.</p>
+                  <form onSubmit={async event => {
+                    event.preventDefault();
+                    if (!privateConsent || privateBusy) return;
+                    setPrivateBusy(true);
+                    setPrivateReply(null);
+                    try {
+                      const reply = await api<{ response: string; provider: string }>("private", { message: privateQuestion, consent: true });
+                      setPrivateReply(reply);
+                    } catch (e) { setError(String(e)); }
+                    finally { setPrivateBusy(false); setPrivateConsent(false); }
+                  }}>
+                    <label htmlFor="private-question">One reviewed message</label>
+                    <textarea id="private-question" maxLength={8000} value={privateQuestion} onChange={event => { setPrivateQuestion(event.target.value); setPrivateConsent(false); }} disabled={privateBusy} required />
+                    <label><input type="checkbox" checked={privateConsent} onChange={event => setPrivateConsent(event.target.checked)} disabled={privateBusy} />I reviewed this message and want a private, unsaved reply.</label>
+                    <button disabled={!privateConsent || privateBusy || !privateQuestion.trim()}>{privateBusy ? "Preparing private reply…" : "Send one private message"}</button>
+                  </form>
+                  {privateReply && <article><small>{privateReply.provider} · not saved · no saved memories used</small><p>{privateReply.response}</p><button onClick={() => { setPrivateReply(null); setPrivateQuestion(""); setPrivateConsent(false); }}>Clear private message and reply</button></article>}
+                </details>
                 <details className="memory-review" name="conversation-extras">
                   <summary>Invite AURA to answer a shared question</summary>
                   <p>Review and type only what everyone agrees to share. This sends the question to the configured provider ({status.provider}), without your private memories. AURA does not save this question or reply; the provider may retain requests under its own policy. No microphone, camera, tools or online lookup are started.</p>

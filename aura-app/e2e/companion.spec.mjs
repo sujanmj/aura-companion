@@ -585,6 +585,35 @@ test("a shared contribution needs fresh agreement and stays out of memory", asyn
 });
 
 
+test("a private turn skips saved memory and stays out of conversation history", async ({ page }) => {
+  await connect(page);
+  const message = "this stays in the private turn only";
+  await page.getByText("Ask one private question without saved memories", { exact: true }).click();
+  const input = page.getByLabel("One reviewed message");
+  const consent = page.getByLabel("I reviewed this message and want a private, unsaved reply.");
+  const submit = page.getByRole("button", { name: "Send one private message" });
+  await input.fill(message);
+  await expect(submit).toBeDisabled();
+  await consent.check();
+  await input.fill(message + " please");
+  await expect(consent).not.toBeChecked();
+  await consent.check();
+  const before = await page.evaluate(async () => (await (await fetch("/api/status")).json()).conversations);
+  await submit.click();
+  await expect(page.getByText("local · not saved · no saved memories used")).toBeVisible();
+  await expect(page.getByText(message + " please")).toBeVisible();
+  const saved = await page.evaluate(async () => (await (await fetch("/api/status")).json()).conversations);
+  expect(saved).toEqual(before);
+  await page.getByRole("button", { name: "Clear private message and reply" }).click();
+  await expect(page.getByText(message + " please")).toHaveCount(0);
+  await input.fill("this text will not be saved");
+  await page.reload();
+  await expect(page.getByLabel("One reviewed message")).toHaveValue("");
+  const afterReload = await page.evaluate(async () => (await (await fetch("/api/status")).json()).conversations);
+  expect(afterReload).toEqual(before);
+});
+
+
 test("online lookup requires exact-query approval and renders inert attributed excerpts", async ({ page }) => {
   await connect(page);
   let calls = 0;

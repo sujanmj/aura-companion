@@ -119,6 +119,18 @@ Architecture: browser → authenticated loopback Node bridge → private Python 
 
 Memory worker failures fail closed: exit, missing Python, and a 45-second response deadline reject requests. Restart the app after checking configuration; failed writes are never automatically retried because SQLite may already have committed them.
 
+## One private turn
+
+In **Conversation**, open “Ask one private question without saved memories” and
+review the on-screen provider disclosure before confirming. AURA uses only that
+message in a temporary in-memory session; it does not read or change saved
+memories, conversation history, backups or cloud sync. The text and reply exist
+only in the current browser page, until you clear them or refresh/close the tab.
+The provider you selected receives the text; a remote provider may process or
+retain it under its own policy. This option sends one turn, so it has no earlier
+private messages as context. It starts no tools, microphones, cameras or online
+source checks.
+
 ## Readiness and live acceptance
 
 Open **Setup** after pairing. Refreshing readiness reads configuration and

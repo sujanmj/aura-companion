@@ -22,6 +22,7 @@ from cloud.supabase_sync import (
 )
 from readiness import brain_readiness, test_provider_connection
 from shared_conversation import shared_contribution
+from companion.private_session import generate_private_response
 
 
 def main():
@@ -50,8 +51,11 @@ def main():
             req = json.loads(line)
             with contextlib.redirect_stdout(sys.stderr):
                 op = req['op']
-                store.expire_observations(user)
-                if op == 'readiness':
+                if op != 'private_chat':
+                    store.expire_observations(user)
+                if op == 'private_chat':
+                    result = generate_private_response(req.get('message'))
+                elif op == 'readiness':
                     store.conn.execute('SELECT 1').fetchone()
                     result = {'brain': brain_readiness(), 'memory': 'available'}
                 elif op == 'provider_test':
