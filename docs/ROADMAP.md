@@ -817,5 +817,4 @@ Local verification: 88 Python tests, 23 Node tests, all 18 browser tests,
 native lifecycle/speech tests, provider/cloud/Pi heartbeat regressions, frontend
 build/lint and an ad-hoc signed Mac app build pass. Migration tests preserve
 legacy reminders, and simulated weekday tests confirm local weekday gating.
-Push and pull-request CI will be triggered after this continuation is committed.
-No speaker or medical integration test is claimed.
+Commit `84b8e65` passed macOS, Ubuntu and Windows push CI in [40811353403](https://github.com/sujanmj/aura-companion/actions/runs/40811353403) and pull-request CI in [40811359575](https://github.com/sujanmj/aura-companion/actions/runs/40811359575). The push run uploaded all three preview artifacts. The initial Windows browser attempt timed out during UI state refresh; rerunning that job passed. No speaker or medical integration test is claimed.

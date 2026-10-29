@@ -144,6 +144,11 @@ Local reminders can now repeat on selected weekdays. Existing daily reminders
 are preserved and migrate to all seven days. The schedule stays in local SQLite
 and is delivered once per selected local date while AURA is running. This does
 not confirm a task or dose, and includes no medication or health-data integration.
+Commit `84b8e65` passed macOS, Ubuntu and Windows push CI in
+[40811353403](https://github.com/sujanmj/aura-companion/actions/runs/40811353403)
+and pull-request CI in
+[40811359575](https://github.com/sujanmj/aura-companion/actions/runs/40811359575).
+All three platform preview packages were uploaded by the push run.
 
 The optional Ollama brain now accepts only a numeric loopback URL and fixed API
 path. It bypasses proxy settings, never follows redirects, caps prompts/replies,
