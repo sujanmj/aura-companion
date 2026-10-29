@@ -21,6 +21,16 @@ These checks establish only the behavior covered by their tests:
 - The preview bundle test records its source commit and file hashes. A local Mac
   bundle is ad-hoc signed; this does not validate a Developer ID signature,
   notarization, clean installation, or hardware behavior.
+- Commit `bd89594` adds the owner-controlled room invitation CLI with typed
+  confirmation, HTTPS-only remote requests, no redirects, and no system proxy
+  forwarding of hub credentials. Its six focused tests, the seven-test loopback
+  handoff integration test, and 94 app Python tests pass locally. Push CI
+  [40956030944](https://github.com/sujanmj/aura-companion/actions/runs/40956030944)
+  and PR CI
+  [40956043251](https://github.com/sujanmj/aura-companion/actions/runs/40956043251)
+  passed on macOS, Windows and Ubuntu and uploaded preview archives for all
+  three platforms. This reserves replies in software only; it does not exercise
+  Pi hardware or connect reservations to speaker playback.
 
 ## Required device checks
 

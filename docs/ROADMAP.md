@@ -1042,6 +1042,13 @@ administrator token, permits remote use only with HTTPS, asks for the exact
 typed action before starting/transferring/stopping, sends one request, and
 prints only safe session fields. The controller does not activate sensors,
 speech, memory recall or playback. A new focused suite and the loopback API
-integration test verify the command flow. Cross-platform CI and preview
-artifacts are pending; this is software control-plane coverage, not Pi or
-multi-room hardware acceptance.
+integration test verify the command flow. It refuses redirects and bypasses
+machine-wide proxies for hub credentials. Local checks pass: six controller
+tests, the seven-test handoff integration suite, all 94 app Python tests, and
+the heartbeat, node-client and transport suites. Commit `bd89594` passed push
+CI in [40956030944](https://github.com/sujanmj/aura-companion/actions/runs/40956030944)
+and pull-request CI in
+[40956043251](https://github.com/sujanmj/aura-companion/actions/runs/40956043251)
+on macOS, Windows and Ubuntu. Both runs uploaded all three preview archives.
+This is software control-plane coverage, not Pi or multi-room hardware
+acceptance; room invitations still do not control capture, speech or playback.

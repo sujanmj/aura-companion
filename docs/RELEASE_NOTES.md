@@ -303,4 +303,10 @@ The owner can now use `scripts/room_invitation.py` to inspect, start, transfer
 and stop a five-minute room reservation. Mutating actions require exact typed
 confirmation and an administrator token; remote hub requests require HTTPS.
 The controller does not start room capture, speech or playback. Local focused
-tests and loopback API integration pass; cross-platform CI is pending.
+tests and loopback API integration pass. Commit `bd89594` passed push CI in
+[40956030944](https://github.com/sujanmj/aura-companion/actions/runs/40956030944)
+and PR CI in
+[40956043251](https://github.com/sujanmj/aura-companion/actions/runs/40956043251)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+Pi installation, room playback, acoustic acceptance, macOS hardware acceptance,
+and Developer ID signing/notarization remain open.
