@@ -39,6 +39,11 @@ These checks establish only the behavior covered by their tests:
   Both runs uploaded preview archives for all three platforms. This verifies
   software and packaging only, not room playback, Pi hardware, acoustic
   behavior, or public-release signing/notarization.
+- Current uncommitted software check: room claims fail closed unless the hub
+  acknowledges the exact requested session, generation and turn UUID with a
+  finite, unexpired lease. Focused loopback and client tests pass locally; new
+  cross-platform CI is pending. This does not establish Pi installation,
+  playback fencing, speaker output, or physical room handoff.
 
 ## Required device checks
 

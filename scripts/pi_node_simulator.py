@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
@@ -314,8 +315,24 @@ def claim_invited_room_turn(
             body = response.read().decode("utf-8")
             result = json.loads(body) if body else {}
             reservation = result.get("session") if isinstance(result, dict) else None
-            if response.status != 200 or not isinstance(reservation, dict) or reservation.get("reserved") is not True:
-                print("AURA_PI_ROOM_CLAIM_ERROR: hub rejected room claim")
+            expires_at = reservation.get("expires_at") if isinstance(reservation, dict) else None
+            valid_expiry = False
+            if isinstance(expires_at, int) and not isinstance(expires_at, bool):
+                valid_expiry = expires_at > time.time()
+            elif isinstance(expires_at, float):
+                valid_expiry = math.isfinite(expires_at) and expires_at > time.time()
+            if (
+                response.status != 200
+                or not isinstance(result, dict)
+                or result.get("ok") is not True
+                or not isinstance(reservation, dict)
+                or reservation.get("reserved") is not True
+                or reservation.get("session_id") != session_id
+                or reservation.get("generation") != generation
+                or reservation.get("turn_id") != turn_id
+                or not valid_expiry
+            ):
+                print("AURA_PI_ROOM_CLAIM_ERROR: hub returned an invalid or stale room claim; do not play this reply")
                 return 1
             print(f"AURA_PI_ROOM_CLAIM_OK session_id={session_id} generation={generation} turn_id={turn_id}")
             return 0

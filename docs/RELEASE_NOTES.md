@@ -322,3 +322,13 @@ on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
 The commit also fixes SQLite worker shutdown ordering with a regression test.
 These results cover software and packaging, not Pi hardware, room playback,
 acoustics, or public-release signing/notarization.
+
+The enrolled-node room-claim client now accepts a reservation only when the hub
+explicitly reports success and echoes the exact requested session, generation
+and logical turn UUID with a finite, unexpired lease. Missing, malformed, stale
+or mismatched acknowledgements fail closed, and the client does not retry an
+ambiguous claim or authorize playback from an invalid response. Local focused
+room/handoff tests, the full app Python suite, 28 Node tests, 18 browser tests,
+native tests, lint and production build pass. Cross-platform CI is pending. No
+Pi service, speaker playback, room cancellation/fencing, or physical handoff is
+claimed by this software check.

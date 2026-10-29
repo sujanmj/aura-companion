@@ -1069,3 +1069,17 @@ on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
 That commit also fixes SQLite worker shutdown ordering, covered by a regression
 test. These runs validate software and packaging only; no physical room handoff,
 Pi, sensor, playback, acoustic or public-signing acceptance is claimed.
+
+## 2026-10-30 continuation — validate room claim acknowledgements (Phase 5)
+
+The enrolled-node claim client now treats a claim as usable only when the hub
+explicitly reports success and echoes the exact requested session, generation
+and logical turn UUID with a finite, still-live expiry. Missing, malformed,
+expired or mismatched acknowledgements fail closed; the simulator does not
+retry or authorize playback from them. Focused unit and loopback handoff tests
+cover matching claims, stale/incorrect fields, non-finite expiry, conflicts and
+ambiguous network failure. Local verification passed: 94 app Python tests, 14
+room-claim/handoff tests, 28 Node tests, 18 browser tests, native lifecycle and
+speech tests, frontend lint and production build. Cross-platform CI is pending.
+This validates the software reservation response only; no Pi service, speaker
+playback, room cancellation/fencing, or physical handoff acceptance is claimed.

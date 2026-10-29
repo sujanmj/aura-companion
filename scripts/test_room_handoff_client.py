@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import time
 import os
 import sys
 import unittest
@@ -21,7 +22,18 @@ SESSION = "room-session-123"
 TURN = str(uuid.uuid4())
 
 
-def response(status: int = 200, body: bytes = b'{"ok": true, "session": {"reserved": true}}') -> MagicMock:
+def response(status: int = 200, body: bytes | None = None) -> MagicMock:
+    if body is None:
+        body = json.dumps({
+            "ok": True,
+            "session": {
+                "reserved": True,
+                "session_id": SESSION,
+                "generation": 2,
+                "turn_id": TURN,
+                "expires_at": time.time() + 60,
+            },
+        }).encode("utf-8")
     result = MagicMock()
     result.__enter__.return_value.status = status
     result.__enter__.return_value.read.return_value = body
@@ -115,6 +127,53 @@ class RoomHandoffClientTests(unittest.TestCase):
             )
         self.assertEqual(result, 1)
         urlopen.assert_not_called()
+
+    def test_mismatched_or_stale_claim_response_fails_closed(self) -> None:
+        valid_session = {
+            "reserved": True,
+            "session_id": SESSION,
+            "generation": 2,
+            "turn_id": TURN,
+            "expires_at": time.time() + 60,
+        }
+        invalid_sessions = (
+            {**valid_session, "session_id": "different-session"},
+            {**valid_session, "generation": 3},
+            {**valid_session, "turn_id": str(uuid.uuid4())},
+            {**valid_session, "expires_at": time.time() - 1},
+            {**valid_session, "expires_at": float("inf")},
+            {**valid_session, "expires_at": float("nan")},
+            {**valid_session, "expires_at": True},
+            {key: value for key, value in valid_session.items() if key != "turn_id"},
+        )
+        for invalid in invalid_sessions:
+            with self.subTest(session=invalid), patch(
+                "urllib.request.urlopen",
+                return_value=response(body=json.dumps({"ok": True, "session": invalid}).encode()),
+            ) as urlopen:
+                result, output = self.claim()
+            self.assertEqual(result, 1)
+            self.assertIn("do not play this reply", output)
+            urlopen.assert_called_once()
+
+    def test_claim_response_must_be_explicitly_successful(self) -> None:
+        valid = {
+            "session": {
+                "reserved": True,
+                "session_id": SESSION,
+                "generation": 2,
+                "turn_id": TURN,
+                "expires_at": time.time() + 60,
+            },
+        }
+        with patch(
+            "urllib.request.urlopen",
+            return_value=response(body=json.dumps({**valid, "ok": False}).encode()),
+        ) as urlopen:
+            result, output = self.claim()
+        self.assertEqual(result, 1)
+        self.assertIn("do not play this reply", output)
+        urlopen.assert_called_once()
 
 
 if __name__ == "__main__":
