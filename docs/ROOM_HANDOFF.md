@@ -19,6 +19,24 @@ reply. A successful reservation still does not activate capture, generate a
 reply, or play audio. This command is a software integration point, not physical
 room handoff acceptance.
 
+The owner can manage invitations with the admin-only command line controller:
+
+```sh
+python scripts/room_invitation.py status
+python scripts/room_invitation.py start bedroom
+python scripts/room_invitation.py transfer SESSION_ID 1 kitchen
+python scripts/room_invitation.py stop SESSION_ID 2
+```
+
+Set `AURA_SENSOR_API_TOKEN` to the hub administrator credential and, for a
+remote hub, set `AURA_SENSOR_API_URL` to its HTTPS origin. The default URL is
+loopback for local development. Start, transfer and stop require typing the
+displayed action and destination/session exactly; status is read-only. The
+controller sends a single request and does not retry an uncertain result. It
+displays only the node, session, generation and expiry fields. These commands
+manage the five-minute invitation only; they do not activate sensors, speech,
+memory recall or playback.
+
 Use the existing private sensor hub deployment and authentication. The hub's
 master `X-AURA-API-Token` controls invitations. Enrolled nodes use their separate
 credentials only to claim turns; possession of a node token cannot start,
@@ -85,3 +103,8 @@ The node claim client is covered separately with
 credential and stable turn payload, strict input validation, rejection handling,
 and no retry after an ambiguous network result. These tests do not connect a
 client to hardware or exercise speaker playback.
+
+The owner controller is covered with `python3 scripts/test_room_invitation.py`
+and the loopback API integration test above. It checks typed consent, admin
+credential use, HTTPS policy, safe status output and one-request failure
+handling. No deployed hub or physical device is exercised.

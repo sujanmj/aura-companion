@@ -1033,3 +1033,15 @@ passed push CI in
 and pull-request CI in
 [40952990897](https://github.com/sujanmj/aura-companion/actions/runs/40952990897)
 on macOS, Windows and Ubuntu, with all three preview archives uploaded.
+
+## 2026-10-30 continuation — owner room invitation controller (Phase 5)
+
+Added `scripts/room_invitation.py` for an owner to inspect, start, transfer and
+stop a five-minute room invitation from the command line. It requires the
+administrator token, permits remote use only with HTTPS, asks for the exact
+typed action before starting/transferring/stopping, sends one request, and
+prints only safe session fields. The controller does not activate sensors,
+speech, memory recall or playback. A new focused suite and the loopback API
+integration test verify the command flow. Cross-platform CI and preview
+artifacts are pending; this is software control-plane coverage, not Pi or
+multi-room hardware acceptance.

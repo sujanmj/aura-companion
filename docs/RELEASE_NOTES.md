@@ -298,3 +298,9 @@ Both runs passed on macOS, Ubuntu and Windows and uploaded all three preview
 archives. These are software and packaging checks only. Pi installation, TLS
 certificate/trust setup, microphone/camera permissions, room playback, acoustic
 quality, and Developer ID signing/notarization remain unverified or blocked.
+
+The owner can now use `scripts/room_invitation.py` to inspect, start, transfer
+and stop a five-minute room reservation. Mutating actions require exact typed
+confirmation and an administrator token; remote hub requests require HTTPS.
+The controller does not start room capture, speech or playback. Local focused
+tests and loopback API integration pass; cross-platform CI is pending.

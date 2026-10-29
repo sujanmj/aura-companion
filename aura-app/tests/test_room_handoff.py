@@ -21,6 +21,7 @@ from memory.sqlite_store import AuraMemoryStore
 from devices.room_handoff import RoomHandoff, HandoffDenied
 from api.sensor_api_server import AuraSensorAPIHandler
 from scripts import pi_node_simulator
+from scripts import room_invitation
 
 
 class RoomHandoffTests(unittest.TestCase):
@@ -173,9 +174,16 @@ class RoomHandoffTests(unittest.TestCase):
                 self.assertEqual(post('start', {}, '')[0], 401)
                 self.assertEqual(post('start', {'approved': True}, self.tokens['bedroom'])[0], 401)
                 self.assertEqual(post('start', {'node_id': 'bedroom', 'approved': 'true'}, admin)[0], 409)
-                code, body = post('start', {'node_id': 'bedroom', 'approved': True}, admin)
-                self.assertEqual(code, 200)
-                session = body['session']
+                with (
+                    patch.object(room_invitation, 'load_env_file'),
+                    patch('builtins.input', return_value='INVITE bedroom'),
+                    redirect_stdout(StringIO()),
+                ):
+                    self.assertEqual(room_invitation.main([
+                        '--hub-url', f'http://127.0.0.1:{server.server_port}',
+                        'start', 'bedroom',
+                    ]), 0)
+                session = post('status', {}, admin)[1]['session']
                 claim = {'session_id': session['session_id'], 'generation': 1, 'turn_id': str(uuid.uuid4())}
                 self.assertEqual(post('claim', claim, admin)[0], 401)
                 self.assertEqual(post('claim', claim, self.tokens['kitchen'])[0], 409)
@@ -193,9 +201,25 @@ class RoomHandoffTests(unittest.TestCase):
                 self.assertEqual(post('claim', client_claim, self.tokens['bedroom'])[0], 409)
                 self.assertEqual(post('claim', claim, self.tokens['bedroom'])[0], 200)
                 self.assertEqual(post('claim', claim, self.tokens['bedroom'])[0], 409)
-                self.assertEqual(post('transfer', {**claim, 'node_id': 'kitchen', 'approved': True}, admin)[0], 200)
+                with (
+                    patch.object(room_invitation, 'load_env_file'),
+                    patch('builtins.input', return_value='TRANSFER kitchen'),
+                    redirect_stdout(StringIO()),
+                ):
+                    self.assertEqual(room_invitation.main([
+                        '--hub-url', f'http://127.0.0.1:{server.server_port}',
+                        'transfer', session['session_id'], '1', 'kitchen',
+                    ]), 0)
                 self.assertEqual(post('claim', claim, self.tokens['bedroom'])[0], 409)
-                self.assertEqual(post('stop', {**claim, 'generation': 2}, admin)[0], 200)
+                with (
+                    patch.object(room_invitation, 'load_env_file'),
+                    patch('builtins.input', return_value=f"STOP {session['session_id']}"),
+                    redirect_stdout(StringIO()),
+                ):
+                    self.assertEqual(room_invitation.main([
+                        '--hub-url', f'http://127.0.0.1:{server.server_port}',
+                        'stop', session['session_id'], '2',
+                    ]), 0)
                 self.assertIsNone(post('status', {}, admin)[1]['session'])
                 self.assertEqual(self.store.conn.execute('SELECT count(*) FROM conversation_logs').fetchone()[0], 0)
         finally:
