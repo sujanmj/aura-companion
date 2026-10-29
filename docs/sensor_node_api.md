@@ -27,9 +27,10 @@ python scripts/test_sensor_api_client.py
 python scripts/test_sensor_api_auth.py
 ```
 
-`test_sensor_api_client.py` accepts an optional hub URL. HTTP is allowed only
-for loopback development; remote hubs must use HTTPS. Hub clients connect
-directly and refuse redirects so administrator and node credentials are not
+The `test_sensor_api_client.py`, `test_sensor_api_auth.py`, and
+`test_sensor_api_event_status.py` probes accept an optional hub URL. HTTP is
+allowed only for loopback development; remote hubs must use HTTPS. Hub clients
+connect directly and refuse redirects so administrator credentials are not
 forwarded through a machine-wide proxy or to another URL.
 
 ## Authentication (v0.4)

@@ -1116,3 +1116,9 @@ and PR CI
 [40966180392](https://github.com/sujanmj/aura-companion/actions/runs/40966180392);
 both runs uploaded all three preview archives. This still does not establish a
 deployed hub or physical Pi behavior.
+
+The sensor API authentication and event-status probes now use the same direct
+transport as the documented client; both reject remote HTTP before sending
+credentials. Ten focused admin-client tests pass locally, including no-request
+checks for insecure URLs. Cross-platform CI is pending. This remains a client
+transport check and does not validate a deployed hub or Pi device.

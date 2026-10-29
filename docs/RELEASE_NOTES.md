@@ -358,3 +358,7 @@ Push CI
 and PR CI
 [40966180392](https://github.com/sujanmj/aura-companion/actions/runs/40966180392)
 passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+
+The sensor API authentication and event-status test probes also use direct
+transport, reject redirects, and refuse remote HTTP before sending tokens.
+Focused tests pass locally; cross-platform CI is pending for this follow-up.

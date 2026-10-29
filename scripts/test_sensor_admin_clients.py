@@ -12,7 +12,13 @@ from unittest.mock import MagicMock, patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from scripts import enroll_sensor_node, show_dashboard_status, test_sensor_api_client
+from scripts import (
+    enroll_sensor_node,
+    show_dashboard_status,
+    test_sensor_api_auth,
+    test_sensor_api_client,
+    test_sensor_api_event_status,
+)
 
 
 ADMIN_TOKEN = "sensor-admin-token-long-enough-for-tests-123"
@@ -136,6 +142,87 @@ class SensorAdminClientTests(unittest.TestCase):
             redirect_stdout(io.StringIO()),
         ):
             test_sensor_api_client.main()
+        open_request.assert_not_called()
+
+    def test_sensor_api_auth_client_uses_direct_transport_for_admin_token(self) -> None:
+        responses = [
+            response(200, {"ok": True}),
+            response(401, {"error": "unauthorized"}),
+            response(401, {"error": "unauthorized"}),
+            response(200, {"ok": True}),
+        ]
+        with (
+            patch.object(test_sensor_api_auth, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch.object(
+                test_sensor_api_auth,
+                "open_sensor_api_request",
+                side_effect=responses,
+            ) as open_request,
+            patch.object(sys, "argv", ["test_sensor_api_auth.py"]),
+            redirect_stdout(io.StringIO()),
+        ):
+            test_sensor_api_auth.main()
+
+        requests = [call.args[0] for call in open_request.call_args_list]
+        self.assertEqual(len(requests), 4)
+        self.assertTrue(requests[-1].full_url.endswith("/events"))
+        self.assertEqual(requests[-1].get_header("X-aura-api-token"), ADMIN_TOKEN)
+        self.assertEqual(requests[1].get_header("X-aura-api-token"), None)
+
+    def test_sensor_api_auth_client_refuses_remote_http_before_request(self) -> None:
+        with (
+            patch.object(test_sensor_api_auth, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch.object(test_sensor_api_auth, "open_sensor_api_request") as open_request,
+            patch.object(sys, "argv", [
+                "test_sensor_api_auth.py", "http://192.168.1.20:8787",
+            ]),
+            redirect_stdout(io.StringIO()),
+        ):
+            test_sensor_api_auth.main()
+        open_request.assert_not_called()
+
+    def test_sensor_event_status_client_uses_direct_authenticated_transport(self) -> None:
+        responses = [
+            response(200, {"ok": True}),
+            response(200, {"ok": True, "event": {"event_id": 7}}),
+            response(200, {"ok": True, "events": [{"id": 7, "action_status": "dispatched"}]}),
+        ]
+        with (
+            patch.object(test_sensor_api_event_status, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch.object(
+                test_sensor_api_event_status,
+                "open_sensor_api_request",
+                side_effect=responses,
+            ) as open_request,
+            patch.object(sys, "argv", ["test_sensor_api_event_status.py"]),
+            redirect_stdout(io.StringIO()),
+        ):
+            test_sensor_api_event_status.main()
+
+        requests = [call.args[0] for call in open_request.call_args_list]
+        self.assertEqual(open_request.call_count, 3)
+        self.assertEqual(requests[1].get_header("X-aura-api-token"), ADMIN_TOKEN)
+        self.assertEqual(requests[2].get_header("X-aura-api-token"), ADMIN_TOKEN)
+
+    def test_sensor_event_status_client_refuses_remote_http_before_request(self) -> None:
+        with (
+            patch.object(test_sensor_api_event_status, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch.object(
+                test_sensor_api_event_status,
+                "open_sensor_api_request",
+            ) as open_request,
+            patch.object(sys, "argv", [
+                "test_sensor_api_event_status.py", "http://192.168.1.20:8787",
+            ]),
+            redirect_stdout(io.StringIO()),
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                test_sensor_api_event_status.main()
+        self.assertEqual(raised.exception.code, 1)
         open_request.assert_not_called()
 
 

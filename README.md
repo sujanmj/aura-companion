@@ -147,6 +147,10 @@ Sensor Node API v0.1 exposes a local HTTP API so Raspberry Pi, camera, and senso
 
 Sensor API v0.4 requires a strong hub token, supports individually enrolled sensor-node credentials, and deduplicates retried events. The hub stores only node-token hashes; node credentials can be revoked independently. Missing or weak hub-token configuration denies protected access; `GET /health` and static dashboard files remain public. Keep the API on a trusted local network only. See [docs/sensor_node_api.md](docs/sensor_node_api.md).
 
+Sensor API test clients allow HTTP only for loopback development hubs. Remote
+hubs must use HTTPS; the authenticated probes bypass system proxies and refuse
+redirects before sending credentials.
+
 ```powershell
 python scripts/generate_sensor_api_token.py
 python scripts/run_sensor_api.py
