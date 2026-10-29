@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from config.sensor_transport import is_regular_nonsymlink_file
 from collections.abc import Mapping
 
 
@@ -14,8 +15,8 @@ def validate_environment(environment: Mapping[str, str] | None = None) -> bool:
     try:
         cert_file = Path(values.get("AURA_SENSOR_TLS_CERT_FILE", ""))
         key_file = Path(values.get("AURA_SENSOR_TLS_KEY_FILE", ""))
-        certificate_ready = cert_file.is_absolute() and cert_file.is_file() and not cert_file.is_symlink()
-        key_ready = key_file.is_absolute() and key_file.is_file() and not key_file.is_symlink()
+        certificate_ready = is_regular_nonsymlink_file(cert_file)
+        key_ready = is_regular_nonsymlink_file(key_file)
         key_mode = key_file.stat().st_mode if key_ready else 0
     except OSError:
         certificate_ready = key_ready = False

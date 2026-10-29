@@ -14,7 +14,7 @@ from scripts.check_pi_service_config import validate_environment
 class PiServiceConfigTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
-        folder = Path(self.temp.name)
+        folder = Path(self.temp.name).resolve()
         self.cert = folder / "server.crt"
         self.key = folder / "server.key"
         self.cert.write_text("test certificate placeholder")
@@ -53,6 +53,20 @@ class PiServiceConfigTests(unittest.TestCase):
         self.assertFalse(validate_environment(environment))
         self.key.chmod(0o644)
         self.assertFalse(validate_environment(self.valid_environment()))
+
+    def test_rejects_certificate_files_reached_through_symlinked_directory(self) -> None:
+        if sys.platform == "win32":
+            self.skipTest("symlink creation is not portable on Windows")
+        root = Path(self.temp.name).resolve()
+        target = root / "actual"
+        target.mkdir()
+        cert = target / "server.crt"
+        cert.write_text("test certificate placeholder")
+        alias = root / "alias"
+        alias.symlink_to(target, target_is_directory=True)
+        environment = self.valid_environment()
+        environment["AURA_SENSOR_TLS_CERT_FILE"] = str(alias / cert.name)
+        self.assertFalse(validate_environment(environment))
 
     def test_systemd_hub_is_non_root_hardened_and_checks_token_before_start(self) -> None:
         unit = (ROOT / "deploy/systemd/aura-sensor-api.service").read_text()

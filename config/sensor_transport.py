@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ipaddress
+from pathlib import Path
 from urllib.parse import urlparse
 
 
@@ -34,3 +35,15 @@ def is_safe_sensor_api_url(url: str) -> bool:
         and not parsed.fragment
         and parsed.path in {"", "/"}
     )
+
+
+def is_regular_nonsymlink_file(path: str | Path) -> bool:
+    candidate = Path(path)
+    if not candidate.is_absolute() or not candidate.is_file():
+        return False
+    current = Path(candidate.anchor)
+    for part in candidate.parts[1:]:
+        current = current / part
+        if current.is_symlink():
+            return False
+    return True

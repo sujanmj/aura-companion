@@ -46,8 +46,9 @@ class SensorTransportTests(unittest.TestCase):
 
     def test_network_bind_uses_tls_12_or_newer_and_configured_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            cert = Path(directory) / "server.crt"
-            key = Path(directory) / "server.key"
+            root = Path(directory).resolve()
+            cert = root / "server.crt"
+            key = root / "server.key"
             cert.write_text("placeholder")
             key.write_text("placeholder")
             key.chmod(0o640)
@@ -62,8 +63,9 @@ class SensorTransportTests(unittest.TestCase):
 
     def test_network_bind_rejects_missing_or_insecure_key_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            cert = Path(directory) / "server.crt"
-            key = Path(directory) / "server.key"
+            root = Path(directory).resolve()
+            cert = root / "server.crt"
+            key = root / "server.key"
             cert.write_text("placeholder")
             key.write_text("placeholder")
             key.chmod(0o640)
@@ -83,7 +85,7 @@ class SensorTransportTests(unittest.TestCase):
     @unittest.skipUnless(os.name == "posix", "symlink creation is not portable on Windows")
     def test_network_bind_rejects_symlinked_certificate_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             cert_target = root / "real.crt"
             cert_link = root / "server.crt"
             key = root / "server.key"
@@ -94,6 +96,23 @@ class SensorTransportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "regular files"):
                 server_tls_context("0.0.0.0", {
                     "AURA_SENSOR_TLS_CERT_FILE": str(cert_link),
+                    "AURA_SENSOR_TLS_KEY_FILE": str(key),
+                })
+
+    @unittest.skipUnless(os.name == "posix", "symlink creation is not portable on Windows")
+    def test_network_bind_rejects_symlinked_certificate_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            actual = root / "actual"
+            actual.mkdir()
+            (actual / "server.crt").write_text("placeholder")
+            key = root / "server.key"
+            key.write_text("placeholder")
+            key.chmod(0o640)
+            (root / "alias").symlink_to(actual, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "regular files"):
+                server_tls_context("0.0.0.0", {
+                    "AURA_SENSOR_TLS_CERT_FILE": str(root / "alias" / "server.crt"),
                     "AURA_SENSOR_TLS_KEY_FILE": str(key),
                 })
 

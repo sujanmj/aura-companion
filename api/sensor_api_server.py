@@ -15,6 +15,7 @@ from actions.action_dispatcher import ActionDispatcher
 from actions.voice_runtime import create_runtime_speaker
 from api.dashboard_service import DashboardService
 from config.env_loader import load_env_file
+from config.sensor_transport import is_regular_nonsymlink_file
 from devices.event_bus import DeviceEventBus
 from devices.room_handoff import RoomHandoff, HandoffDenied
 from memory.sqlite_store import AuraMemoryStore, DEFAULT_DB_PATH
@@ -687,10 +688,7 @@ def server_tls_context(host: str, environment: dict[str, str] | None = None):
         raise ValueError("TLS certificate and private key are required for a network-bound sensor API")
     certificate = Path(cert_file)
     private_key = Path(key_file)
-    if not all(
-        path.is_absolute() and path.is_file() and not path.is_symlink()
-        for path in (certificate, private_key)
-    ):
+    if not all(is_regular_nonsymlink_file(path) for path in (certificate, private_key)):
         raise ValueError("TLS certificate and private key must be absolute regular files")
     if os.name == "posix" and private_key.stat().st_mode & 0o027:
         raise ValueError("TLS private key permissions allow group or world access")
