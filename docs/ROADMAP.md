@@ -551,9 +551,13 @@ not close the unresolved Phase 2 hardware acceptance gates.
   uncertainty label; the Mac app build and full local test suite pass.
 - Implemented: local-only conversations can answer a matching “where is/are”
   question directly from the user's own note without sending it to a provider.
-  Camera estimates and unrelated notes are excluded from this deterministic
-  answer path; the reply identifies the note and says it may be out of date.
+  User-authored notes take priority and the reply identifies their age. A later
+  continuation adds a separate, explicitly uncertain camera-estimate hint path.
   Companion tests cover recall and both exclusions.
+- Implemented: a fresh on-device object label may provide a limited location
+  hint when its top label matches the question with at least 85% confidence and
+  was saved within 30 minutes. AURA reports the time and uncertainty and never
+  claims a room or precise location. Explicit user notes take priority.
 
 ### Phase 9 — Proactive companion conversation
 
@@ -818,3 +822,21 @@ native lifecycle/speech tests, provider/cloud/Pi heartbeat regressions, frontend
 build/lint and an ad-hoc signed Mac app build pass. Migration tests preserve
 legacy reminders, and simulated weekday tests confirm local weekday gating.
 Commit `84b8e65` passed macOS, Ubuntu and Windows push CI in [40811353403](https://github.com/sujanmj/aura-companion/actions/runs/40811353403) and pull-request CI in [40811359575](https://github.com/sujanmj/aura-companion/actions/runs/40811359575). The push run uploaded all three preview artifacts. The initial Windows browser attempt timed out during UI state refresh; rerunning that job passed. No speaker or medical integration test is claimed.
+
+## 2026-10-29 continuation — cautious visual object hints (Phase 8)
+
+When the owner asks where an item is, local recall can offer a recent on-device
+scene estimate only if the requested item matches Vision's top label, the
+top-label confidence is at least 85%, and the estimate is no more than 30
+minutes old. A matching explicit user note takes priority. The reply includes
+the saved time and confidence, warns that the object may be misidentified or
+outdated, and says AURA cannot name its room or exact spot. Human presence is
+not used as identity or object evidence. Low-confidence, stale, unrelated and
+secondary classification labels do not produce a hint. Images remain unstored.
+
+Automated tests use temporary SQLite observations and cover fresh, high-
+confidence matching labels, stale or low-confidence rows, secondary-label
+label rejection, unrelated/person queries, and explicit-note priority. The full
+suite passes locally. This does not verify Vision's real-world object accuracy
+or guarantee that AURA can find an object on a particular Mac. Cross-platform
+CI is pending.

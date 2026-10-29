@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import math
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from brain.llm_provider import LLMProvider
@@ -213,13 +215,14 @@ class CompanionReactionEngine:
             context.get("observations", []),
         )
         if remembered_location:
+            response, source = remembered_location
             return {
-                "situation": "The user asked about a previously noted item's location.",
+                "situation": "The user asked about a previously noted or estimated item's location.",
                 "emotional_need": "practical_help",
                 "tone": "warm_practical",
-                "response": remembered_location,
-                "confidence": 0.95,
-                "reasons": ["Recalled a matching user-provided note locally."],
+                "response": response,
+                "confidence": 0.95 if source == "user note" else 0.85,
+                "reasons": [f"Recalled a matching {source} locally."],
             }
 
         remembered_routine = self._remembered_routine_reply(user_id, latest_user_message)
@@ -296,7 +299,8 @@ class CompanionReactionEngine:
         self,
         message: str,
         observations: list[dict[str, Any]],
-    ) -> str | None:
+        now: datetime | None = None,
+    ) -> tuple[str, str] | None:
         normalized = message.lower().replace("’", "'")
         location_question = re.search(
             r"\b(where|where's|wheres|where is|where are|where did|where have|where can)\b",
@@ -322,7 +326,53 @@ class CompanionReactionEngine:
                 age_context = f" It was saved {created_at} and may be out of date."
             else:
                 age_context = " I don't know when it was saved, so it may be out of date."
-            return f"The last note I have says: {note}.{age_context}"
+            return f"The last note I have says: {note}.{age_context}", "user note"
+
+        now = now or datetime.now(timezone.utc)
+        if now.tzinfo is None:
+            return None
+        for item in observations:
+            if item.get("source") != "mac_local_vision":
+                continue
+            confidence = item.get("confidence")
+            if (
+                not isinstance(confidence, (int, float))
+                or isinstance(confidence, bool)
+                or not math.isfinite(confidence)
+                or confidence < 0.85
+                or confidence > 1.0
+            ):
+                continue
+            created_at = item.get("created_at")
+            if not isinstance(created_at, str):
+                continue
+            try:
+                observed_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if observed_at.tzinfo is None:
+                observed_at = observed_at.replace(tzinfo=timezone.utc)
+            age = now.astimezone(timezone.utc) - observed_at.astimezone(timezone.utc)
+            if age < timedelta(0) or age > timedelta(minutes=30):
+                continue
+            summary = str(item.get("event_summary", ""))
+            prefix = "On-device scene estimate: "
+            if not summary.startswith(prefix):
+                continue
+            labels = summary[len(prefix):].split(". Human-shaped figure detected:", 1)[0]
+            # The confidence value belongs to Vision's top classification only.
+            top_label = labels.split(",", 1)[0].strip()
+            matched = self.relevance_filter.extract_keywords(top_label) & message_keywords
+            if not matched:
+                continue
+            matched_label = top_label or "an object"
+            timestamp = observed_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+            response = (
+                f"A recent on-device scene estimate mentioned ‘{matched_label}’ "
+                f"({confidence:.0%} confidence, saved {timestamp}). It may be a "
+                "misidentification or outdated; I can’t tell which room or exact spot."
+            )
+            return response, "uncertain camera estimate"
 
         return None
 

@@ -150,6 +150,17 @@ and pull-request CI in
 [40811359575](https://github.com/sujanmj/aura-companion/actions/runs/40811359575).
 All three platform preview packages were uploaded by the push run.
 
+## 2026-10-29 — cautious visual object hints
+
+For a where-is question, AURA may offer a recent local scene estimate when
+the requested item matches Vision's top label at 85% confidence or higher and
+the observation is no more than 30 minutes old. It includes the saved time and
+confidence, warns that the classification may be wrong or outdated, and does
+not claim a room or exact location. An explicit user note takes priority.
+Secondary labels and human-presence signals cannot answer object questions.
+This software path uses saved summaries only; hardware vision accuracy is not
+validated by automated tests. Cross-platform CI for this change is pending.
+
 The optional Ollama brain now accepts only a numeric loopback URL and fixed API
 path. It bypasses proxy settings, never follows redirects, caps prompts/replies,
 and exposes the selected `OLLAMA_MODEL` in setup readiness. Custom `OLLAMA_URL`

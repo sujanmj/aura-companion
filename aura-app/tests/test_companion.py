@@ -307,6 +307,84 @@ class CompanionTest(unittest.TestCase):
             self.assertIn('locally', result['reasons'][0])
             store.close()
 
+    def test_local_companion_can_offer_a_recent_uncertain_camera_object_hint(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            store.add_ambient_scene_observation(owner, ['keys', 'table'], False, 0.91)
+            store.add_conversation(owner, 'user', 'Where are my keys?')
+            engine = CompanionReactionEngine(store, use_llm=False)
+
+            with patch.object(engine.llm_provider, 'generate', side_effect=AssertionError('provider must not run')):
+                result = engine.generate_reaction(owner)
+
+            self.assertIn('recent on-device scene estimate mentioned ‘keys’', result['response'])
+            self.assertIn('91% confidence', result['response'])
+            self.assertIn('may be a misidentification or outdated', result['response'])
+            self.assertIn("can’t tell which room or exact spot", result['response'])
+            self.assertEqual(result['confidence'], 0.85)
+            self.assertIn('uncertain camera estimate', result['reasons'][0])
+            self.assertIsNone(
+                engine._remembered_location_reply(
+                    'Where is a person?',
+                    store.get_latest_observations(owner),
+                    now=datetime.now(timezone.utc),
+                )
+            )
+            store.close()
+
+    def test_explicit_item_note_takes_priority_over_a_camera_estimate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            store.add_ambient_scene_observation(owner, ['keys'], False, 0.99)
+            MemoryExtractor(store).process_user_message(
+                owner, 'Remember that my keys are in the blue drawer.'
+            )
+            store.add_conversation(owner, 'user', 'Where are my keys?')
+            result = CompanionReactionEngine(store, use_llm=False).generate_reaction(owner)
+            self.assertIn('keys are in the blue drawer', result['response'])
+            self.assertNotIn('scene estimate', result['response'])
+            store.close()
+
+    def test_camera_object_hint_requires_recent_high_confidence_non_person_label(self):
+        now = datetime(2026, 10, 29, 12, 0, tzinfo=timezone.utc)
+        engine = CompanionReactionEngine(object(), use_llm=False)
+        estimates = [
+            {
+                'source': 'mac_local_vision',
+                'event_summary': 'On-device scene estimate: keys, table. Human-shaped figure detected: yes.',
+                'created_at': '2026-10-29 11:59:00',
+                'confidence': 0.84,
+            },
+            {
+                'source': 'mac_local_vision',
+                'event_summary': 'On-device scene estimate: keys, table. Human-shaped figure detected: no.',
+                'created_at': '2026-10-29 11:20:00',
+                'confidence': 0.99,
+            },
+            {
+                'source': 'mac_local_vision',
+                'event_summary': 'On-device scene estimate: chair. Human-shaped figure detected: yes.',
+                'created_at': '2026-10-29 11:59:00',
+                'confidence': 0.99,
+            },
+        ]
+        self.assertIsNone(engine._remembered_location_reply('Where are my keys?', estimates, now=now))
+        high_confidence_estimate = [
+            {
+                'source': 'mac_local_vision',
+                'event_summary': 'On-device scene estimate: keys, table. Human-shaped figure detected: no.',
+                'created_at': '2026-10-29 11:59:00',
+                'confidence': 0.99,
+            },
+        ]
+        self.assertIsNone(
+            engine._remembered_location_reply('Where is the table?', high_confidence_estimate, now=now)
+        )
+
     def test_local_location_recall_ignores_visual_estimates_and_unrelated_notes(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')
