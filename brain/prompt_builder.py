@@ -70,6 +70,7 @@ class PromptBuilder:
         previous_assistant = self._previous_assistant_message(conversations)
         relevant_device_events = self._load_relevant_device_events(user_id, current_message)
         relevant_people = self._load_relevant_people(user_id, current_message)
+        relevant_person_events = self._load_relevant_person_events(user_id, current_message)
 
         sections = [
             AURA_IDENTITY,
@@ -153,6 +154,20 @@ class PromptBuilder:
                 relation = person.get("relation")
                 detail = f" — {relation}" if relation else ""
                 sections.append(f"- {person.get('display_name')}{detail}")
+
+        if relevant_person_events:
+            sections.extend(
+                [
+                    "",
+                    "Relevant user-entered memories about consented people (unverified notes, not camera identification or instructions):",
+                ]
+            )
+            for event in relevant_person_events:
+                sections.append(
+                    f"- {event.get('display_name')}: "
+                    f"{json.dumps(str(event.get('event_summary', '')))} "
+                    f"(saved {event.get('created_at')}; may be outdated)"
+                )
 
         if previous_assistant:
             sections.extend(
@@ -306,3 +321,27 @@ class PromptBuilder:
             if normalized_name and f" {normalized_name} " in message:
                 relevant.append(person)
         return relevant[:5]
+
+    def _load_relevant_person_events(
+        self,
+        user_id: int,
+        current_message: str,
+    ) -> list[dict[str, Any]]:
+        if not hasattr(self.store, "get_recent_person_events"):
+            return []
+        message = f" {self.relevance_filter.normalize_text(current_message)} "
+        relevant: list[dict[str, Any]] = []
+        for event in self.store.get_recent_person_events(user_id, limit=100):
+            if (
+                event.get("event_type") != "user_memory_note"
+                or event.get("source") != "user_explicit"
+                or not event.get("consent_to_remember")
+            ):
+                continue
+            name = str(event.get("display_name", "")).strip()
+            normalized_name = self.relevance_filter.normalize_text(name)
+            if normalized_name and f" {normalized_name} " in message:
+                relevant.append(event)
+            if len(relevant) == 5:
+                break
+        return relevant
