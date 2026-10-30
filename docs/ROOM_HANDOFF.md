@@ -62,6 +62,7 @@ All routes below are JSON POST requests:
 | `/rooms/status` | Master | `{}` | Current session or `null` |
 | `/rooms/stop` | Master | `session_id`, current `generation` | Deletes session and claims; `session: null` |
 | `/rooms/claim` | Enrolled node | `session_id`, current integer `generation`, canonical UUID `turn_id` | `session.reserved: true` once for that turn |
+| `/rooms/claim/validate` | Enrolled node | Same identifiers as `/rooms/claim` | Confirms that the reservation and invitation are still current at check time |
 
 Start and transfer need a visible human invitation before a caller sends literal
 JSON `true`; string or numeric approximations are rejected. The destination must
@@ -84,6 +85,13 @@ returns 401; stale, expired, uninvited or invalid protocol requests return 409.
 A lost response can therefore cause a missed reply: fail closed instead of
 retrying speech under a new turn ID.
 
+An enrolled node may call `/rooms/claim/validate` immediately before a future
+playback attempt. The hub rechecks the node heartbeat, active invitation,
+generation and exact stored claim. A transfer, stop, expiry, revocation or
+re-enrollment makes the old claim fail validation. This is a point-in-time
+fence check only: it cannot stop sound already playing or eliminate a transfer
+race after the response, and it is not connected to speaker playback.
+
 This is at-most-one **software reservation**, not exactly-once physical playback.
 A reservation already returned cannot be recalled by a transfer or stop. A real
 speaker pipeline still needs cancellation, fencing at the playback boundary,
@@ -100,18 +108,18 @@ ambient media or new profile memory is recorded by these endpoints.
 ## Reproducible evidence
 
 Run `python3 -m unittest discover -s aura-app/tests -p test_room_handoff.py` from
-the repository root. Seven tests use temporary databases and a loopback server:
+the repository root. Eight tests use temporary databases and a loopback server:
 approval and online prerequisites; transfer fences and duplicate claims; owner
 scoping, expiry and process restart; rotation/revocation; two concurrent database
 connections racing for a turn; validation/capacity; and actual HTTP role checks,
 transfer and stop without conversation-memory writes. No hardware, production
 memory database or external service is used.
 
-The node claim client is covered separately with
-`python3 scripts/test_room_handoff_client.py`. Its tests verify the exact
-credential and stable turn payload, strict input validation, rejection handling,
-and no retry after an ambiguous network result. These tests do not connect a
-client to hardware or exercise speaker playback.
+The node claim and point-in-time validation clients are covered separately with
+`python3 scripts/test_room_handoff_client.py`. Its tests verify exact
+credentials and stable turn payloads, strict input validation, rejection
+handling, and fail-closed behavior after an ambiguous network result. These
+tests do not connect a client to hardware or exercise speaker playback.
 
 The owner controller is covered with `python3 scripts/test_room_invitation.py`
 and the loopback API integration test above. It checks typed consent, admin

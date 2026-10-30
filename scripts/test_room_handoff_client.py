@@ -193,6 +193,56 @@ class RoomHandoffClientTests(unittest.TestCase):
         self.assertIn("do not play this reply", output)
         urlopen.assert_called_once()
 
+    def test_live_claim_validation_is_a_single_point_in_time_check(self) -> None:
+        from contextlib import redirect_stdout
+        from io import StringIO
+
+        output = StringIO()
+        with (
+            patch.object(pi_node_simulator, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_NODE_TOKEN": TOKEN}),
+            patch.object(pi_node_simulator, "_open_hub_request", return_value=response()) as urlopen,
+            redirect_stdout(output),
+        ):
+            result = pi_node_simulator.validate_invited_room_turn(
+                SESSION, 2, TURN, "http://127.0.0.1:8787"
+            )
+
+        self.assertEqual(result, 0)
+        self.assertIn("VALID_AT_CHECK", output.getvalue())
+        self.assertEqual(urlopen.call_count, 1)
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://127.0.0.1:8787/rooms/claim/validate")
+        self.assertEqual(request.get_header("X-aura-api-token"), TOKEN)
+        self.assertEqual(json.loads(request.data), {
+            "session_id": SESSION,
+            "generation": 2,
+            "turn_id": TURN,
+        })
+
+    def test_unknown_or_stale_validation_never_suggests_playback(self) -> None:
+        from contextlib import redirect_stdout
+        from io import StringIO
+
+        failures = (
+            {"side_effect": TimeoutError("unknown")},
+            {"return_value": response(body=json.dumps({"ok": False}).encode())},
+        )
+        for failure in failures:
+            output = StringIO()
+            with (
+                patch.object(pi_node_simulator, "load_env_file"),
+                patch.dict(os.environ, {"AURA_SENSOR_NODE_TOKEN": TOKEN}),
+                patch.object(pi_node_simulator, "_open_hub_request", **failure) as urlopen,
+                redirect_stdout(output),
+            ):
+                result = pi_node_simulator.validate_invited_room_turn(
+                    SESSION, 2, TURN, "http://127.0.0.1:8787"
+                )
+            self.assertEqual(result, 1)
+            self.assertIn("do not play this reply", output.getvalue())
+            urlopen.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

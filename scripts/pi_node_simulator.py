@@ -351,6 +351,83 @@ def claim_invited_room_turn(
     return 1
 
 
+def validate_invited_room_turn(
+    session_id: str,
+    generation: int,
+    turn_id: str,
+    hub_url: str | None = None,
+    token: str | None = None,
+) -> int:
+    """Recheck a claim's live fence once; this does not perform playback."""
+    if token is None:
+        load_env_file()
+        token = os.environ.get("AURA_SENSOR_NODE_TOKEN", "")
+    token = token.strip()
+    if len(token) < 32:
+        print("AURA_PI_ROOM_VALIDATE_ERROR: set AURA_SENSOR_NODE_TOKEN from enrollment")
+        return 1
+    if type(generation) is not int or generation < 1:
+        print("AURA_PI_ROOM_VALIDATE_ERROR: generation must be a positive integer")
+        return 1
+    try:
+        if not isinstance(turn_id, str) or str(uuid.UUID(turn_id)) != turn_id:
+            raise ValueError
+    except (ValueError, AttributeError):
+        print("AURA_PI_ROOM_VALIDATE_ERROR: turn ID must be a canonical UUID")
+        return 1
+    if not isinstance(session_id, str) or not session_id.strip():
+        print("AURA_PI_ROOM_VALIDATE_ERROR: session ID is required")
+        return 1
+
+    base_url = (hub_url or get_hub_url()).rstrip("/")
+    if not is_safe_sensor_api_url(base_url):
+        print("AURA_PI_ROOM_VALIDATE_ERROR: hub URL must use HTTPS outside loopback")
+        return 1
+    request = urllib.request.Request(
+        f"{base_url}/rooms/claim/validate",
+        data=json.dumps({
+            "session_id": session_id,
+            "generation": generation,
+            "turn_id": turn_id,
+        }).encode("utf-8"),
+        headers={"Content-Type": "application/json", AUTH_HEADER: token},
+        method="POST",
+    )
+    try:
+        with _open_hub_request(request, timeout=10) as response:
+            body = response.read().decode("utf-8")
+            result = json.loads(body) if body else {}
+            reservation = result.get("session") if isinstance(result, dict) else None
+            expires_at = reservation.get("expires_at") if isinstance(reservation, dict) else None
+            valid_expiry = False
+            if isinstance(expires_at, int) and not isinstance(expires_at, bool):
+                valid_expiry = expires_at > time.time()
+            elif isinstance(expires_at, float):
+                valid_expiry = math.isfinite(expires_at) and expires_at > time.time()
+            if (
+                response.status != 200
+                or not isinstance(result, dict)
+                or result.get("ok") is not True
+                or not isinstance(reservation, dict)
+                or reservation.get("reserved") is not True
+                or reservation.get("session_id") != session_id
+                or reservation.get("generation") != generation
+                or reservation.get("turn_id") != turn_id
+                or not valid_expiry
+            ):
+                print("AURA_PI_ROOM_VALIDATE_ERROR: claim is stale or invalid; do not play this reply")
+                return 1
+            print(f"AURA_PI_ROOM_CLAIM_VALID_AT_CHECK session_id={session_id} generation={generation} turn_id={turn_id}")
+            return 0
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+        exc.close()
+        print(f"AURA_PI_ROOM_VALIDATE_ERROR: HTTP {status}; do not play this reply")
+    except (urllib.error.URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
+        print("AURA_PI_ROOM_VALIDATE_ERROR: claim state is unknown; do not play this reply")
+    return 1
+
+
 def send_simulated_event(
     node: str,
     event_type: str,

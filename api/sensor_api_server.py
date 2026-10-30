@@ -481,7 +481,7 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
-        if path in ("/nodes/heartbeat", "/rooms/claim"):
+        if path in ("/nodes/heartbeat", "/rooms/claim", "/rooms/claim/validate"):
             if not self._require_sensor_node_auth():
                 return
         elif path == "/events":
@@ -496,7 +496,11 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
             metadata={"path": self.path, "method": "POST"},
         )
 
-        if path in ("/rooms/start", "/rooms/transfer", "/rooms/stop", "/rooms/status", "/rooms/claim"):
+        room_routes = {
+            "/rooms/start", "/rooms/transfer", "/rooms/stop",
+            "/rooms/status", "/rooms/claim", "/rooms/claim/validate",
+        }
+        if path in room_routes:
             payload = self._read_json_body()
             if payload is None:
                 self._send_json(400, {"ok": False, "error": "invalid_json"})
@@ -506,6 +510,11 @@ class AuraSensorAPIHandler(BaseHTTPRequestHandler):
                 if path == "/rooms/claim":
                     result = handoff.claim(self.headers.get(AUTH_HEADER, ""), payload.get("session_id"),
                                            payload.get("generation"), payload.get("turn_id"))
+                elif path == "/rooms/claim/validate":
+                    result = handoff.validate_claim(
+                        self.headers.get(AUTH_HEADER, ""), payload.get("session_id"),
+                        payload.get("generation"), payload.get("turn_id"),
+                    )
                 else:
                     user_id = self._get_user_id(store)
                     if path == "/rooms/start":

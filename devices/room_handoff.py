@@ -81,11 +81,7 @@ class RoomHandoff:
             self.db.execute('DELETE FROM room_sessions WHERE user_id=?', (user_id,))
 
     def claim(self, token, session_id, generation, turn_id):
-        try:
-            if not isinstance(turn_id, str) or str(uuid.UUID(turn_id)) != turn_id:
-                raise ValueError()
-        except (ValueError, AttributeError):
-            raise HandoffDenied('invalid_turn') from None
+        self._turn_id(turn_id)
         with self._transaction():
             node = self.store.get_sensor_node_by_token(token)
             if not node:
@@ -104,5 +100,36 @@ class RoomHandoff:
                 raise HandoffDenied('session_capacity_reached')
             self.db.execute('INSERT INTO room_reply_claims VALUES (?, ?, ?, ?, ?)',
                             (user_id, session_id, turn_id, node['node_id'], generation))
+            return {'reserved': True, 'session_id': session_id, 'turn_id': turn_id,
+                    'generation': generation, 'expires_at': session['expires_at']}
+
+    @staticmethod
+    def _turn_id(turn_id):
+        try:
+            if not isinstance(turn_id, str) or str(uuid.UUID(turn_id)) != turn_id:
+                raise ValueError()
+        except (ValueError, AttributeError):
+            raise HandoffDenied('invalid_turn') from None
+
+    def validate_claim(self, token, session_id, generation, turn_id):
+        """Recheck one reserved claim against the live invitation and node fence."""
+        self._turn_id(turn_id)
+        with self._transaction():
+            node = self.store.get_sensor_node_by_token(token)
+            if not node:
+                raise HandoffDenied('node_unauthorized')
+            user_id = node['user_id']
+            session = self._session(user_id, session_id, generation)
+            if session['node_id'] != node['node_id']:
+                raise HandoffDenied('node_not_invited')
+            self._online(user_id, node['node_id'])
+            claim = self.db.execute(
+                """SELECT 1 FROM room_reply_claims
+                   WHERE user_id=? AND session_id=? AND turn_id=?
+                   AND node_id=? AND generation=?""",
+                (user_id, session_id, turn_id, node['node_id'], generation),
+            ).fetchone()
+            if not claim:
+                raise HandoffDenied('claim_not_found')
             return {'reserved': True, 'session_id': session_id, 'turn_id': turn_id,
                     'generation': generation, 'expires_at': session['expires_at']}

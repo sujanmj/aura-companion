@@ -105,6 +105,38 @@ class RoomHandoffTests(unittest.TestCase):
         self.assertIsNone(self.hub.status(self.user))
         self.assertEqual(self.store.conn.execute('SELECT count(*) FROM room_reply_claims').fetchone()[0], 0)
 
+    def test_claim_validation_fails_after_transfer_and_stop(self):
+        session = self.start()
+        sid = session['session_id']
+        turn = str(uuid.uuid4())
+        claim = self.hub.claim(self.tokens['bedroom'], sid, 1, turn)
+        self.assertEqual(
+            self.hub.validate_claim(self.tokens['bedroom'], sid, 1, turn), claim
+        )
+
+        moved = self.hub.transfer(self.user, sid, 1, 'kitchen', True)
+        with self.assertRaisesRegex(HandoffDenied, 'stale_session'):
+            self.hub.validate_claim(self.tokens['bedroom'], sid, 1, turn)
+        with self.assertRaisesRegex(HandoffDenied, 'claim_not_found'):
+            self.hub.validate_claim(self.tokens['kitchen'], sid, moved['generation'], turn)
+
+        new_turn = str(uuid.uuid4())
+        self.hub.claim(self.tokens['kitchen'], sid, moved['generation'], new_turn)
+        self.assertTrue(self.hub.validate_claim(
+            self.tokens['kitchen'], sid, moved['generation'], new_turn
+        )['reserved'])
+        self.hub.stop(self.user, sid, moved['generation'])
+        with self.assertRaisesRegex(HandoffDenied, 'stale_session'):
+            self.hub.validate_claim(self.tokens['kitchen'], sid, moved['generation'], new_turn)
+
+        expired = self.hub.start(self.user, 'bedroom', True)
+        expired_turn = str(uuid.uuid4())
+        self.hub.claim(self.tokens['bedroom'], expired['session_id'], 1, expired_turn)
+        self.store.conn.execute('UPDATE room_sessions SET expires_at=0')
+        self.store.conn.commit()
+        with self.assertRaisesRegex(HandoffDenied, 'stale_session'):
+            self.hub.validate_claim(self.tokens['bedroom'], expired['session_id'], 1, expired_turn)
+
     def test_rotation_and_revocation_remove_invitation(self):
         for rotate in (True, False):
             session = self.start()
@@ -192,6 +224,7 @@ class RoomHandoffTests(unittest.TestCase):
                 session = post('status', {}, admin)[1]['session']
                 claim = {'session_id': session['session_id'], 'generation': 1, 'turn_id': str(uuid.uuid4())}
                 self.assertEqual(post('claim', claim, admin)[0], 401)
+                self.assertEqual(post('claim/validate', claim, admin)[0], 401)
                 self.assertEqual(post('claim', claim, self.tokens['kitchen'])[0], 409)
                 client_turn = str(uuid.uuid4())
                 with (
@@ -206,6 +239,7 @@ class RoomHandoffTests(unittest.TestCase):
                 client_claim = {'session_id': session['session_id'], 'generation': 1, 'turn_id': client_turn}
                 self.assertEqual(post('claim', client_claim, self.tokens['bedroom'])[0], 409)
                 self.assertEqual(post('claim', claim, self.tokens['bedroom'])[0], 200)
+                self.assertEqual(post('claim/validate', claim, self.tokens['bedroom'])[0], 200)
                 self.assertEqual(post('claim', claim, self.tokens['bedroom'])[0], 409)
                 with (
                     patch.object(room_invitation, 'load_env_file'),
@@ -217,6 +251,7 @@ class RoomHandoffTests(unittest.TestCase):
                         'transfer', session['session_id'], '1', 'kitchen',
                     ]), 0)
                 self.assertEqual(post('claim', claim, self.tokens['bedroom'])[0], 409)
+                self.assertEqual(post('claim/validate', claim, self.tokens['bedroom'])[0], 409)
                 with (
                     patch.object(room_invitation, 'load_env_file'),
                     patch('builtins.input', return_value=f"STOP {session['session_id']}"),
