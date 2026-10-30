@@ -707,11 +707,37 @@ test("people memory is private and forget removes its associated timeline", asyn
     assert.equal(created.status, 201);
     const createdPerson = await created.json();
     assert.equal(createdPerson.display_name, "Taylor");
+    assert.equal(
+      (await post("person/event/create", {
+        person_id: createdPerson.person_id,
+        note: "We visited the museum together.",
+      }, cookie)).status,
+      400,
+    );
+    assert.equal(
+      (await post("person/event/create", {
+        person_id: createdPerson.person_id,
+        note: "We visited the museum together.",
+        consent_confirmed: true,
+      }, cookie)).status,
+      201,
+    );
     const afterCreate = await (
       await fetch(base + "/api/status", { headers: { Cookie: cookie } })
     ).json();
     assert.deepEqual(afterCreate.people.map((person) => person.display_name), ["Taylor"]);
     assert.equal(afterCreate.people[0].face_profile_status, "not_enrolled");
+    assert.equal(afterCreate.person_events.length, 1);
+    assert.equal(afterCreate.person_events[0].display_name, "Taylor");
+    assert.equal(afterCreate.person_events[0].event_summary, "We visited the museum together.");
+    assert.equal(
+      (await post("person/event/delete", { event_id: afterCreate.person_events[0].id }, cookie)).status,
+      200,
+    );
+    const afterDeleteNote = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.deepEqual(afterDeleteNote.person_events, []);
     assert.equal(
       (
         await post(
