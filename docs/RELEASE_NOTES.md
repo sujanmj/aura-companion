@@ -12,7 +12,7 @@ ten-minute in-memory cache and can be cleared. Local-only mode does not contact
 a language model. A hosted provider may retain approved content under its own
 policy.
 
-Local checks pass: 131 app Python tests, 30 Node tests, 19 browser tests,
+Local checks pass: 131 app Python tests, 34 Node tests, 19 browser tests,
 TypeScript checking, lint and production build. Both push and PR CI for exact
 source commit `581fc8d` passed macOS, Windows and Ubuntu:
 [41109385300](https://github.com/sujanmj/aura-companion/actions/runs/41109385300)
@@ -28,6 +28,20 @@ Clean install and legacy SQLite upgrade smoke tests passed, preserving existing
 facts and conversations. This Mac build is ad-hoc signed and not notarized.
 No physical Pi or household acceptance is claimed. No live provider,
 multi-source or news acceptance is claimed.
+
+## Temporary source-cache retention checks
+
+The in-memory cache for reviewed Wikipedia excerpts now has clock-controlled
+tests for the exact ten-minute expiry, its 12-result bound, clearing, and
+defensive copies. The full Node suite has 34 passing tests. Push and PR CI for
+`7d3df03` both passed macOS, Windows and Ubuntu and uploaded each platform's
+preview archive. Push digest prefixes: macOS `9c1e6bad`, Windows `542a0b38`,
+Ubuntu `d14b99d1`; PR prefixes: macOS `e074e2d3`, Windows `c5394b0c`, Ubuntu
+`f1c76007`. The local Mac preview for this exact source commit passed archive
+integrity and clean-install/legacy-upgrade smoke checks at SHA-256
+`ce66778a715270de0f9907d45dc4f7aafc74ba7ac4a9eb2481c083f9517933f6`. It is
+ad-hoc signed and not notarized. No physical Pi or household acceptance is
+claimed.
 
 ## Local voice retry recovery (Phase 5)
 

@@ -702,6 +702,20 @@ verification, live-news coverage, or automatic fact-checking. Hosted providers
 may retain an approved question and excerpts under their own policy. No physical
 Pi or household acceptance is claimed.
 
+Cache-retention follow-up: the temporary source cache is now isolated in a
+bounded helper with clock-controlled tests for the exact ten-minute expiry,
+12-entry eviction, clear behavior and defensive copies. All 34 Node tests,
+including four cache tests, pass. Source commit `7d3df03` passed push CI
+[41111536265](https://github.com/sujanmj/aura-companion/actions/runs/41111536265)
+and PR CI
+[41111542062](https://github.com/sujanmj/aura-companion/actions/runs/41111542062)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+Push artifact digest prefixes: macOS `9c1e6bad`, Windows `542a0b38`, Ubuntu
+`d14b99d1`; PR prefixes: macOS `e074e2d3`, Windows `c5394b0c`, Ubuntu
+`f1c76007`. The exact-head Mac archive for `7d3df03` passed integrity,
+clean-install and legacy-upgrade checks with SHA-256
+`ce66778a715270de0f9907d45dc4f7aafc74ba7ac4a9eb2481c083f9517933f6`.
+
 ### Phase 11 — Opt-in routine and wellness support
 
 - Implemented for Mac preview: user-created daily local reminders require an
