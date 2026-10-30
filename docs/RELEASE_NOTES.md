@@ -681,8 +681,12 @@ untrusted data that cannot authorize actions. Dynamic retrieved values are
 JSON-quoted before they enter AURA's companion prompt. This preserves the
 current user message as the request to answer and keeps the separate approval
 gate for tools. Local verification passed all 120 app Python tests, 30 Node
-tests, lint, and production build. Cross-platform CI is pending. These prompt
-boundaries are defense in depth, not a guarantee against all model behavior.
+tests, lint, and production build. Corrected source commit `b10d290` passed
+push CI [41082372303](https://github.com/sujanmj/aura-companion/actions/runs/41082372303)
+and PR CI [41082381408](https://github.com/sujanmj/aura-companion/actions/runs/41082381408)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+These prompt boundaries are defense in depth, not a guarantee against all model
+behavior.
 
 ## Conversation history expiry (Phases 4, 7)
 
@@ -692,4 +696,9 @@ count and asks for confirmation; facts and other memory categories remain. When
 cloud sync is configured, pending uploads for expired rows are removed and
 remote deletions are queued. Existing backups or unavailable cloud sync may
 retain copies. Local verification passed all 126 app Python tests, 30 Node
-tests, 19 browser E2E tests, lint, and production build. Cross-platform CI is pending.
+tests, 19 browser E2E tests, lint, and production build. Corrected source commit
+`b10d290` passed push CI
+[41082372303](https://github.com/sujanmj/aura-companion/actions/runs/41082372303)
+and PR CI
+[41082381408](https://github.com/sujanmj/aura-companion/actions/runs/41082381408)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.

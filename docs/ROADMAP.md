@@ -1559,9 +1559,12 @@ that treat saved memories, observations, prior assistant replies, device events,
 and shared participant text as untrusted. Dynamic retrieved values are quoted
 as JSON before entering the companion prompt. Local verification passed all
 120 app Python tests, 30 Node tests, lint, production build, and 19 browser E2E
-tests. The CI run for commit `ad10b48` was still completing when checked; no
-cross-platform pass is claimed here. This is defense in depth, not a guarantee
-against every model behavior.
+tests. The corrected source commit `b10d290` passed push CI
+[41082372303](https://github.com/sujanmj/aura-companion/actions/runs/41082372303)
+and PR CI
+[41082381408](https://github.com/sujanmj/aura-companion/actions/runs/41082381408)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+This is defense in depth, not a guarantee against every model behavior.
 
 ### Opt-in conversation-history expiry (Phases 4, 7)
 
@@ -1574,6 +1577,12 @@ isolation, export, cloud-queue boundaries, authenticated confirmation, and
 browser cancellation/confirmation. Local verification passed all 126 app
 Python tests, 30 Node tests, 19 browser E2E tests, lint, and production build.
 The first CI attempt exposed an upload-truncation defect in large source files;
-the correction is being verified before this milestone is called cross-platform
-complete. Existing backups and offline/unconfigured cloud copies can retain
-older data.
+the correction was committed as `b10d290`. Push CI
+[41082372303](https://github.com/sujanmj/aura-companion/actions/runs/41082372303)
+and PR CI
+[41082381408](https://github.com/sujanmj/aura-companion/actions/runs/41082381408)
+passed on macOS, Windows and Ubuntu. Each run uploaded a preview for every
+desktop platform. Push artifact digests: macOS `36b2bb9d`, Windows `f6f4e886`,
+Ubuntu `103ff60d`; PR artifact digests: macOS `ac4375ef`, Windows `6bacb5fa`,
+Ubuntu `fa20cb45` (SHA-256 prefixes). Existing backups and offline/unconfigured
+cloud copies can retain older data.
