@@ -42,10 +42,11 @@ async function dashboardHarness(initialToken = token) {
   const ids = [
     "room-invitation-status", "room-invitation-details", "room-invite-node",
     "room-transfer-node", "room-invite-btn", "room-transfer-btn",
-    "room-refresh-btn", "room-stop-btn",
+    "room-revoke-node", "room-revoke-btn", "room-refresh-btn", "room-stop-btn",
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new Element()]));
   const requests = [];
+  let enrolledNodes = [node, kitchenNode];
   let promptAnswers = [];
   let activeSession = null;
   let loseNextMutationResponse = false;
@@ -54,7 +55,7 @@ async function dashboardHarness(initialToken = token) {
     requests.push({ url, init });
     let body;
     if (url === "/nodes/status") {
-      body = { ok: true, nodes: [node, kitchenNode] };
+      body = { ok: true, nodes: enrolledNodes };
     } else if (url === "/rooms/status") {
       body = { ok: true, session: activeSession };
     } else if (url === "/rooms/start") {
@@ -71,6 +72,11 @@ async function dashboardHarness(initialToken = token) {
     } else if (url === "/rooms/stop") {
       activeSession = null;
       body = { ok: true, session: null };
+    } else if (url === "/nodes/revoke") {
+      const revokedId = JSON.parse(init.body).node_id;
+      enrolledNodes = enrolledNodes.filter((item) => item.node_id !== revokedId);
+      if (activeSession?.node_id === revokedId) activeSession = null;
+      body = { ok: true, revoked: true };
     } else {
       throw new Error(`Unexpected request ${url}`);
     }
@@ -111,6 +117,7 @@ async function dashboardHarness(initialToken = token) {
     setAnswers: (answers) => { promptAnswers = answers; },
     loseNextMutationResponse: () => { loseNextMutationResponse = true; },
     setToken: (value) => { storedToken = value; },
+    setActiveSession: (session) => { activeSession = session; },
     tokenChanged: () => window.dispatchEvent({ type: "aura-token-changed" }),
     settle,
   };
@@ -159,6 +166,61 @@ test("saving or clearing the dashboard token reloads room status", async () => {
   await ui.settle();
   assert.equal(controls["room-invite-node"].disabled, true);
   assert.match(controls["room-invitation-status"].textContent, /API token above/);
+});
+
+test("node revocation requires exact confirmation and refreshes active room state", async () => {
+  const ui = await dashboardHarness();
+  const controls = ui.elements;
+  ui.setActiveSession({
+    session_id: sessionId,
+    generation: 2,
+    node_id: "bedroom",
+    expires_at: 1_900_000_000,
+  });
+  controls["room-revoke-node"].value = "bedroom";
+  controls["room-revoke-node"].change();
+  const before = ui.requests.length;
+
+  ui.setAnswers(["revoke bedroom"]);
+  controls["room-revoke-btn"].click();
+  assert.equal(ui.requests.length, before);
+  assert.match(controls["room-invitation-status"].textContent, /Canceled/);
+
+  ui.setAnswers(["REVOKE bedroom"]);
+  controls["room-revoke-btn"].click();
+  await ui.settle();
+  const mutation = ui.requests.filter((request) => request.url === "/nodes/revoke");
+  assert.equal(mutation.length, 1);
+  assert.deepEqual(JSON.parse(mutation[0].init.body), { node_id: "bedroom" });
+  assert.equal(mutation[0].init.method, "POST");
+  assert.equal(mutation[0].init.redirect, "error");
+  assert.equal(mutation[0].init.headers["X-AURA-API-Token"], token);
+  assert.match(controls["room-invitation-details"].textContent, /No active room invitation/);
+  assert.equal(controls["room-revoke-node"].options.some((option) => option.value === "bedroom"), false);
+  assert.match(controls["room-invitation-status"].textContent, /No active room invitation/);
+  assert.doesNotMatch(controls["room-invitation-status"].textContent, /powered off/);
+});
+
+test("lost revocation response cannot trigger an automatic retry", async () => {
+  const ui = await dashboardHarness();
+  const controls = ui.elements;
+  controls["room-revoke-node"].value = "kitchen";
+  controls["room-revoke-node"].change();
+  ui.setAnswers(["REVOKE kitchen"]);
+  ui.loseNextMutationResponse();
+  controls["room-revoke-btn"].click();
+  await ui.settle();
+
+  assert.equal(ui.requests.filter((request) => request.url === "/nodes/revoke").length, 1);
+  assert.match(controls["room-invitation-status"].textContent, /Refresh invitation status before retrying/);
+  assert.equal(controls["room-revoke-btn"].disabled, true);
+  controls["room-revoke-btn"].click();
+  await ui.settle();
+  assert.equal(ui.requests.filter((request) => request.url === "/nodes/revoke").length, 1);
+
+  controls["room-refresh-btn"].click();
+  await ui.settle();
+  assert.equal(controls["room-revoke-node"].options.some((option) => option.value === "kitchen"), false);
 });
 
 test("lost mutation response asks the owner to inspect status instead of retrying", async () => {

@@ -75,11 +75,19 @@ The command returns a one-time `AURA_SENSOR_NODE_TOKEN`. Copy it to that node's
 private `config/keys.env`; never place the hub token on sensor nodes. The hub
 stores only a SHA-256 hash of each random node token. Enrolling the same ID again
 rotates its credential. Revoke a node with an authenticated `POST /nodes/revoke`
-request containing `{"node_id":"pi_bedroom_node"}`. The hub's `GET /nodes/status`
-lists enrolled nodes and reports them online for 90 seconds after their last
-heartbeat or event. The node heartbeat command makes up to three attempts for
-temporary network and server failures and stops immediately when the hub rejects
-the enrolled credential.
+request containing `{"node_id":"pi_bedroom_node"}`, or run the owner CLI:
+
+```powershell
+python scripts/revoke_sensor_node.py pi_bedroom_node
+```
+
+The CLI requires the exact confirmation `REVOKE pi_bedroom_node`, then calls
+the authenticated hub through the direct no-proxy transport. Remote hubs must
+use HTTPS. If the response is ambiguous, check `GET /nodes/status` before
+retrying. The status endpoint lists enrolled nodes and reports them online for
+90 seconds after their last heartbeat or event. The node heartbeat command
+makes up to three attempts for temporary network and server failures and stops
+immediately when the hub rejects the enrolled credential.
 
 Node credentials are limited to event ingestion and their own heartbeat. A node
 event must include `event_uuid`; AURA assigns its registered node ID and room,

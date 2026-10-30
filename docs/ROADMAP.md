@@ -1295,6 +1295,19 @@ failure. An ambiguous network result tells the owner to verify node status
 before retrying. Tests cover success, cancellation, invalid IDs, unsafe remote
 HTTP, and a hub response that does not confirm revocation. Focused local checks
 pass: 16 sensor-admin tests, 12 room-client tests, and all 95 application
-Python tests. Cross-platform CI is pending. The CLI does not enroll devices,
+Python tests. Commit `89ee2f7` passed all three push-CI platforms in
+[41017738378](https://github.com/sujanmj/aura-companion/actions/runs/41017738378),
+which uploaded the macOS, Windows and Ubuntu previews. Its pull-request run
+[41017743156](https://github.com/sujanmj/aura-companion/actions/runs/41017743156)
+is still finishing Windows validation. The CLI does not enroll devices,
 retrieve tokens, or claim physical node shutdown; revoked credentials are
 rejected by the existing hub.
+
+The Command Center now offers the same owner-controlled revocation beside its
+room invitation controls. It uses the browser's already-entered admin token,
+requires the exact typed phrase, refreshes enrolled-node and invitation status
+after a confirmed response, and explains that credential revocation does not
+power off the device. A revoked node's active invitation is cleared by the hub.
+Six dashboard interaction tests and all 30 Node tests pass along with lint and
+the production web build. This Command Center addition is local and awaits CI;
+no physical device shutdown is claimed.

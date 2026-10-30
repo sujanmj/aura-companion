@@ -6,8 +6,10 @@
   var details = document.getElementById("room-invitation-details");
   var inviteNode = document.getElementById("room-invite-node");
   var transferNode = document.getElementById("room-transfer-node");
+  var revokeNode = document.getElementById("room-revoke-node");
   var inviteButton = document.getElementById("room-invite-btn");
   var transferButton = document.getElementById("room-transfer-btn");
+  var revokeButton = document.getElementById("room-revoke-btn");
   var refreshButton = document.getElementById("room-refresh-btn");
   var stopButton = document.getElementById("room-stop-btn");
   var currentSession = null;
@@ -34,8 +36,10 @@
     refreshButton.disabled = value;
     inviteNode.disabled = value || inviteNode.options.length <= 1;
     transferNode.disabled = value || transferNode.options.length <= 1 || !currentSession;
+    revokeNode.disabled = value || revokeNode.options.length <= 1;
     inviteButton.disabled = value || needsRefresh || inviteNode.disabled || !inviteNode.value;
     transferButton.disabled = value || needsRefresh || transferNode.disabled || !transferNode.value || !currentSession;
+    revokeButton.disabled = value || needsRefresh || revokeNode.disabled || !revokeNode.value;
     stopButton.disabled = value || needsRefresh || !currentSession;
   }
 
@@ -55,7 +59,7 @@
   }
 
   function renderNodes(nodes) {
-    [inviteNode, transferNode].forEach(function (select) {
+    [inviteNode, transferNode, revokeNode].forEach(function (select) {
       clearSelect(select, "Select an enrolled room");
       nodes.filter(validNode).forEach(function (node) {
         var option = document.createElement("option");
@@ -176,6 +180,7 @@
 
   inviteNode.addEventListener("change", function () { setBusy(busy); });
   transferNode.addEventListener("change", function () { setBusy(busy); });
+  revokeNode.addEventListener("change", function () { setBusy(busy); });
   inviteButton.addEventListener("click", function () {
     var nodeId = inviteNode.value;
     if (!nodeId || busy || needsRefresh) return;
@@ -191,6 +196,26 @@
       node_id: nodeId,
       approved: true,
     }, "TRANSFER " + nodeId, "This moves the current invitation to the selected room.");
+  });
+  revokeButton.addEventListener("click", function () {
+    var nodeId = revokeNode.value;
+    if (!nodeId || busy || needsRefresh) return;
+    if (!confirmPhrase("REVOKE " + nodeId,
+      "This immediately disables this node credential and ends its active invitation. It does not power off the device.")) {
+      setStatus("Canceled. No node credential was revoked.");
+      return;
+    }
+    setBusy(true);
+    setStatus("Revoking the selected node credential…");
+    makeRequest("/nodes/revoke", "POST", { node_id: nodeId }).then(function (body) {
+      if (body.revoked !== true) throw new Error("The hub did not confirm node revocation.");
+      setStatus("Node credential revoked. The device itself was not powered off.");
+      return refresh();
+    }).catch(function (error) {
+      needsRefresh = true;
+      setStatus(errorMessage(error));
+      setBusy(false);
+    });
   });
   stopButton.addEventListener("click", function () {
     if (!currentSession || busy || needsRefresh) return;

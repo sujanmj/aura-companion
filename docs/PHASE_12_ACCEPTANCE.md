@@ -32,13 +32,19 @@ These checks establish only the behavior covered by their tests:
   push/PR CI passed in
   [41015190985](https://github.com/sujanmj/aura-companion/actions/runs/41015190985)
   and [41015196752](https://github.com/sujanmj/aura-companion/actions/runs/41015196752).
-- Current local continuation adds an owner-confirmed sensor-node revoke CLI.
-  It requires the exact node ID phrase, validates IDs before prompting, uses
-  the authenticated direct hub transport, and rejects remote HTTP before
-  sending the admin credential. Sixteen sensor-admin tests, 12 room-client
-  tests and all 95 app Python tests pass locally. Cross-platform CI is pending;
-  revocation here establishes only hub credential rejection, not physical
-  device shutdown.
+- Current continuation adds owner-confirmed sensor-node revocation by CLI and
+  Command Center. Both require the exact node ID phrase; the CLI validates IDs
+  before prompting and uses authenticated direct hub transport, rejecting
+  remote HTTP before sending the admin credential. Six dashboard interaction
+  tests, 30 Node tests, lint, the production build, 16 sensor-admin tests, 12
+  room-client tests and all 95 app Python tests pass locally. CLI commit
+  `89ee2f7` passed all three push-CI platforms in
+  [41017738378](https://github.com/sujanmj/aura-companion/actions/runs/41017738378),
+  uploading each preview artifact; PR run
+  [41017743156](https://github.com/sujanmj/aura-companion/actions/runs/41017743156)
+  is still finishing Windows validation. The dashboard change is not yet pushed.
+  Revocation establishes hub credential rejection, not physical device
+  shutdown.
 
 - Commit `fab9f3b`: all three platforms passed push and pull-request CI; the
   shared-conversation browser tests require fresh approval per turn and verify
