@@ -1379,20 +1379,26 @@ both uploaded macOS, Windows and Ubuntu preview archives.
 ## 2026-10-30 continuation — reject inconsistent and future-dated node status (Phase 5)
 
 The CLI and Command Center mark records with `online=true` but no valid
-last-seen timestamp as unavailable. Heartbeats dated in the future now count as
-offline, and room invitation, claim and claim-validation paths all reject them.
-A temporary-database regression test checks both status and handoff denial.
+last-seen timestamp as unavailable. Malformed and future-dated heartbeat times
+display as unavailable and count as offline; room invitation, claim and
+claim-validation paths reject them. Temporary-database regression tests check
+both status and handoff denial.
 The status-shape change passed push run
 [41024614388](https://github.com/sujanmj/aura-companion/actions/runs/41024614388)
 and PR run
 [41024608660](https://github.com/sujanmj/aura-companion/actions/runs/41024608660)
 on all three platforms, with preview artifacts uploaded. The future-time guard
-passes all 96 app Python tests, 30 Node tests, 18 browser E2E tests, lint and
+passes all 97 app Python tests, 30 Node tests, 18 browser E2E tests, lint and
 build locally. Push CI
 [41024839694](https://github.com/sujanmj/aura-companion/actions/runs/41024839694)
 passed on all three platforms and uploaded all previews. Its PR Mac and Ubuntu
 jobs also passed after retrying a cancelled Windows job and one slow Mac E2E
-attempt; both retries passed. The documentation snapshot then passed all three
-platforms and uploaded preview artifacts in
+attempt; both retries passed. Timestamp normalization passed all three
+platforms in push run
+[41027375513](https://github.com/sujanmj/aura-companion/actions/runs/41027375513)
+and PR run
+[41027384362](https://github.com/sujanmj/aura-companion/actions/runs/41027384362),
+with all preview artifacts uploaded. The documentation snapshot passed its
+three-platform PR workflow in
 [41026034065](https://github.com/sujanmj/aura-companion/actions/runs/41026034065).
 This is software-only evidence.

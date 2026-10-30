@@ -39,7 +39,8 @@ installation and physical node shutdown are untested.
 
 An inconsistent node record with `online=true` but no valid last-seen time is
 now shown as unavailable in the CLI and Command Center. Future-dated heartbeat
-records are offline and cannot pass a room invitation or claim check. The 96
+or malformed heartbeat records are shown as unavailable and cannot pass a room
+invitation or claim check. The 97
 app Python tests, 30 Node tests, 19 sensor-admin tests, 18 browser E2E tests,
 lint and production build pass locally. Push CI
 [41024839694](https://github.com/sujanmj/aura-companion/actions/runs/41024839694)
@@ -49,6 +50,11 @@ passed on all three platforms after retrying the slow Mac E2E case and a
 cancelled Windows job; both retries passed. The documentation snapshot also
 passed its three-platform PR workflow and uploaded previews in
 [41026034065](https://github.com/sujanmj/aura-companion/actions/runs/41026034065).
+The timestamp normalization passed on all three platforms in push run
+[41027375513](https://github.com/sujanmj/aura-companion/actions/runs/41027375513)
+and PR run
+[41027384362](https://github.com/sujanmj/aura-companion/actions/runs/41027384362);
+both uploaded preview artifacts.
 These checks do not establish a physical Pi or room-playback behavior.
 
 The sensor API now tells HTTP caches not to store any JSON response, including

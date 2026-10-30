@@ -84,9 +84,10 @@ These checks establish only the behavior covered by their tests:
   and PR run
   [41024608660](https://github.com/sujanmj/aura-companion/actions/runs/41024608660)
   passed on all three platforms and uploaded all preview artifacts.
-  Future-dated heartbeats now report offline and cannot start or validate a
-  room claim. The 96 app Python tests, 30 Node tests, 18 browser E2E tests,
-  lint and build pass locally. Push run
+  Future-dated or malformed heartbeat timestamps now display as unavailable,
+  report offline and cannot start or validate a room claim. The 97 app Python
+  tests, 30 Node tests, 18 browser E2E tests, lint and build pass locally. Push
+  run
   [41024839694](https://github.com/sujanmj/aura-companion/actions/runs/41024839694)
   passed on all three platforms and uploaded every preview artifact. PR run
   [41024846598](https://github.com/sujanmj/aura-companion/actions/runs/41024846598)
@@ -94,6 +95,11 @@ These checks establish only the behavior covered by their tests:
   slow Mac E2E attempt; both retries passed. The documentation snapshot also
   passed all three platforms and uploaded preview artifacts in
   [41026034065](https://github.com/sujanmj/aura-companion/actions/runs/41026034065).
+  Timestamp normalization passed all three platforms in push run
+  [41027375513](https://github.com/sujanmj/aura-companion/actions/runs/41027375513)
+  and PR run
+  [41027384362](https://github.com/sujanmj/aura-companion/actions/runs/41027384362),
+  with all preview artifacts uploaded.
   No physical node or room playback is claimed.
   Revocation establishes hub credential rejection, not physical device
   shutdown.
