@@ -104,11 +104,22 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     assert.equal((await post("shared", { message: "hello", consent: true })).status, 401);
     assert.equal((await post("shared", { message: "hello", consent: true }, cookie, "https://evil.test")).status, 403);
     assert.equal((await post("shared", { message: "hello" }, cookie)).status, 400);
+    assert.equal((await post("shared", { message: "hello", consent: true, local_only: "yes" }, cookie)).status, 400);
     assert.equal((await post("shared", { message: "hello", consent: true, history: Array(8).fill({ role: "user", message: "x" }) }, cookie)).status, 400);
     const beforeShared = await (await fetch(base + "/api/memory/export", { headers: { Cookie: cookie } })).json();
     const shared = await post("shared", { message: "Our private shared question", consent: true }, cookie);
     assert.equal(shared.status, 200);
     assert.equal((await shared.json()).saved, false);
+    const localShared = await post("shared", {
+      message: "Please answer this group question using only AURA's built-in local engine.",
+      history: [{ role: "user", message: "Older group context must not be used." }, { role: "assistant", message: "Earlier reply." }],
+      consent: true,
+      local_only: true,
+    }, cookie);
+    assert.equal(localShared.status, 200);
+    const localSharedResult = await localShared.json();
+    assert.equal(localSharedResult.provider, "local");
+    assert.equal(localSharedResult.saved, false);
     const afterShared = await (await fetch(base + "/api/memory/export", { headers: { Cookie: cookie } })).json();
     assert.deepEqual(afterShared.records, beforeShared.records, "Shared contributions must not read into or mutate personal memory");
     assert.equal((await post("observations/retention", { days: 30, confirmed: true })).status, 401);

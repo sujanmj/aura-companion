@@ -333,7 +333,10 @@ def main():
                         req.get('confidence'),
                     )
                 elif op == 'shared_chat':
-                    result = shared_contribution(req.get('message'), req.get('consent'), req.get('history'))
+                    result = shared_contribution(
+                        req.get('message'), req.get('consent'), req.get('history'),
+                        local_only=req.get('local_only', False),
+                    )
                 elif op == 'grounded_answer':
                     result = answer_from_sources(
                         req.get('question'), req.get('sources'), req.get('consent')

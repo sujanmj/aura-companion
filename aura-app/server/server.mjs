@@ -658,9 +658,9 @@ const server = http.createServer(async (req, res) => {
           error: "Message must contain 1–8000 characters",
         });
       if (Object.hasOwn(data, "local_only") &&
-          (!["/api/chat", "/api/ambient", "/api/private"].includes(url.pathname) ||
+          (!["/api/chat", "/api/ambient", "/api/private", "/api/shared"].includes(url.pathname) ||
            typeof data.local_only !== "boolean"))
-        return json(res, 400, { error: "Local reply choice must be a boolean on a direct, ambient, or private turn." });
+        return json(res, 400, { error: "Local reply choice must be a boolean on a direct, ambient, private, or shared turn." });
       if (busy)
         return json(res, 409, { error: "AURA is finishing another request." });
       if (url.pathname === "/api/private") {
@@ -680,7 +680,7 @@ const server = http.createServer(async (req, res) => {
           return json(res, 400, { error: "Review the shared question and confirm participants agree." });
         busy = true;
         try {
-          return json(res, 200, await memory("shared_chat", { message: data.message, history: data.history || [], consent: true }));
+          return json(res, 200, await memory("shared_chat", { message: data.message, history: data.history || [], consent: true, local_only: data.local_only === true }));
         } finally { busy = false; }
       }
       if (["/api/chat", "/api/ambient"].includes(url.pathname)) {

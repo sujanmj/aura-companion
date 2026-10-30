@@ -1,6 +1,7 @@
 """Reviewed, invited group contributions: no durable store, tools, or identity claims."""
 from brain.llm_provider import LLMProvider
 from readiness import brain_readiness
+from companion.private_session import generate_private_response
 
 
 def _validate_history(history):
@@ -20,12 +21,18 @@ def _validate_history(history):
     return validated
 
 
-def shared_contribution(message, consent, history=None, *, generate=None):
+def shared_contribution(message, consent, history=None, *, local_only=False, generate=None):
     if consent is not True:
         raise ValueError('Participant agreement is required')
     if not isinstance(message, str) or not 1 <= len(message.strip()) <= 4000:
         raise ValueError('Invalid shared question')
+    if not isinstance(local_only, bool):
+        raise ValueError('Invalid local reply choice')
     history = _validate_history(history)
+    if local_only:
+        local = generate_private_response(message.strip(), use_llm=False)
+        return {'response': local['response'], 'provider': 'local',
+                'saved': False, 'online_verified': False}
     readiness = brain_readiness()
     provider = readiness['provider']
     response = None

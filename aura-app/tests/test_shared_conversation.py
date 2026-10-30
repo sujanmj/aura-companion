@@ -54,6 +54,28 @@ class SharedConversationTests(unittest.TestCase):
         self.assertNotIn('private provider error', str(result))
         self.assertIn('unavailable', result['response'])
 
+    def test_explicit_local_shared_turn_uses_only_current_question(self):
+        history = [{'role': 'user', 'message': 'Earlier shared question.'},
+                   {'role': 'assistant', 'message': 'Earlier shared answer.'}]
+        with patch('shared_conversation.brain_readiness') as readiness, \
+             patch('shared_conversation.generate_private_response',
+                   return_value={'response': 'A local contribution.', 'provider': 'local'}) as local:
+            result = shared_contribution(
+                'What can we do next?', True, history, local_only=True,
+                generate=lambda _: self.fail('local-only shared turns must skip providers'),
+            )
+        readiness.assert_not_called()
+        local.assert_called_once_with('What can we do next?', use_llm=False)
+        self.assertEqual(result, {
+            'response': 'A local contribution.', 'provider': 'local',
+            'saved': False, 'online_verified': False,
+        })
+
+    def test_local_only_choice_must_be_boolean(self):
+        for value in ('true', 1, None):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                shared_contribution('hello', True, local_only=value)
+
     def test_long_provider_replies_fit_the_next_turn_history_limit(self):
         with patch('shared_conversation.brain_readiness', return_value={'provider':'claude', 'state':'configured_unverified'}):
             result = shared_contribution('hello', True, generate=lambda _: 'x' * 5000)
