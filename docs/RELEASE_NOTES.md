@@ -9,6 +9,16 @@ explicitly; legacy SQLite databases migrate without replacing existing data.
 This remains a general local reminder feature, not a medication tracker or
 cross-device health integration.
 
+Commit `36a3b38` passes 98 app Python tests, 30 Node tests, 18 browser tests,
+lint, build and the native Mac lifecycle/voice tests. Its push run
+[41028802195](https://github.com/sujanmj/aura-companion/actions/runs/41028802195)
+and pull-request run
+[41028796545](https://github.com/sujanmj/aura-companion/actions/runs/41028796545)
+passed on macOS, Windows and Ubuntu with all three preview artifacts uploaded.
+The local Mac preview archive is tied to that source commit and has SHA-256
+`416315bed9985564943f81468555c5a04c90a7f1949bd91ccb2c413aa485b35e`; it is
+ad-hoc signed, not notarized, and does not establish hardware acceptance.
+
 ## 2026-10-30 — Owner-controlled sensor-node revocation
 
 An owner can now revoke an enrolled node credential from the Command Center or

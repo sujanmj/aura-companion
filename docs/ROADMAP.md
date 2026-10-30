@@ -1421,6 +1421,11 @@ same delivery; both statuses reset when the next scheduled occurrence is
 delivered. Legacy SQLite databases receive the new nullable field in place.
 Verification includes the database migration, local-date rollover, account
 isolation, API delivery and response, and the browser acknowledgment flow. Full
-local counts and cross-platform CI run links will be recorded after the pushed
-branch completes verification. No medication or health-device integration is
-claimed.
+local verification passed: 98 app Python tests, 30 Node tests, 18 browser E2E
+tests, lint, production build, native Mac lifecycle/voice tests, and the focused
+room and sensor client suites. Push CI
+[41028802195](https://github.com/sujanmj/aura-companion/actions/runs/41028802195)
+and PR CI
+[41028796545](https://github.com/sujanmj/aura-companion/actions/runs/41028796545)
+passed on macOS, Windows and Ubuntu and uploaded all three preview artifacts.
+No medication or health-device integration is claimed.

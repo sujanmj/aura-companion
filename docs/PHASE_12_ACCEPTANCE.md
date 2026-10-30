@@ -10,6 +10,21 @@ missing prerequisite is available.
 
 These checks establish only the behavior covered by their tests:
 
+- Commit `36a3b38` adds owner-scoped acknowledgment for a delivered routine
+  reminder, preserves the distinction between seeing a reminder and completing
+  a task/dose, and migrates existing SQLite rows in place. Local checks passed:
+  98 app Python tests, 30 Node tests, 18 browser E2E tests, lint, production
+  build, native Mac lifecycle/voice tests, and focused room/sensor client tests.
+  Push CI
+  [41028802195](https://github.com/sujanmj/aura-companion/actions/runs/41028802195)
+  and PR CI
+  [41028796545](https://github.com/sujanmj/aura-companion/actions/runs/41028796545)
+  passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+  A local Mac development-preview ZIP for this commit was verified against its
+  embedded manifest and SHA-256
+  `416315bed9985564943f81468555c5a04c90a7f1949bd91ccb2c413aa485b35e`;
+  its native app is ad-hoc signed, not notarized. These are software and
+  packaging results only, not physical companion acceptance.
 - Current software continuation on branch `aura-holographic-companion`:
   session-only private replies and reply-speech control are covered by native
   tests; room claim revalidation and its simulator CLI are covered by 12 client
