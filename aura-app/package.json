@@ -1,0 +1,43 @@
+{
+  "name": "aura-companion-app",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "start": "node server/server.mjs",
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build && node scripts/run-python.mjs scripts/build_provenance.py web aura-app/dist",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src server tests",
+    "test": "node --test tests/*.test.mjs",
+    "bundle": "node scripts/run-python.mjs scripts/bundle.py",
+    "macos:app": "bash scripts/build-macos-app.sh",
+    "test:e2e": "playwright test",
+    "test:native": "bash scripts/test-native.sh"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.220",
+    "@react-three/fiber": "^9.7.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "three": "^0.185.1"
+  },
+  "overrides": {
+    "forwarded": "0.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.185.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "oxlint": "^1.75.0",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0"
+  }
+}

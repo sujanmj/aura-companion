@@ -16,11 +16,11 @@ On your LAN, replace `127.0.0.1` with the hub machine IP.
 
 ## API token
 
-If `AURA_SENSOR_API_TOKEN` is set in `config/keys.env`, paste the same token into the dashboard token panel.
+Set a token of at least 32 characters in `config/keys.env`, then paste the same token into the dashboard token panel.
 
 - Stored only in browser `localStorage` as `AURA_SENSOR_API_TOKEN`
 - Sent as header `X-AURA-API-Token` for JSON calls to `/dashboard/status`
-- The HTML page itself is open; JSON endpoints still require the token when configured
+- The HTML page itself is open; JSON endpoints always require the token
 
 ## Test
 

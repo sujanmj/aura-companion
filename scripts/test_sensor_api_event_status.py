@@ -9,6 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.env_loader import load_env_file
+from config.sensor_transport import is_safe_sensor_api_url, open_sensor_api_request
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8787"
 AUTH_HEADER = "X-AURA-API-Token"
@@ -30,7 +31,7 @@ def _request(
 
     request = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(request, timeout=15) as response:
+        with open_sensor_api_request(request, timeout=15) as response:
             body = response.read().decode("utf-8")
             return response.status, json.loads(body) if body else {}
     except urllib.error.HTTPError as exc:
@@ -46,7 +47,10 @@ def _request(
 
 def main() -> None:
     load_env_file()
-    base_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL
+    base_url = (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL).rstrip("/")
+    if not is_safe_sensor_api_url(base_url):
+        print("AURA_SENSOR_API_EVENT_STATUS_TEST_FAILED: hub URL must use HTTPS outside loopback")
+        raise SystemExit(1)
     token = os.environ.get("AURA_SENSOR_API_TOKEN")
 
     try:

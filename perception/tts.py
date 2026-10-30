@@ -13,6 +13,45 @@ class BaseSpeaker:
         raise NotImplementedError
 
 
+class EspeakNGSpeaker(BaseSpeaker):
+    """Optional local Linux speech output using espeak-ng's stdin interface."""
+
+    def __init__(self, enabled: bool = True, timeout_seconds: int = 120, runner=subprocess.run) -> None:
+        self.enabled = enabled
+        self.timeout_seconds = max(1, min(int(timeout_seconds), 180))
+        self.runner = runner
+
+    def speak(self, text: str) -> bool:
+        cleaned = text.replace("\x00", " ").strip()
+        if not self.enabled or not cleaned:
+            return False
+        if len(cleaned) > 8_000:
+            print("AURA_TTS_ERROR: response exceeds the local speech length limit")
+            return False
+        try:
+            result = self.runner(
+                ["espeak-ng", "--stdin"],
+                input=cleaned,
+                capture_output=True,
+                text=True,
+                timeout=self.timeout_seconds,
+                check=False,
+            )
+        except FileNotFoundError:
+            print("AURA_TTS_ERROR: espeak-ng is not installed")
+            return False
+        except subprocess.TimeoutExpired:
+            print("AURA_TTS_ERROR: local speech timed out")
+            return False
+        except OSError:
+            print("AURA_TTS_ERROR: local speech could not start")
+            return False
+        if result.returncode != 0:
+            print("AURA_TTS_ERROR: espeak-ng returned a failure status")
+            return False
+        return True
+
+
 def list_windows_voices() -> list[str]:
     script = (
         "Add-Type -AssemblyName System.Speech\n"
@@ -161,6 +200,8 @@ class WindowsTTSSpeaker(BaseSpeaker):
 def get_speaker_from_env() -> BaseSpeaker:
     load_env_file()
     provider = os.environ.get("AURA_TTS_PROVIDER", "windows").lower()
+    if provider == "espeak-ng":
+        return EspeakNGSpeaker(enabled=True)
     if provider != "windows":
         print(f"AURA_TTS_INFO: provider '{provider}' is disabled; using windows.")
     return WindowsTTSSpeaker(enabled=True)

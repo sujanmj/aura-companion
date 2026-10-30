@@ -1,0 +1,33 @@
+[Unit]
+Description=AURA enrolled Pi node heartbeat
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=aura-node
+Group=aura-node
+WorkingDirectory=/opt/aura-companion
+EnvironmentFile=/etc/aura/aura-node.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStartPre=/usr/bin/python3 /opt/aura-companion/scripts/check_pi_node_heartbeat_config.py
+ExecStart=/usr/bin/python3 /opt/aura-companion/scripts/run_pi_node_heartbeat.py
+Restart=on-failure
+RestartSec=5s
+CPUQuota=10%
+MemoryMax=128M
+TasksMax=16
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

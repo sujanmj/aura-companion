@@ -1,0 +1,1022 @@
+# AURA development preview — 2026-10-31
+
+## Session-only local replies in direct chat (Phases 2, 4)
+
+The web conversation now has a session-only switch for AURA's built-in local
+reply engine. When enabled, direct turns skip the configured language model
+while retaining normal conversation, memory, and storage behavior. The switch
+starts off and is not persisted after the page session. The UI states that local
+reply selection does not change memory or cloud-sync settings.
+
+An authenticated loopback integration test verifies that a local direct turn
+sends no request to a fake Ollama endpoint, that the ordinary direct turn uses
+the configured model, that the ambient override remains supported, and that
+normal saved conversation behavior continues. Browser E2E coverage checks the
+default-off state, outgoing choice and reset after reload. Local verification
+passed 132 Python tests, 35 Node tests, all 19 browser tests, native lifecycle
+and speech checks, TypeScript checking, lint and production build. Source commit
+`0ed1b27` passed push CI on macOS, Windows and Ubuntu in
+[41120619773](https://github.com/sujanmj/aura-companion/actions/runs/41120619773),
+with all three preview archives uploaded. Its matching PR run
+[41120627219](https://github.com/sujanmj/aura-companion/actions/runs/41120627219)
+found a Windows-only stale reminder notice in an existing browser test (18 of
+19 browser tests passed). Follow-up commit `63c670c` prevents an older
+acknowledgment refresh from replacing a newer action notice and adds a delayed-
+refresh regression test. The focused test and full 19-test browser suite pass
+locally. Follow-up push CI
+[41122204230](https://github.com/sujanmj/aura-companion/actions/runs/41122204230)
+and PR CI
+[41122214370](https://github.com/sujanmj/aura-companion/actions/runs/41122214370)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+Push artifact SHA-256 prefixes: macOS `0d145561`, Windows `a69ba6eb`, Ubuntu
+`38a5af01`. PR prefixes: macOS `aba1f9da`, Windows `43960fb3`, Ubuntu
+`fd0ed3aa`. The exact-head local Mac archive for `63c670c` has SHA-256
+`1d7bf44ee6f6db79d2ce941d82f25fa688a88f4192ef2bd3300ed4a242a4233f`; its
+native signature is ad-hoc and it is not notarized. No sensor permissions or
+home hardware acceptance are claimed.
+
+## One-turn local private reply (Phases 2, 4)
+
+The private-question panel now lets the owner use AURA's built-in reply engine
+for that unsaved turn, skipping the configured hosted model. The choice is
+off by default and resets after the reply. Private turns still use only their
+own temporary in-memory context, do not read or write saved conversations or
+memories, and remain visible only until cleared or the page closes.
+
+Browser coverage checks the default-off state, submitted local-only flag,
+one-turn reset, and unchanged conversation history. The existing authenticated
+server integration test verifies a local private turn makes no model request
+and leaves persistent data untouched. Local verification passed 132 Python
+tests, 35 Node tests, all 19 browser tests, typecheck, lint and production
+build. Exact source commit `78f8145` passed PR CI on macOS, Windows and Ubuntu
+in [41124019452](https://github.com/sujanmj/aura-companion/actions/runs/41124019452),
+which uploaded all three preview archives. PR digest prefixes: macOS
+`60638525`, Windows `5a679382`, Ubuntu `05c56183`.
+Push CI
+[41124012944](https://github.com/sujanmj/aura-companion/actions/runs/41124012944)
+also passed on all three platforms and uploaded all three archives; digest
+prefixes: macOS `b2a2721f`, Windows `bf11e663`, Ubuntu `7bcce959`.
+The exact-head local Mac preview archive SHA-256 is
+`6cb42de000ff1c0de6be2dd0c67147518fe1b71a44dd4e74ab6f7132f1e408cc`. It is
+ad-hoc signed, not notarized, and makes no hardware-acceptance claim.
+
+## Session-only built-in local reply engine (Phases 2, 4)
+
+Mac ambient mode now lets the owner bypass the configured language model for
+new replies and use AURA's built-in local reaction engine instead. The choice
+is available only during an active session and resets on Pause. Ordinary
+ambient turns still use saved AURA memory and conversation history; the
+separate private-reply option remains unsaved. Normal storage and optional
+cloud-sync behavior still apply, and the UI explains that boundary.
+
+Tests verify the model endpoint receives no request for a local-only turn, a
+later regular turn still uses the configured model, ambient memory remains
+available, private local replies stay unsaved, and the session toggle resets.
+Local verification passed all 132 app Python tests, 35 Node tests, all 19
+browser tests, native lifecycle/speech tests, lint, TypeScript checking,
+production build, Mac signature verification, archive integrity, and
+clean-install/legacy-database upgrade smoke. Exact source commit `79cf411`
+passed push CI
+[41118891881](https://github.com/sujanmj/aura-companion/actions/runs/41118891881)
+and PR CI
+[41118896869](https://github.com/sujanmj/aura-companion/actions/runs/41118896869)
+on macOS, Windows and Ubuntu. Both runs uploaded all three preview archives.
+Push digest prefixes: macOS `166dbba4`, Windows `fbbf7435`, Ubuntu `0c1d9090`;
+PR prefixes: macOS `df9c8388`, Windows `a6253f09`, Ubuntu `073f4e99`. The exact-
+head local Mac archive SHA-256 is
+`c9f66cc41c0041b817f382cf4922bfe37f97d07f752b238a076e7d14dff0cc7b`. It is
+ad-hoc signed and not notarized. No physical Mac permission or home hardware
+acceptance is claimed.
+
+## Optional ambient-session auto-pause (Phase 2)
+
+Mac ambient mode now offers an optional 15, 30 or 60-minute capture limit. It
+defaults to no limit, preserving existing behavior. The timer begins only after
+the microphone and selected camera mode are live; reaching the limit closes
+capture and leaves AURA paused. Manual Pause invalidates the timer, and the
+setting can only be changed while capture is stopped.
+
+Native tests cover saved-setting defaults and bounds, the exact expiry boundary,
+manual cancellation and the no-limit option. Local verification passed the
+native lifecycle and speech tests, 34 Node tests, all 19 browser tests, lint,
+TypeScript checking, production build, Mac app signature verification, preview
+archive integrity and clean-install/legacy-database upgrade smoke tests. Exact
+source commit `f3c9ed5` passed push CI
+[41117041595](https://github.com/sujanmj/aura-companion/actions/runs/41117041595)
+and pull-request CI
+[41117048235](https://github.com/sujanmj/aura-companion/actions/runs/41117048235)
+on macOS, Windows and Ubuntu. Both runs uploaded all three preview archives.
+Push digest prefixes: macOS `95169f08`, Windows `db482af0`, Ubuntu `b67e3bf2`;
+pull-request prefixes: macOS `e3be89e4`, Windows `4058e479`, Ubuntu `4d185216`.
+The exact-head local Mac archive SHA-256 is
+`bf0bd26e1adcc94d0976878315136b48b6e3296a66b77479008dad6e6d4ee56b`. It is
+ad-hoc signed and not notarized. This does not verify live permission prompts,
+long-duration capture, acoustic behavior or physical hardware.
+
+## Pi voice software preflight (Phase 5)
+
+Added an offline readiness command for the optional Pi push-to-talk software.
+It checks Python, optional speech packages, and the local model directory while
+keeping the microphone closed and the configured path private. The optional
+`espeak-ng` result is informational. A positive result does not claim audio
+permissions, device compatibility, model accuracy or physical Pi acceptance.
+
+Local verification passed four new readiness tests, all 131 app Python tests,
+34 Node tests, lint, TypeScript checking and production build. The readiness
+test is included in the macOS, Windows and Ubuntu workflow. Exact source commit
+`77567ec` passed push CI
+[41113641055](https://github.com/sujanmj/aura-companion/actions/runs/41113641055)
+and pull-request CI
+[41113651110](https://github.com/sujanmj/aura-companion/actions/runs/41113651110).
+Both runs uploaded all three preview archives. Push digest prefixes: macOS
+`89572271`, Windows `d342f3eb`, Ubuntu `579f37be`; pull-request prefixes:
+macOS `79d966cf`, Windows `73bc9845`, Ubuntu `8fd6d83f`.
+
+## Temporary answers from reviewed online sources (Phase 10)
+
+After checking an exact query on Wikipedia, you can optionally ask AURA to
+answer a separate question using the displayed excerpts. A second confirmation
+is required before the configured language model receives the question and
+those excerpts. The temporary turn has no saved-memory access or tools and is
+not written to chat history. Numbered citations link to the reviewed excerpts;
+the answer is not independently verified. Results are held in a bounded,
+ten-minute in-memory cache and can be cleared. Local-only mode does not contact
+a language model. A hosted provider may retain approved content under its own
+policy.
+
+Local checks pass: 131 app Python tests, 34 Node tests, 19 browser tests,
+TypeScript checking, lint and production build. Both push and PR CI for exact
+source commit `581fc8d` passed macOS, Windows and Ubuntu:
+[41109385300](https://github.com/sujanmj/aura-companion/actions/runs/41109385300)
+and [41109396159](https://github.com/sujanmj/aura-companion/actions/runs/41109396159).
+Each run uploaded all three preview archives. Push digest prefixes: macOS
+`ba89e9be`, Windows `918bda15`, Ubuntu `3d207c36`; PR prefixes: macOS
+`7838a3f0`, Windows `8edb0f87`, Ubuntu `35b85638`.
+
+For branch tip `a43f422`, the locally built Mac archive passed integrity
+verification at SHA-256
+`9af397e33990622bc230ea4d499b1e09805baf476bacf95f048d4ebeb4d512b4`.
+Clean install and legacy SQLite upgrade smoke tests passed, preserving existing
+facts and conversations. This Mac build is ad-hoc signed and not notarized.
+No physical Pi or household acceptance is claimed. No live provider,
+multi-source or news acceptance is claimed.
+
+## Temporary source-cache retention checks
+
+The in-memory cache for reviewed Wikipedia excerpts now has clock-controlled
+tests for the exact ten-minute expiry, its 12-result bound, clearing, and
+defensive copies. The full Node suite has 34 passing tests. Push and PR CI for
+`7d3df03` both passed macOS, Windows and Ubuntu and uploaded each platform's
+preview archive. Push digest prefixes: macOS `9c1e6bad`, Windows `542a0b38`,
+Ubuntu `d14b99d1`; PR prefixes: macOS `e074e2d3`, Windows `c5394b0c`, Ubuntu
+`f1c76007`. The local Mac preview for this exact source commit passed archive
+integrity and clean-install/legacy-upgrade smoke checks at SHA-256
+`ce66778a715270de0f9907d45dc4f7aafc74ba7ac4a9eb2481c083f9517933f6`. It is
+ad-hoc signed and not notarized. No physical Pi or household acceptance is
+claimed.
+
+## Local voice retry recovery (Phase 5)
+
+If a requested push-to-talk retry encounters a microphone error or no speech,
+the Python console now returns to typed input instead of exiting. The transcript
+confirmation says that approved text enters AURA's normal memory/provider
+flow. Three new regression tests, all 127 app Python tests, 30 Node tests, 19
+browser E2E tests, lint, production build, native Mac lifecycle tests, and the
+clean-install/legacy-upgrade smoke pass locally. The exact-head Mac preview
+archive has SHA-256
+`cef6a983308998c3fab02ceeb31ef98225a11fad3b3ffb78a036a18e9b295bb4`; it is
+ad-hoc signed and not notarized. Push CI
+[41104862597](https://github.com/sujanmj/aura-companion/actions/runs/41104862597)
+and PR CI
+[41104874755](https://github.com/sujanmj/aura-companion/actions/runs/41104874755)
+passed on macOS, Windows and Ubuntu, and both runs uploaded all three preview
+archives. This does not claim microphone, acoustic or Raspberry Pi acceptance.
+
+## One-turn private console mode (Phases 4 and 5)
+
+Use `/private` to make one typed or reviewed voice request without retrieving
+or changing saved memories, observations or chat history. The private reply
+uses a fresh in-memory SQLite database, skips camera observations and feedback,
+and is spoken only when voice output was separately enabled. The console uses
+the owner's already selected local/cloud brain setting; a hosted provider may
+receive the text and apply its own retention policy. `/cancel-private` cancels
+the armed turn. Focused store-isolation, console-dispatch and transcript
+boundary tests pass locally, with 127 app Python tests, 30 Node tests, 19
+browser tests, lint and production build. Push CI
+[41106827966](https://github.com/sujanmj/aura-companion/actions/runs/41106827966)
+passed on macOS, Windows and Ubuntu and uploaded each preview archive. The PR
+matrix [41106836974](https://github.com/sujanmj/aura-companion/actions/runs/41106836974)
+also passed macOS, Windows and Ubuntu, and uploaded all three preview
+archives. No Pi or live-provider acceptance is claimed.
+
+## Optional local push-to-talk speech on Pi and Linux (Phase 5)
+
+The Python companion console can use Vosk with a manually installed local model
+on Linux/Raspberry Pi and macOS. Microphone access remains opt-in, opens only
+after the user presses Enter for an individual turn, and stops after at most 15
+seconds. AURA displays the transcript for confirmation before it enters the
+existing SQLite companion flow; raw audio is not persisted. Audio/model
+dependencies are optional and are not installed by the normal preview setup.
+Injected tests cover consent/lifecycle boundaries, transcript handling, and
+cleanup on device errors. This is a push-to-talk prototype, not wake-word or
+background listening; no microphone or Pi hardware acceptance is claimed.
+Commit `010735b` passed push CI
+[41098719544](https://github.com/sujanmj/aura-companion/actions/runs/41098719544)
+and PR CI
+[41098727230](https://github.com/sujanmj/aura-companion/actions/runs/41098727230)
+on macOS, Windows and Ubuntu; each uploaded all three preview archives. The
+push archive SHA-256 prefixes are macOS `26ee08b2`, Windows `84de1dab`, and
+Ubuntu `5d61c697`; PR prefixes are macOS `932de5d8`, Windows `413c688b`, and
+Ubuntu `ed06d217`.
+
+The console also supports optional local Linux/Pi replies through `espeak-ng`,
+selected only with `AURA_TTS_PROVIDER=espeak-ng` and the existing voice-output
+confirmation. Replies are passed over stdin with bounded length and runtime;
+the feature does not generate saved audio. Mocked process tests cover failure
+handling. No Pi speaker, voice-quality or acoustic check has been run; CI
+verification for this follow-up is pending.
+
+The Python console now saves only the derived one-shot camera summary to
+SQLite. It disables the camera observer's optional JPEG snapshot for this flow;
+camera failure still falls back to typed context. Injected tests cover this
+storage boundary. No camera permission or hardware acceptance is claimed, and
+CI verification for this change is pending.
+
+## Continuous dependency advisories (Phase 12)
+
+Ubuntu CI checks the locked npm dependency tree for high-severity or greater
+advisories and audits the Python requirements using `pip-audit` in an isolated
+temporary environment. The local checks reported no known advisories on
+2026-10-30. Commit `811332a` passed push CI
+[41049167203](https://github.com/sujanmj/aura-companion/actions/runs/41049167203)
+and PR CI
+[41049176739](https://github.com/sujanmj/aura-companion/actions/runs/41049176739)
+on macOS, Windows and Ubuntu; both runs uploaded preview artifacts for all
+three platforms. A Windows SQLite cleanup race found during an earlier PR run
+was fixed with bounded file-removal retries and passed in the final matrix.
+These checks do not guarantee that future or unknown dependency vulnerabilities
+are absent.
+
+## Scheduled dependency updates (Phase 12)
+
+Added weekly Dependabot checks for npm, Python requirements, and GitHub Actions,
+with a five-PR limit per ecosystem and no automatic merging. The manifest parses
+locally. GitHub only activates Dependabot from the default branch, so this
+configuration will take effect after the development branch is merged; no
+scheduled update run is claimed yet.
+
+## Reminder daylight-saving fallback test (Phase 11)
+
+Added a regression test ensuring a selected local reminder does not repeat when
+the clock's 01:30 occurs twice during a UTC-4 to UTC-5 fallback. All 110 Python
+app tests pass locally. Commit `f2625d5` passed push CI
+[41052472784](https://github.com/sujanmj/aura-companion/actions/runs/41052472784)
+and PR CI
+[41052482168](https://github.com/sujanmj/aura-companion/actions/runs/41052482168)
+on macOS, Windows and Ubuntu with all preview artifacts uploaded. The test
+simulates the two offsets; it does not establish platform timezone, live timer,
+or acoustic acceptance.
+
+A second regression covers the spring-forward gap: a 02:30 reminder becomes
+due at 03:00 local time after the skipped hour. All 111 Python app tests pass
+locally; push run
+[41054980576](https://github.com/sujanmj/aura-companion/actions/runs/41054980576)
+and PR run
+[41054988634](https://github.com/sujanmj/aura-companion/actions/runs/41054988634)
+passed on macOS, Windows and Ubuntu and uploaded preview artifacts. Both clock
+transitions are fixed-offset simulations; they do not prove a platform's DST
+rules or real-device delivery.
+
+## Reminder IANA timezone data for Windows CI (Phase 11)
+
+Added pinned test-only `tzdata==2026.6` (`requirements-test.txt`) so the
+America/New_York ZoneInfo reminder DST regression can execute on Windows CI
+rather than skip for missing system timezone data. AURA runtime dependencies
+are unchanged. The Ubuntu dependency-audit job now audits the test
+requirements alongside `requirements.txt`, and CI installs the test pin before
+Python unit tests. Local verification passed: the focused New York DST test,
+all 21 memory-controls tests, all 112 Python app tests, 30 Node tests, lint,
+production build, and browser E2E (19/19). `pip-audit` found no known
+vulnerabilities in both requirement files. PR run
+[41065495500](https://github.com/sujanmj/aura-companion/actions/runs/41065495500)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+Windows installed the pin and ran all 112 Python tests; its three skips were
+the POSIX-only symlink checks, so the IANA timezone regression ran. No
+physical reminder delivery is claimed.
+
+## Existing-memory upgrade smoke (Phases 6 and 12)
+
+The extracted preview is now tested against a synthetic database created from
+AURA's schema immediately before weekday reminder scheduling was introduced.
+The check verifies that its startup backup retains the original fact and
+reminder before migration, and that startup preserves the fact, conversation
+and reminder while adding the reminder schedule and acknowledgment fields. It
+also verifies backup and upgraded-database integrity, local-only provider
+mode, disabled external actions and authentication. The test uses temporary
+files only; no configured home database is opened or changed.
+
+Local checks passed 109 Python app tests, 30 Node tests, 19 browser E2E tests,
+lint, build, native Mac lifecycle tests and the packaged clean-install/upgrade
+smoke. The Node and Python dependency audits reported no known vulnerabilities
+for the resolved trees on 2026-10-30. Commit `75ab2e2` passed all three
+platforms in push run
+[41040534258](https://github.com/sujanmj/aura-companion/actions/runs/41040534258)
+and matching PR run
+[41040541589](https://github.com/sujanmj/aura-companion/actions/runs/41040541589)
+also passed on all three platforms; both uploaded all three preview archives.
+The local Mac preview matches its embedded manifest and has
+SHA-256 `885180b0d5d53b1f1c5625c350319f807d6b2554de097c7eb4fccc5473b88a6c`.
+It is ad-hoc signed and not notarized. This software simulation does not
+establish home upgrade, Pi, multi-room, emergency or hardware acceptance.
+
+## Read-only backup verification (Phases 4 and 12)
+
+Owners can check an existing local SQLite snapshot at any time without restoring
+it or changing the active database. The check refuses invalid names and
+symlinked files, opens the snapshot read-only, and displays whether SQLite's
+integrity check passed. Automated verification passed 108 app Python tests, 30
+Node tests, 19 browser E2E tests, lint, production build, and native Mac lifecycle
+tests. Commit `b5bc888` passed push CI
+[41035336999](https://github.com/sujanmj/aura-companion/actions/runs/41035336999)
+and PR CI
+[41035347627](https://github.com/sujanmj/aura-companion/actions/runs/41035347627)
+on macOS, Windows and Ubuntu; both uploaded preview artifacts for all platforms.
+The local Mac preview archive is tied to this commit, verified against its
+embedded manifest, and has SHA-256
+`997660d6f230a29e7a02d5dd47edacbd32070e9867c0524029966ac32b441e54`. It is
+ad-hoc signed, not notarized. This remains software recovery evidence; home
+restore and hardware acceptance are not claimed.
+
+## Explicit local backup controls (Phases 4 and 12)
+
+Memory lists local SQLite snapshots by timestamp and size, can create a verified
+snapshot on request, and can remove a single selected copy after an explicit
+warning. Automatic backups remain intact unless the owner selects one for
+deletion; neither action replaces the active database. Creation uses SQLite's
+online backup API and checks the copy with `quick_check`. POSIX snapshot files
+are owner-readable/writable; Windows uses inherited directory ACLs. Backups
+are not encrypted by this feature. Local checks passed 105 Python tests,
+30 Node tests, 19 browser E2E tests, lint, and production build. Cross-platform
+CI is pending; home recovery and physical-device acceptance are not claimed.
+
+## Editable routine reminders (Phase 11)
+
+Memory now lets the owner change a reminder's wording, local time, and selected
+weekdays. The edit is owner-scoped and preserves its active/paused state and
+the record of whether today's delivered occurrence was acknowledged or
+dismissed, preventing a schedule edit from causing a second delivery that day.
+Local verification passed 99 app Python tests, 30 Node tests, 18 browser E2E
+tests, lint, and the production build. Cross-platform CI is pending; no
+medication or health-device integration is implied.
+
+## Reminder acknowledgment (Phase 11)
+
+After a scheduled reminder is delivered, its owner can acknowledge that they saw
+it or dismiss it for that day. Acknowledgment is limited to the delivered
+occurrence and never records task or medication completion. The UI says this
+explicitly; legacy SQLite databases migrate without replacing existing data.
+This remains a general local reminder feature, not a medication tracker or
+cross-device health integration.
+
+Commit `36a3b38` passes 98 app Python tests, 30 Node tests, 18 browser tests,
+lint, build and the native Mac lifecycle/voice tests. Its push run
+[41028802195](https://github.com/sujanmj/aura-companion/actions/runs/41028802195)
+and pull-request run
+[41028796545](https://github.com/sujanmj/aura-companion/actions/runs/41028796545)
+passed on macOS, Windows and Ubuntu with all three preview artifacts uploaded.
+The local Mac preview archive is tied to that source commit and has SHA-256
+`416315bed9985564943f81468555c5a04c90a7f1949bd91ccb2c413aa485b35e`; it is
+ad-hoc signed, not notarized, and does not establish hardware acceptance.
+
+## SQLite backup restore verification (Phase 12)
+
+The temporary-database integration now restores a startup backup to a new
+database after stopping the original service, then verifies saved conversation
+and facts through a fresh authenticated AURA process. All 30 Node tests pass
+locally. This confirms a simulated software recovery path, not a household
+upgrade, cross-device restore or hardware result.
+Push CI
+[41029925282](https://github.com/sujanmj/aura-companion/actions/runs/41029925282)
+and PR CI
+[41029933353](https://github.com/sujanmj/aura-companion/actions/runs/41029933353)
+passed on macOS, Windows and Ubuntu with all three preview artifacts uploaded.
+The local Mac preview for source commit `de7dfbd` has SHA-256
+`a35787b750a6ac5b4d3e93a2e0401f20844e7ffe10c8353eb1bb65a9eb58ecbd`; it is
+ad-hoc signed and not notarized. No hardware acceptance is implied.
+
+## 2026-10-30 — Owner-controlled sensor-node revocation
+
+An owner can now revoke an enrolled node credential from the Command Center or
+run `python scripts/revoke_sensor_node.py <node_id>`. Both paths require typing
+the exact `REVOKE <node_id>` phrase. The CLI refuses remote HTTP and avoids
+system proxies when sending the hub admin credential. Revoking disables that
+credential and ends its active room invitation; it does not power down the node.
+If a request response is lost, the Command Center blocks retries until status
+is refreshed, while the CLI advises checking node status before retrying.
+
+Six dashboard interaction tests, 30 Node tests, 19 sensor-admin tests, 12 room
+client tests, all 95 app Python tests, 18 browser E2E tests, lint, production
+build and a local preview bundle pass. The latest exact-tree PR workflow
+[41018596692](https://github.com/sujanmj/aura-companion/actions/runs/41018596692)
+passed on macOS, Windows and Ubuntu with all preview archives uploaded. The
+matching push workflow [41018590170](https://github.com/sujanmj/aura-companion/actions/runs/41018590170)
+passed macOS and Ubuntu but failed two Windows Memory E2E assertions. The
+browser suite shared the check-in opt-in saved by an earlier setup test; a
+follow-up now resets that preference and awaits the expiry confirmation. All
+18 browser tests pass locally after that change. The follow-up commit
+`0bfb4be` passed all three push-CI platforms in
+[41019957264](https://github.com/sujanmj/aura-companion/actions/runs/41019957264),
+with all preview archives uploaded; its PR run
+[41019964090](https://github.com/sujanmj/aura-companion/actions/runs/41019964090)
+passed all three platforms and uploaded the same preview archives. A new
+read-only `python scripts/list_sensor_nodes.py` command now reports last-seen
+and heartbeat freshness without printing credentials. Its 19 focused sensor
+admin tests and the full Python suite pass locally. The three-platform PR run
+[41020624724](https://github.com/sujanmj/aura-companion/actions/runs/41020624724)
+passed and uploaded all preview archives. The Command Center now includes an
+enrolled-node heartbeat table and marks online records without a valid last-seen
+time as unavailable. Commit `c2da152` passed the three-platform PR
+workflow in
+[41021377750](https://github.com/sujanmj/aura-companion/actions/runs/41021377750),
+which uploaded all preview archives. These results verify software only; Pi
+installation and physical node shutdown are untested.
+
+An inconsistent node record with `online=true` but no valid last-seen time is
+now shown as unavailable in the CLI and Command Center. Future-dated heartbeat
+or malformed heartbeat records are shown as unavailable and cannot pass a room
+invitation or claim check. The 97
+app Python tests, 30 Node tests, 19 sensor-admin tests, 18 browser E2E tests,
+lint and production build pass locally. Push CI
+[41024839694](https://github.com/sujanmj/aura-companion/actions/runs/41024839694)
+passed on all three platforms and uploaded preview artifacts. The matching PR
+run [41024846598](https://github.com/sujanmj/aura-companion/actions/runs/41024846598)
+passed on all three platforms after retrying the slow Mac E2E case and a
+cancelled Windows job; both retries passed. The documentation snapshot also
+passed its three-platform PR workflow and uploaded previews in
+[41026034065](https://github.com/sujanmj/aura-companion/actions/runs/41026034065).
+The timestamp normalization passed on all three platforms in push run
+[41027375513](https://github.com/sujanmj/aura-companion/actions/runs/41027375513)
+and PR run
+[41027384362](https://github.com/sujanmj/aura-companion/actions/runs/41027384362);
+both uploaded preview artifacts.
+These checks do not establish a physical Pi or room-playback behavior.
+
+The sensor API now tells HTTP caches not to store any JSON response, including
+unauthorized errors. Header regression tests cover both success and auth-failure
+responses. Local validation is green; cross-platform CI is pending. The live
+hub-auth probe was skipped because no hub token is configured in this workspace.
+The latest node-status validation passes all 19 focused sensor-admin tests
+locally, including its inconsistent-record regression case; cross-platform CI
+is pending. The first two CI attempts passed macOS and Ubuntu but timed out different
+Windows E2E assertions at five seconds; each passed 17/18 browser cases. The
+Windows-only expectation timeout is now 15 seconds, and the full browser suite
+passes locally. Commit `f32a159` then passed all three platforms in push run
+[41023358488](https://github.com/sujanmj/aura-companion/actions/runs/41023358488)
+and PR run
+[41023365160](https://github.com/sujanmj/aura-companion/actions/runs/41023365160),
+both uploading macOS, Windows and Ubuntu preview archives.
+
+## Observation expiry
+
+Memory now offers an optional expiry policy for saved observations and event
+notes, including corrected notes. Review the affected count and confirm before
+saving. Existing installations keep notes until explicitly deleted by default.
+Expired notes are removed before future recall or export when AURA processes a
+request. Other accounts, facts, people and reminders are unaffected.
+
+Backups and original chat messages remain and require separate management.
+The feature does not enable sensors or external tools. Tests use temporary
+SQLite databases, never the user's existing memory.
+
+## Release scope
+
+This remains an unsigned-for-distribution development preview (local Mac builds
+use ad-hoc signing), not a notarized or production companion release. Developer
+ID credentials, clean-install permission acceptance, rebuilt multi-hour soak,
+sleep/wake and calibrated acoustics remain open. Pi capture, multi-room hardware,
+iPhone/wearables and emergency-response acceptance are not established.
+
+## Verification
+
+Baseline: macOS and Ubuntu workflow 39900633505 passed at 0a121ba9.
+New milestone: local Python 61/61, Node 12/12, native lifecycle/speech checks,
+frontend build/lint, and ad-hoc Mac build passed. Browser tests passed 14/14. Expiry commit a451ef5 passed macOS and Ubuntu CI run 40680587802, with both preview artifacts uploaded. No hardware acceptance is implied by these checks.
+
+## Upgrade and rollback
+
+Stop the old service before upgrading. Keep the existing database and its
+adjacent backups; startup makes a SQLite backup before applying additive schema.
+Point AURA_DB_PATH at the same database. Rolling source back to 0a121ba9 leaves
+the new retention table unused; it does not recover notes already expired.
+Recover any required notes from a separately preserved backup with the service
+stopped; never overwrite a running database or publish a private backup.
+
+## Invited turns
+
+Direct native requests now begin with AURA/Hey AURA. Optional solo follow-ups
+admit one phrase within 30 seconds of the prior reply, default off and cleared by
+Pause/sleep/close. The app does not identify speakers. Use this mode only with
+nearby people's agreement; accepted solo turns enter the owner's normal memory.
+
+A separate web form accepts one reviewed group question with fresh agreement.
+It includes no saved personal context, starts no tools or sensors, and stores no
+question/reply. Provider retention still applies. Pause the separate native
+ambient helper before a group session. Automatic group capture is not included.
+
+Local validation: Python 64/64, Node 12/12, browser 15/15, native tests, build/lint
+and Mac ad-hoc build passed; invited-turn commit a5f3e12 passed macOS and Ubuntu CI run 40681826266.
+
+## Preview integrity and dependency updates
+
+Builds now record source-input hashes. Packaging rejects stale browser/native
+builds, changed web output, dirty source trees, symlink inputs, tracked memory or
+runtime files, SQLite contents and selected credential markers. Run the source
+check after staging new files and before publishing. It is not a comprehensive
+secret scanner. Each ZIP contains a manifest with its source commit and file
+hashes; the adjacent SHA-256 verifies the ZIP itself. The manifest explicitly
+separates local/ad-hoc signing from notarization and hardware acceptance.
+
+The lockfile now uses body-parser 2.4.0 and fast-uri 3.1.9, addressing the upstream
+[body-parser advisory](https://github.com/expressjs/body-parser/security/advisories/GHSA-27r3-jxmh-p828)
+and [fast-uri advisory](https://github.com/fastify/fast-uri/security/advisories/GHSA-w74x-v6f9-j3xg).
+The local npm audit reports zero known vulnerabilities as of 2026-10-28.
+Native settings scroll with a fixed capture control; sensor acceptance is unchanged.
+
+Local verification: Python 73/73, Node 12/12, browser 15/15, native tests, build/lint
+and local ad-hoc Mac build passed. Nine packaging tests exercise actual archives
+in temporary repositories. Release-integrity commit b3f3b58 passed both platform jobs in CI run 40683350586; both platform archives, checksums and manifests were uploaded.
+
+## 2026-10-29 — reviewed online source checks
+
+Conversation now includes “Check an online source”. Review a query, approve that
+exact text and retrieve up to three English Wikipedia summaries with source
+links, attribution and retrieval time. Editing clears approval. AURA sends no
+saved memory, ambient transcript or provider credentials and saves no results.
+The query is disclosed to Wikipedia, which may log requests. Cancel stops local
+waiting but cannot retract data already sent. Clear removes displayed results.
+
+This first adapter displays source excerpts, not independently verified facts or
+a model-generated factual answer. It is not general web search or a live news,
+medical or emergency service. Source failures do not produce an invented answer.
+Network destinations are fixed, redirects refused, bodies/time bounded, and
+source content cannot run code or tools. Optional conversation panels now have
+bounded scrolling and open one at a time to preserve the main conversation.
+
+Local tests: 73 Python, 20 Node, 17 browser; build/lint passed. One real public
+Raspberry Pi query returned three cited summaries on 2026-10-29 IST. Commit
+`3cfd416` passed macOS and Ubuntu CI run 40772617052 with both preview uploads. Source APIs follow the official
+[MediaWiki search](https://www.mediawiki.org/wiki/API:Search) and
+[Page Content Service](https://www.mediawiki.org/wiki/Page_Content_Service)
+documentation and use an identifying User-Agent.
+
+## 2026-10-29 — invited room reservation prototype
+
+The enrolled-node hub now supports explicit five-minute room invitations,
+approved transfers, stop/status and a node-authenticated reply reservation.
+Stale generations, cross-owner nodes, offline destinations and duplicate turn
+UUIDs fail closed. Rotating or revoking the active node clears its invitation.
+Stop removes live session/claim metadata, which is also owner-scoped in export.
+
+This API does not capture, speak, recall personal memory or infer location. A
+reservation already returned cannot be recalled. Pi/Mac integration, physical
+playback fencing and real multi-room acceptance remain unfinished. See the
+[protocol and limitations](ROOM_HANDOFF.md). Local Python suite: 80/80, including
+seven new protocol/race/HTTP tests using temporary databases. Node 20/20, browser
+17/17, native lifecycle, lint and existing provider/cloud/heartbeat checks also
+passed. Commit `0ff2985` passed macOS and Ubuntu CI run 40773910557; both
+platform preview archives were uploaded.
+
+## 2026-10-29 — Windows preview preparation
+
+The source/web preview now chooses the appropriate default Python command,
+respects an explicit interpreter path, and uses UTF-8 for memory IPC. Packaging
+normalizes manifest/archive paths across platforms. Windows has been added to
+CI alongside macOS and Linux. Commit `4c9b44a` passed all three platforms in
+run 40774579580 with Linux and macOS preview uploads. PowerShell setup is documented
+in the app README. No Windows native capture helper or signed installer is
+included. Local Mac checks passed: 80 Python, 22 Node, 17 browser, build/lint and
+ad-hoc native build. Real Windows devices and permissions remain untested.
+
+
+## 2026-10-29 — local Ollama transport guard
+
+The existing Ollama provider now accepts only HTTP on a numeric loopback address
+and the `/api/generate` path. It does not follow redirects or use environment
+HTTP proxies, so prompts remain on the local machine. `OLLAMA_URL` can select a
+loopback port, and `OLLAMA_MODEL` is reflected in readiness. Prompts are capped
+at 20,000 characters, response bodies at 1 MiB and returned text at 16,000
+characters. Network, malformed or oversized responses fail closed to the existing
+local fallback.
+
+Four new tests use a disposable loopback HTTP server to cover Unicode, model
+selection, rejected off-device URLs, redirects and size/parse failures. They do
+not install or invoke an Ollama model. A live Ollama model check still requires
+one installed on the user's Mac or Windows device. Commit `be8430e` passed
+macOS, Ubuntu and Windows CI in run 40810170044 with preview packages.
+
+## 2026-10-29 — weekday reminder schedules
+
+Local reminders can now repeat on selected weekdays. Existing daily reminders
+are preserved and migrate to all seven days. The schedule stays in local SQLite
+and is delivered once per selected local date while AURA is running. This does
+not confirm a task or dose, and includes no medication or health-data integration.
+Commit `84b8e65` passed macOS, Ubuntu and Windows push CI in
+[40811353403](https://github.com/sujanmj/aura-companion/actions/runs/40811353403)
+and pull-request CI in
+[40811359575](https://github.com/sujanmj/aura-companion/actions/runs/40811359575).
+All three platform preview packages were uploaded by the push run.
+
+## 2026-10-29 — cautious visual object hints
+
+For a where-is question, AURA may offer a recent local scene estimate when
+the requested item matches Vision's top label at 85% confidence or higher and
+the observation is no more than 30 minutes old. It includes the saved time and
+confidence, warns that the classification may be wrong or outdated, and does
+not claim a room or exact location. An explicit user note takes priority.
+Secondary labels and human-presence signals cannot answer object questions.
+This software path uses saved summaries only; hardware vision accuracy is not
+validated by automated tests. Commit `20c5bbc` passed macOS, Ubuntu and Windows
+push CI in
+[40813822187](https://github.com/sujanmj/aura-companion/actions/runs/40813822187)
+and pull-request CI in
+[40813827634](https://github.com/sujanmj/aura-companion/actions/runs/40813827634).
+All three preview archives were uploaded from the push run.
+
+Memory now displays the confidence stored with each Vision summary and clarifies
+that the score applies to the top label only. Users can review that estimate
+before correcting or deleting it. Browser validation uses a synthetic summary;
+it does not test camera accuracy or hardware behavior. Commit `f4174d6` passed
+macOS, Ubuntu and Windows push CI in
+[40815574599](https://github.com/sujanmj/aura-companion/actions/runs/40815574599)
+and pull-request CI in
+[40815578985](https://github.com/sujanmj/aura-companion/actions/runs/40815578985).
+The push run uploaded all three preview archives.
+
+## 2026-10-29 — configurable solo follow-up window
+
+With solo follow-ups explicitly enabled for the current Mac ambient session,
+the owner can choose a 15, 30 or 60-second window for one phrase after a direct
+reply. Pause, sleep and closing the window revoke the invitation. AURA cannot
+identify the speaker, and accepted follow-up speech is saved in the owner's
+conversation. Native timing tests, local app build and lint pass. Cross-platform
+CI passed on macOS, Ubuntu and Windows in push run
+[40888876555](https://github.com/sujanmj/aura-companion/actions/runs/40888876555)
+and pull-request run
+[40888888652](https://github.com/sujanmj/aura-companion/actions/runs/40888888652).
+All three preview archives were uploaded by the push run. No acoustic test is
+claimed.
+
+## 2026-10-29 — interrupt local speech
+
+The Mac helper now offers Stop speaking without pausing active microphone or
+camera capture. It resumes local transcription after stopping; if a reminder is
+spoken with sensors off, they stay off. Stale speech completion callbacks are
+discarded so they cannot change the state of a later turn. Local native tests,
+the app build, 91 Python tests, 23 Node tests, 18 browser tests, frontend build
+and lint pass. Commit `6dc3bf6` passed macOS, Ubuntu and Windows pull-request CI
+in [40900351981](https://github.com/sujanmj/aura-companion/actions/runs/40900351981),
+which uploaded all three preview archives. Ubuntu and Windows push jobs passed
+in [40900342769](https://github.com/sujanmj/aura-companion/actions/runs/40900342769);
+the macOS push job remained queued when recorded. Acoustic interruption
+acceptance remains pending.
+
+The optional Ollama brain now accepts only a numeric loopback URL and fixed API
+path. It bypasses proxy settings, never follows redirects, caps prompts/replies,
+and exposes the selected `OLLAMA_MODEL` in setup readiness. Custom `OLLAMA_URL`
+ports still have to be local. Tests used a temporary loopback server; no real
+Ollama installation or model was available or claimed.
+
+Conversation view adds an optional one-message private turn. After fresh approval,
+AURA uses only that message and a temporary in-memory SQLite store. It skips
+saved memories, extraction and persistent chat/cloud writes. The message and
+reply stay in the current page until cleared or refreshed. The selected provider
+receives the message and may have its own retention policy. This is not an
+ongoing private chat. A regression in greeting matching was fixed so common
+words containing “hi” no longer silently force local fallback. Local tests: 85
+Python, 23 Node, 18 browser, native lifecycle, build and lint. Commit `3fa324e`
+passed macOS, Ubuntu, and Windows push CI in run
+[40810690005](https://github.com/sujanmj/aura-companion/actions/runs/40810690005)
+and pull-request CI in
+[40810695923](https://github.com/sujanmj/aura-companion/actions/runs/40810695923).
+All three preview artifacts were uploaded from the push run.
+
+## 2026-10-29 — temporary invited group exchange
+
+The shared question panel can continue for up to three exchanges. Everyone must
+agree again for each question, and AURA sends only the displayed shared
+exchange and the newly reviewed question to the selected provider. The exchange
+is temporary in the page and is absent from saved memory and chat history; the
+provider may retain its request. It can be cleared at any time, and no online
+lookup, microphone, camera or tools are started. Local verification passes 92
+Python, 23 Node and 18 browser tests plus lint and production build. Commit
+`fab9f3b` passed macOS, Ubuntu and Windows push CI in
+[40903186466](https://github.com/sujanmj/aura-companion/actions/runs/40903186466)
+and pull-request CI in
+[40903197339](https://github.com/sujanmj/aura-companion/actions/runs/40903197339).
+Both runs uploaded preview archives for all three platforms. A follow-up caps
+shared provider replies at 4,000 characters so a long answer cannot break the
+next turn's bounded transcript. Local Python, Node, browser, lint and production
+build checks passed. The preview bundle manifest records the source commit,
+Darwin platform, ad-hoc signing, and no notarization or hardware acceptance.
+Commit `76ce6e6` passed all three push CI jobs in
+[40904869469](https://github.com/sujanmj/aura-companion/actions/runs/40904869469),
+which uploaded macOS, Windows and Ubuntu previews.
+
+Phase 11 reminder verification now independently tests a due check-in across an
+overnight quiet-hours interval and its exact end boundary. The 94-test Python
+suite passes locally. Commit `9ed1705` passed all three push CI jobs in
+[40906445069](https://github.com/sujanmj/aura-companion/actions/runs/40906445069),
+with preview archives for macOS, Windows and Ubuntu. This does not establish
+speaker, timezone or daylight-saving acceptance.
+
+Phase 12 now has a device acceptance record in
+[`PHASE_12_ACCEPTANCE.md`](PHASE_12_ACCEPTANCE.md), separating automated software
+evidence from Mac, Pi, acoustic, multi-room, privacy and release-signing checks
+that remain unrun or blocked.
+
+Phase 9 native tests now cover repeated solo follow-up windows: each spoken AURA
+reply renews one bounded window, supporting a short exchange without a repeated
+wake phrase while the session-only opt-in remains active. Native tests and an
+ad-hoc Mac app build pass locally. The Windows browser timeout increase passed
+all PR platforms and Windows/Ubuntu push CI. An explicit heading wait resolves
+a routine-test tab-navigation race. Commit `f12edab` passed all three push jobs
+in [40914132493](https://github.com/sujanmj/aura-companion/actions/runs/40914132493)
+and pull-request CI in
+[40914144108](https://github.com/sujanmj/aura-companion/actions/runs/40914144108),
+which uploaded preview archives for all three platforms. Acoustic acceptance
+remains pending.
+
+## 2026-10-30 — room reservations and sensor transport hardening
+
+Enrolled Pi nodes can now make one explicit room-turn reservation using an
+existing owner's invitation and a stable caller-provided UUID. The client fails
+closed if the claim response is lost or rejected; it does not retry under a new
+ID or start capture, generate speech, or play audio. Physical room handoff is
+still not implemented.
+
+Network-bound sensor hubs now require TLS 1.2 or newer and absolute regular
+certificate/key files without symlinks in their paths. On POSIX systems the
+private key cannot be group-writable or world-accessible. The Pi systemd hub
+preflight applies the same checks. Remote node clients reject HTTP before
+sending credentials; HTTP remains available for loopback development. Before
+upgrading an existing network-bound hub, install a trusted certificate at
+`/etc/aura/tls/server.crt` and a private key at `/etc/aura/tls/server.key`, make
+the key readable by the `aura` account without world access, and install the
+issuing CA in each node's trust store. The updated service intentionally refuses
+to start without this configuration.
+
+The Memory panel refreshes saved state when opened, and browser checks now wait
+for the corresponding save/refresh. Commit `b5695ac` passed push CI in
+[40952983216](https://github.com/sujanmj/aura-companion/actions/runs/40952983216)
+and PR CI in
+[40952990897](https://github.com/sujanmj/aura-companion/actions/runs/40952990897).
+Both runs passed on macOS, Ubuntu and Windows and uploaded all three preview
+archives. These are software and packaging checks only. Pi installation, TLS
+certificate/trust setup, microphone/camera permissions, room playback, acoustic
+quality, and Developer ID signing/notarization remain unverified or blocked.
+
+The owner can now use `scripts/room_invitation.py` to inspect, start, transfer
+and stop a five-minute room reservation. Mutating actions require exact typed
+confirmation and an administrator token; remote hub requests require HTTPS.
+The controller does not start room capture, speech or playback. Local focused
+tests and loopback API integration pass. Commit `bd89594` passed push CI in
+[40956030944](https://github.com/sujanmj/aura-companion/actions/runs/40956030944)
+and PR CI in
+[40956043251](https://github.com/sujanmj/aura-companion/actions/runs/40956043251)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+
+## Pi heartbeat service preparation (Phase 5)
+
+Added a development-computer command that generates the hardened Pi heartbeat
+service unit and a placeholder configuration example. It refuses unsafe paths
+and overwrites, does not contain or generate real node credentials, and does
+not install or enable a service. All three preparation tests passed locally.
+Commit `f53ad9b` passed push CI
+[41084344415](https://github.com/sujanmj/aura-companion/actions/runs/41084344415)
+and PR CI
+[41084354874](https://github.com/sujanmj/aura-companion/actions/runs/41084354874)
+on macOS, Windows and Ubuntu, with all three preview archives in each run. No
+Raspberry Pi installation or hardware heartbeat is claimed.
+Pi installation, room playback, acoustic acceptance, macOS hardware acceptance,
+and Developer ID signing/notarization remain open.
+
+The same owner-approved invitation controls are now available in the local
+Command Center. The panel displays an active session, lists enrolled room names
+without node credentials, and requires exact typed confirmation for invite,
+transfer and stop. It does not start sensors or audio. Commit `62adb72` passed
+push CI [40959155691](https://github.com/sujanmj/aura-companion/actions/runs/40959155691)
+and PR CI
+[40959164879](https://github.com/sujanmj/aura-companion/actions/runs/40959164879)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+The commit also fixes SQLite worker shutdown ordering with a regression test.
+These results cover software and packaging, not Pi hardware, room playback,
+acoustics, or public-release signing/notarization.
+
+The enrolled-node room-claim client now accepts a reservation only when the hub
+explicitly reports success and echoes the exact requested session, generation
+and logical turn UUID with a finite, unexpired lease. Missing, malformed, stale
+or mismatched acknowledgements fail closed, and the client does not retry an
+ambiguous claim or authorize playback from an invalid response. Local focused
+room/handoff tests, the full app Python suite, 28 Node tests, 18 browser tests,
+native tests, lint and production build pass. No Pi service, speaker playback,
+room cancellation/fencing, or physical handoff is claimed by this software
+check. Commit `03e1a89` passed all three platforms in push CI
+[40960508464](https://github.com/sujanmj/aura-companion/actions/runs/40960508464)
+and PR CI
+[40960227044](https://github.com/sujanmj/aura-companion/actions/runs/40960227044);
+both runs uploaded macOS, Windows and Ubuntu preview archives.
+
+The Pi simulator's authenticated event, heartbeat and room-claim requests, plus
+sensor enrollment, dashboard status and the documented sensor API test client,
+now use a shared transport
+that bypasses system proxies and refuses redirects. Remote HTTP is rejected
+before credentials are sent; remote hubs require HTTPS. Focused tests and all
+94 app Python tests pass locally. No Pi installation or deployed network hub is
+represented by this change. Commit `29061f7` passed macOS, Windows and Ubuntu
+push CI
+[40964038358](https://github.com/sujanmj/aura-companion/actions/runs/40964038358)
+and PR CI
+[40964044684](https://github.com/sujanmj/aura-companion/actions/runs/40964044684);
+both runs uploaded all three preview archives.
+
+Commit `2de8276` also routes the documented sensor API test client through the
+same no-proxy, no-redirect transport and refuses remote HTTP before sending
+credentials. Its focused tests and all 94 app Python tests passed locally.
+Push CI
+[40966173161](https://github.com/sujanmj/aura-companion/actions/runs/40966173161)
+and PR CI
+[40966180392](https://github.com/sujanmj/aura-companion/actions/runs/40966180392)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+
+The sensor API authentication and event-status test probes also use direct
+transport, reject redirects, and refuse remote HTTP before sending tokens with
+a non-zero exit status.
+The 10-test admin-client suite, 49 focused room/transport tests and all 94 app
+Python tests pass locally. Commit `b7c72ff` passed macOS, Windows and Ubuntu
+push CI
+[40967410539](https://github.com/sujanmj/aura-companion/actions/runs/40967410539)
+and PR CI
+[40967416698](https://github.com/sujanmj/aura-companion/actions/runs/40967416698);
+both runs uploaded all three preview archives.
+
+Commit `5120a4d` makes unsafe hub URL rejection visible to automation by
+returning a non-zero exit code before opening a request. Push CI
+[40968379151](https://github.com/sujanmj/aura-companion/actions/runs/40968379151)
+and PR CI
+[40968385143](https://github.com/sujanmj/aura-companion/actions/runs/40968385143)
+passed on macOS, Windows and Ubuntu; both uploaded all three preview archives.
+
+Incident, confirmation, dashboard and runtime-heartbeat probes now follow the
+same direct transport rule. The Windows loopback integration test explicitly
+bypasses system proxies. Twelve focused admin-client tests, 51 focused
+room/transport tests and all 94 app Python tests pass locally. Commit `79b8f40`
+passed macOS, Windows and Ubuntu push CI
+[40970180323](https://github.com/sujanmj/aura-companion/actions/runs/40970180323)
+and PR CI
+[40970187073](https://github.com/sujanmj/aura-companion/actions/runs/40970187073);
+both runs uploaded all three preview archives.
+
+The Three.js holographic scene is now split from the initial React shell, which
+uses the static orb while the scene loads. The initial JavaScript chunk fell
+from 1,177.90 kB (326.04 kB gzip) to 266.92 kB (82.76 kB gzip); the scene is a
+separate 912.29 kB chunk. Local build, lint, Node and browser tests pass.
+Commit `dfd56d9` passed macOS, Windows and Ubuntu push CI
+[40972148472](https://github.com/sujanmj/aura-companion/actions/runs/40972148472)
+and PR CI
+[40972155147](https://github.com/sujanmj/aura-companion/actions/runs/40972155147);
+both runs uploaded all three preview archives.
+
+The room reply prototype now exposes a fail-closed software gate for a future
+speaker callback. It requires a successful one-shot claim followed by fresh
+validation, and its hardware-free tests cover denied, stale, blank and
+playback-error cases. It does not implement audio output or establish Pi
+hardware acceptance. Commit `1b0d791` passed macOS, Windows and Ubuntu push CI
+[41069120294](https://github.com/sujanmj/aura-companion/actions/runs/41069120294)
+and PR CI
+[41069129491](https://github.com/sujanmj/aura-companion/actions/runs/41069129491),
+with all three preview archives uploaded in each run.
+
+The Memory screen now supports short, user-entered event notes for a person
+whose name is already consented in AURA. Each note requires its own permission
+confirmation, stays local, appears in memory export, and can be removed alone
+or by forgetting the person. AURA recalls it only when the user mentions that
+person, and labels it unverified. It does not identify people from camera
+images. Local verification passed all 116 Python tests, 30 Node tests, 19
+browser E2E tests, lint, and production build. Commit `0bbd889` passed PR CI
+[41071898837](https://github.com/sujanmj/aura-companion/actions/runs/41071898837)
+on macOS, Windows and Ubuntu and uploaded all three preview archives.
+
+The preview package check now also blocks common GitHub OAuth, AWS, Google,
+npm, Slack, and legacy OpenAI key patterns. All 117 Python tests pass locally.
+Commit `ce6d4a0` passed PR CI
+[41073880193](https://github.com/sujanmj/aura-companion/actions/runs/41073880193)
+on macOS, Windows and Ubuntu and uploaded all three preview archives. This is
+a narrow secret-marker check, not a comprehensive repository secret audit.
+
+## Person memory note expiry (Phases 4, 12)
+
+The Memory screen now offers a separate, opt-in expiry policy for user-entered
+notes about consented people. Existing notes remain until deletion by default.
+Owners can preview the affected count and confirm an expiry interval; only
+those notes are removed, while person profiles and other timeline events stay
+intact. Existing database snapshots may retain old copies. Local verification
+passed all 119 app Python tests, 30 Node tests, 19 browser E2E tests, lint, and
+production build. Commit `1c0cb21` passed Windows and Ubuntu push CI
+[41077129996](https://github.com/sujanmj/aura-companion/actions/runs/41077129996)
+and macOS and Ubuntu PR CI
+[41077136778](https://github.com/sujanmj/aura-companion/actions/runs/41077136778).
+Preview archives were uploaded for macOS, Windows and Ubuntu. The Windows PR
+leg is still running.
+
+## Retrieved-memory prompt boundary (Phases 4, 7)
+
+Provider system instructions for Claude, OpenAI, and local Ollama now identify
+retrieved memory, device events, prior replies, and shared participant text as
+untrusted data that cannot authorize actions. Dynamic retrieved values are
+JSON-quoted before they enter AURA's companion prompt. This preserves the
+current user message as the request to answer and keeps the separate approval
+gate for tools. Local verification passed all 120 app Python tests, 30 Node
+tests, lint, and production build. Corrected source commit `b10d290` passed
+push CI [41082372303](https://github.com/sujanmj/aura-companion/actions/runs/41082372303)
+and PR CI [41082381408](https://github.com/sujanmj/aura-companion/actions/runs/41082381408)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+These prompt boundaries are defense in depth, not a guarantee against all model
+behavior.
+
+## Conversation history expiry (Phases 4, 7)
+
+Owners can set a separate, opt-in expiry period for saved messages and replies.
+The default keeps history until the owner deletes it. AURA previews the affected
+count and asks for confirmation; facts and other memory categories remain. When
+cloud sync is configured, pending uploads for expired rows are removed and
+remote deletions are queued. Existing backups or unavailable cloud sync may
+retain copies. Local verification passed all 126 app Python tests, 30 Node
+tests, 19 browser E2E tests, lint, and production build. Corrected source commit
+`b10d290` passed push CI
+[41082372303](https://github.com/sujanmj/aura-companion/actions/runs/41082372303)
+and PR CI
+[41082381408](https://github.com/sujanmj/aura-companion/actions/runs/41082381408)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+
+## Simulated invited-room reply handoff (Phase 5)
+
+The room handoff tests exercise the real SQLite lease and claim store with the
+fail-closed reply gate. They verify that a transfer between reservation and
+validation blocks the former room, the newly invited room can play once, and
+the same logical turn cannot play twice. Another path drives the simulator's
+claim and validation clients through the authenticated loopback API before
+allowing a fake playback callback. Local verification passed all 127 app
+Python tests, 30 Node tests, and 24 focused room client, invitation, and
+reply-gate tests. Playback remains simulated; Pi, sensor, network-room,
+speaker, and acoustic acceptance still require physical hardware.
+Commit `5b58ec8` passed push CI
+[41086481235](https://github.com/sujanmj/aura-companion/actions/runs/41086481235)
+and PR CI
+[41086493106](https://github.com/sujanmj/aura-companion/actions/runs/41086493106)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+Push artifact digest prefixes: macOS `1806124c`, Windows `0af4461b`, Ubuntu
+`6ca78d6b`; PR prefixes: macOS `03bf64d9`, Windows `f9bf5a04`, Ubuntu
+`ec4d8d8f`.
+
+## Windows SQLite test cleanup
+
+The people-memory integration test now retries temporary-directory removal for
+bounded transient Windows file locks on SQLite sidecars. The Node suite passes
+locally. Commit `ceeba90` passed push CI
+[41088487599](https://github.com/sujanmj/aura-companion/actions/runs/41088487599)
+and PR CI
+[41088496958](https://github.com/sujanmj/aura-companion/actions/runs/41088496958)
+on macOS, Windows and Ubuntu; both runs uploaded previews for all three
+platforms.
+
+## Invited shared conversation local reply
+
+Commit `6de06d2` adds an optional one-turn local reply choice to invited shared
+conversation. It remains off by default; each participant must agree to the
+current turn, the local engine receives only the current reviewed question,
+the configured provider is skipped, prior group turns are excluded, and the
+conversation remains unsaved. The choice resets after each reply. Local
+verification passed 134 Python tests, 35 Node tests, all 19 browser E2E tests,
+native Mac lifecycle checks, typecheck, lint and production build. The exact-
+head Mac preview archive SHA-256 is
+`d39aa450e0035733b58f0a77b78c1bd39edd374a1e2f9038b98807dd7a094afa`; it is
+ad-hoc signed and not notarized. Push CI
+[41125878158](https://github.com/sujanmj/aura-companion/actions/runs/41125878158)
+and PR CI
+[41125884326](https://github.com/sujanmj/aura-companion/actions/runs/41125884326)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+Push digest prefixes: macOS `7b1ca335`, Ubuntu `7855aa22`, Windows `1ec7acb3`;
+PR prefixes: macOS `2315b657`, Ubuntu `58bc56ff`, Windows `b909b2b7`. This
+verifies software behavior only, not physical room, Pi, sensor, or acoustic
+acceptance.
+
+Follow-up commit `8fcb16f` adds an end-to-end regression proving that a failed
+local shared turn produces no contribution and clears the local-only and
+participant-agreement choices. The focused test and full 20-test browser suite
+pass locally. Push CI
+[41127315467](https://github.com/sujanmj/aura-companion/actions/runs/41127315467)
+and PR CI
+[41127323112](https://github.com/sujanmj/aura-companion/actions/runs/41127323112)
+passed on macOS, Windows and Ubuntu; both uploaded all three preview archives.
+Push digest prefixes: macOS `f74f6456`, Ubuntu `94f9b353`, Windows `414a019c`;
+PR prefixes: macOS `43f6d5dc`, Ubuntu `90e54fc8`, Windows `1d4284d0`.

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
+import uuid
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -14,9 +16,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.env_loader import load_env_file
+from config.sensor_transport import is_safe_sensor_api_url, open_sensor_api_request
 
 AUTH_HEADER = "X-AURA-API-Token"
 DEFAULT_HUB_URL = "http://127.0.0.1:8787"
+
+
+def _open_hub_request(request: urllib.request.Request, timeout: int):
+    """Keep enrolled-node credentials on the configured hub connection."""
+    return open_sensor_api_request(request, timeout)
+
 
 NODE_PRESETS: dict[str, dict[str, Any]] = {
     "bedroom": {
@@ -168,6 +177,7 @@ def build_payload(
         "severity": severity,
         "confidence": event_confidence,
         "requires_action": requires_action,
+        "event_uuid": str(uuid.uuid4()),
         "metadata": {
             "simulator": True,
             "node": node,
@@ -177,6 +187,8 @@ def build_payload(
 
 
 def post_event(hub_url: str, payload: dict[str, Any], token: str | None) -> dict[str, Any]:
+    if not is_safe_sensor_api_url(hub_url):
+        raise ValueError("hub URL must use HTTPS, or HTTP on loopback for local development")
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -185,23 +197,235 @@ def post_event(hub_url: str, payload: dict[str, Any], token: str | None) -> dict
         headers[AUTH_HEADER] = token
 
     data = json.dumps(payload).encode("utf-8")
+    for attempt in range(3):
+        request = urllib.request.Request(
+            f"{hub_url}/events",
+            data=data,
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with _open_hub_request(request, timeout=15) as response:
+                body = response.read().decode("utf-8")
+                return json.loads(body) if body else {}
+        except urllib.error.HTTPError as exc:
+            if exc.code == 401:
+                raise PermissionError("unauthorized") from exc
+            if exc.code < 500 or attempt == 2:
+                raise
+        except urllib.error.URLError as exc:
+            if attempt == 2:
+                raise ConnectionError("server not running") from exc
+        time.sleep(0.5 * (2**attempt))
+
+    raise ConnectionError("sensor event could not be delivered")
+
+
+def send_node_heartbeat(
+    node_id: str,
+    hub_url: str | None = None,
+    token: str | None = None,
+) -> int:
+    if token is None:
+        load_env_file()
+        token = os.environ.get("AURA_SENSOR_NODE_TOKEN", "")
+    token = token.strip()
+    if len(token) < 32:
+        print("AURA_PI_NODE_HEARTBEAT_ERROR: set AURA_SENSOR_NODE_TOKEN from enrollment")
+        return 1
+    base_url = (hub_url or get_hub_url()).rstrip("/")
+    if not is_safe_sensor_api_url(base_url):
+        print("AURA_PI_NODE_HEARTBEAT_ERROR: hub URL must use HTTPS outside loopback")
+        return 1
     request = urllib.request.Request(
-        f"{hub_url}/events",
-        data=data,
-        headers=headers,
+        f"{base_url}/nodes/heartbeat",
+        data=json.dumps({"node_id": node_id}).encode("utf-8"),
+        headers={"Content-Type": "application/json", AUTH_HEADER: token},
         method="POST",
     )
+    for attempt in range(3):
+        try:
+            with _open_hub_request(request, timeout=10) as response:
+                body = response.read().decode("utf-8")
+                try:
+                    result = json.loads(body) if body else {}
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    result = {}
+                if (
+                    response.status != 200
+                    or not isinstance(result, dict)
+                    or result.get("ok") is not True
+                ):
+                    print("AURA_PI_NODE_HEARTBEAT_ERROR: hub rejected heartbeat")
+                    return 1
+                print(f"AURA_PI_NODE_HEARTBEAT_OK node_id={node_id}")
+                return 0
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+            exc.close()
+            if (status < 500 and status != 429) or attempt == 2:
+                print(f"AURA_PI_NODE_HEARTBEAT_ERROR: HTTP {status}")
+                return 1
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == 2:
+                print("AURA_PI_NODE_HEARTBEAT_ERROR: hub is unreachable")
+                return 1
+        time.sleep(0.5 * (2**attempt))
+    return 1
 
+
+def claim_invited_room_turn(
+    session_id: str,
+    generation: int,
+    turn_id: str,
+    hub_url: str | None = None,
+    token: str | None = None,
+) -> int:
+    """Reserve one already-invited turn; never retries an ambiguous claim."""
+    if token is None:
+        load_env_file()
+        token = os.environ.get("AURA_SENSOR_NODE_TOKEN", "")
+    token = token.strip()
+    if len(token) < 32:
+        print("AURA_PI_ROOM_CLAIM_ERROR: set AURA_SENSOR_NODE_TOKEN from enrollment")
+        return 1
+    if type(generation) is not int or generation < 1:
+        print("AURA_PI_ROOM_CLAIM_ERROR: generation must be a positive integer")
+        return 1
     try:
-        with urllib.request.urlopen(request, timeout=15) as response:
+        if not isinstance(turn_id, str) or str(uuid.UUID(turn_id)) != turn_id:
+            raise ValueError
+    except (ValueError, AttributeError):
+        print("AURA_PI_ROOM_CLAIM_ERROR: turn ID must be a canonical UUID")
+        return 1
+    if not isinstance(session_id, str) or not session_id.strip():
+        print("AURA_PI_ROOM_CLAIM_ERROR: session ID is required")
+        return 1
+
+    base_url = (hub_url or get_hub_url()).rstrip("/")
+    if not is_safe_sensor_api_url(base_url):
+        print("AURA_PI_ROOM_CLAIM_ERROR: hub URL must use HTTPS outside loopback")
+        return 1
+    request = urllib.request.Request(
+        f"{base_url}/rooms/claim",
+        data=json.dumps({
+            "session_id": session_id,
+            "generation": generation,
+            "turn_id": turn_id,
+        }).encode("utf-8"),
+        headers={"Content-Type": "application/json", AUTH_HEADER: token},
+        method="POST",
+    )
+    try:
+        with _open_hub_request(request, timeout=10) as response:
             body = response.read().decode("utf-8")
-            return json.loads(body) if body else {}
+            result = json.loads(body) if body else {}
+            reservation = result.get("session") if isinstance(result, dict) else None
+            expires_at = reservation.get("expires_at") if isinstance(reservation, dict) else None
+            valid_expiry = False
+            if isinstance(expires_at, int) and not isinstance(expires_at, bool):
+                valid_expiry = expires_at > time.time()
+            elif isinstance(expires_at, float):
+                valid_expiry = math.isfinite(expires_at) and expires_at > time.time()
+            if (
+                response.status != 200
+                or not isinstance(result, dict)
+                or result.get("ok") is not True
+                or not isinstance(reservation, dict)
+                or reservation.get("reserved") is not True
+                or reservation.get("session_id") != session_id
+                or reservation.get("generation") != generation
+                or reservation.get("turn_id") != turn_id
+                or not valid_expiry
+            ):
+                print("AURA_PI_ROOM_CLAIM_ERROR: hub returned an invalid or stale room claim; do not play this reply")
+                return 1
+            print(f"AURA_PI_ROOM_CLAIM_OK session_id={session_id} generation={generation} turn_id={turn_id}")
+            return 0
     except urllib.error.HTTPError as exc:
-        if exc.code == 401:
-            raise PermissionError("unauthorized") from exc
-        raise
-    except urllib.error.URLError as exc:
-        raise ConnectionError("server not running") from exc
+        status = exc.code
+        exc.close()
+        print(f"AURA_PI_ROOM_CLAIM_ERROR: HTTP {status}; do not retry with a new turn ID")
+    except (urllib.error.URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
+        print("AURA_PI_ROOM_CLAIM_ERROR: claim outcome is unknown; do not retry with a new turn ID")
+    return 1
+
+
+def validate_invited_room_turn(
+    session_id: str,
+    generation: int,
+    turn_id: str,
+    hub_url: str | None = None,
+    token: str | None = None,
+) -> int:
+    """Recheck a claim's live fence once; this does not perform playback."""
+    if token is None:
+        load_env_file()
+        token = os.environ.get("AURA_SENSOR_NODE_TOKEN", "")
+    token = token.strip()
+    if len(token) < 32:
+        print("AURA_PI_ROOM_VALIDATE_ERROR: set AURA_SENSOR_NODE_TOKEN from enrollment")
+        return 1
+    if type(generation) is not int or generation < 1:
+        print("AURA_PI_ROOM_VALIDATE_ERROR: generation must be a positive integer")
+        return 1
+    try:
+        if not isinstance(turn_id, str) or str(uuid.UUID(turn_id)) != turn_id:
+            raise ValueError
+    except (ValueError, AttributeError):
+        print("AURA_PI_ROOM_VALIDATE_ERROR: turn ID must be a canonical UUID")
+        return 1
+    if not isinstance(session_id, str) or not session_id.strip():
+        print("AURA_PI_ROOM_VALIDATE_ERROR: session ID is required")
+        return 1
+
+    base_url = (hub_url or get_hub_url()).rstrip("/")
+    if not is_safe_sensor_api_url(base_url):
+        print("AURA_PI_ROOM_VALIDATE_ERROR: hub URL must use HTTPS outside loopback")
+        return 1
+    request = urllib.request.Request(
+        f"{base_url}/rooms/claim/validate",
+        data=json.dumps({
+            "session_id": session_id,
+            "generation": generation,
+            "turn_id": turn_id,
+        }).encode("utf-8"),
+        headers={"Content-Type": "application/json", AUTH_HEADER: token},
+        method="POST",
+    )
+    try:
+        with _open_hub_request(request, timeout=10) as response:
+            body = response.read().decode("utf-8")
+            result = json.loads(body) if body else {}
+            reservation = result.get("session") if isinstance(result, dict) else None
+            expires_at = reservation.get("expires_at") if isinstance(reservation, dict) else None
+            valid_expiry = False
+            if isinstance(expires_at, int) and not isinstance(expires_at, bool):
+                valid_expiry = expires_at > time.time()
+            elif isinstance(expires_at, float):
+                valid_expiry = math.isfinite(expires_at) and expires_at > time.time()
+            if (
+                response.status != 200
+                or not isinstance(result, dict)
+                or result.get("ok") is not True
+                or not isinstance(reservation, dict)
+                or reservation.get("reserved") is not True
+                or reservation.get("session_id") != session_id
+                or reservation.get("generation") != generation
+                or reservation.get("turn_id") != turn_id
+                or not valid_expiry
+            ):
+                print("AURA_PI_ROOM_VALIDATE_ERROR: claim is stale or invalid; do not play this reply")
+                return 1
+            print(f"AURA_PI_ROOM_CLAIM_VALID_AT_CHECK session_id={session_id} generation={generation} turn_id={turn_id}")
+            return 0
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+        exc.close()
+        print(f"AURA_PI_ROOM_VALIDATE_ERROR: HTTP {status}; do not play this reply")
+    except (urllib.error.URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
+        print("AURA_PI_ROOM_VALIDATE_ERROR: claim state is unknown; do not play this reply")
+    return 1
 
 
 def send_simulated_event(
@@ -214,12 +438,17 @@ def send_simulated_event(
 ) -> int:
     load_env_file()
     resolved_hub_url = (hub_url or get_hub_url()).rstrip("/")
-    token = os.environ.get("AURA_SENSOR_API_TOKEN")
+    token = os.environ.get("AURA_SENSOR_NODE_TOKEN") or os.environ.get("AURA_SENSOR_API_TOKEN")
 
     if token:
-        print(f"AURA_PI_NODE_TOKEN_PREFIX={token[:8]}")
+        token = token.strip()
+        if len(token) < 32:
+            print("AURA_PI_NODE_SIMULATOR_ERROR: API token must be at least 32 characters")
+            return 1
+        print("AURA_PI_NODE_AUTH_CONFIGURED")
     else:
-        print("AURA_PI_NODE_AUTH_WARNING: no AURA_SENSOR_API_TOKEN configured")
+        print("AURA_PI_NODE_SIMULATOR_ERROR: set AURA_SENSOR_API_TOKEN in config/keys.env")
+        return 1
 
     if node not in NODE_PRESETS:
         print(f"AURA_PI_NODE_SIMULATOR_ERROR: unknown node '{node}'")
@@ -272,6 +501,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--confidence", type=float, default=None, help="Override confidence")
     parser.add_argument("--source", default=None, help="Override source identifier")
     parser.add_argument("--summary", default=None, help="Override event summary")
+    parser.add_argument("--heartbeat", default=None, help="Send node heartbeat with its enrolled token")
+    parser.add_argument("--claim-session", default=None, help="Claim one turn in an existing room invitation")
+    parser.add_argument(
+        "--validate-session", default=None,
+        help="Revalidate a prior claim; this does not play audio",
+    )
+    parser.add_argument(
+        "--generation", type=int, default=None,
+        help="Current invitation generation for a room claim",
+    )
+    parser.add_argument(
+        "--turn-id", default=None,
+        help="Stable canonical UUID for the logical reply",
+    )
     parser.add_argument("--loop", type=int, default=1, help="Send event N times")
     parser.add_argument("--delay", type=float, default=3.0, help="Delay between loop sends")
     parser.add_argument(
@@ -288,6 +531,32 @@ def main(argv: list[str] | None = None) -> int:
     if args.list:
         print_supported_nodes()
         return 0
+
+    if args.heartbeat:
+        return send_node_heartbeat(args.heartbeat, hub_url=args.hub_url)
+
+    if args.claim_session is not None and args.validate_session is not None:
+        print("Choose either --claim-session or --validate-session")
+        return 1
+
+    if args.validate_session is not None:
+        if args.generation is None or args.turn_id is None:
+            print(
+                "Usage: python scripts/pi_node_simulator.py "
+                "--validate-session ID --generation N --turn-id UUID"
+            )
+            return 1
+        return validate_invited_room_turn(
+            args.validate_session, args.generation, args.turn_id, hub_url=args.hub_url
+        )
+
+    if args.claim_session is not None:
+        if args.generation is None or args.turn_id is None:
+            print("Usage: python scripts/pi_node_simulator.py --claim-session ID --generation N --turn-id UUID")
+            return 1
+        return claim_invited_room_turn(
+            args.claim_session, args.generation, args.turn_id, hub_url=args.hub_url
+        )
 
     if not args.node or not args.event_type:
         print("Usage: python scripts/pi_node_simulator.py <node> <event_type>")

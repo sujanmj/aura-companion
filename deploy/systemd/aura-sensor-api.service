@@ -1,0 +1,30 @@
+[Unit]
+Description=AURA Companion sensor API hub
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=aura
+Group=aura
+WorkingDirectory=/opt/aura-companion
+StateDirectory=aura
+StateDirectoryMode=0700
+EnvironmentFile=/etc/aura/aura.env
+Environment=AURA_DB_PATH=/var/lib/aura/aura_memory.db
+Environment=AURA_SENSOR_TLS_CERT_FILE=/etc/aura/tls/server.crt
+Environment=AURA_SENSOR_TLS_KEY_FILE=/etc/aura/tls/server.key
+ExecStartPre=/usr/bin/python3 /opt/aura-companion/scripts/check_pi_service_config.py
+ExecStart=/usr/bin/python3 /opt/aura-companion/scripts/run_sensor_api.py 0.0.0.0 8787
+Restart=on-failure
+RestartSec=5s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/aura
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

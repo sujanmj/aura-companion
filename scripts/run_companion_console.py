@@ -7,6 +7,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from companion.memory_extractor import MemoryExtractor
 from companion.people_registry import PeopleRegistry
+from companion.private_session import generate_private_response
 from companion.reaction_engine import CompanionReactionEngine
 from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
@@ -21,10 +22,25 @@ def _ask_typed_message() -> str:
     return input("\nUser message: ").strip()
 
 
-def _confirm_transcript(recognizer: WindowsSpeechRecognizer, transcript: str) -> str | None:
+def _listen_once_or_fallback(recognizer) -> str | None:
+    try:
+        return recognizer.listen_once()
+    except Exception:
+        print("AURA_MICROPHONE_UNAVAILABLE: check local audio permissions and the selected input device")
+        return None
+
+
+def _confirm_transcript(recognizer, transcript: str, *, private_turn: bool = False) -> str | None:
     while True:
         print(f"You said: {transcript}")
-        choice = input("Use this transcript? [Y/edit/retry/n]: ").strip().lower()
+        if private_turn:
+            prompt = (
+                "Use this transcript for the one-time private turn? It won't use or save AURA memory; "
+                "the selected provider may receive it. [Y/edit/retry/n]: "
+            )
+        else:
+            prompt = "Use this transcript in AURA's normal memory/provider flow? [Y/edit/retry/n]: "
+        choice = input(prompt).strip().lower()
 
         if choice in {"", "y", "yes"}:
             return transcript
@@ -36,7 +52,7 @@ def _confirm_transcript(recognizer: WindowsSpeechRecognizer, transcript: str) ->
             continue
 
         if choice == "retry":
-            retry_text = recognizer.listen_once()
+            retry_text = _listen_once_or_fallback(recognizer)
             if retry_text:
                 transcript = retry_text
                 continue
@@ -49,7 +65,7 @@ def _confirm_transcript(recognizer: WindowsSpeechRecognizer, transcript: str) ->
             return typed if typed else None
 
 
-def get_user_message(recognizer: WindowsSpeechRecognizer | None, mic_enabled: bool) -> str:
+def get_user_message(recognizer, mic_enabled: bool, *, private_turn: bool = False) -> str:
     if not mic_enabled or recognizer is None:
         return _ask_typed_message()
 
@@ -58,7 +74,12 @@ def get_user_message(recognizer: WindowsSpeechRecognizer | None, mic_enabled: bo
         if raw:
             return raw
 
-        text = recognizer.listen_once()
+        text = _listen_once_or_fallback(recognizer)
+        if text is None:
+            typed = _ask_typed_message()
+            if typed:
+                return typed
+            continue
         if not text:
             print("No speech recognized. Please type your message instead.")
             typed = _ask_typed_message()
@@ -66,7 +87,7 @@ def get_user_message(recognizer: WindowsSpeechRecognizer | None, mic_enabled: bo
                 return typed
             continue
 
-        confirmed = _confirm_transcript(recognizer, text)
+        confirmed = _confirm_transcript(recognizer, text, private_turn=private_turn)
         if confirmed:
             return confirmed
 
@@ -94,7 +115,7 @@ def get_observation(
         )
         return raw
 
-    result = camera_observer.capture_observation()
+    result = camera_observer.capture_observation(save_snapshot=False)
     if result.get("ok"):
         store.add_observation(
             user_id,
@@ -118,6 +139,23 @@ def get_observation(
             source="console",
         )
     return manual
+
+
+def _build_speech_recognizer(mic_enabled: bool):
+    """Keep microphone use explicit and choose local recognition by platform."""
+    if not mic_enabled:
+        return None
+    if sys.platform == "win32":
+        return WindowsSpeechRecognizer()
+    if sys.platform == "darwin" or sys.platform.startswith("linux"):
+        try:
+            from perception.local_voice import get_default_local_recognizer
+
+            return get_default_local_recognizer()
+        except Exception:
+            print("AURA_LOCAL_SPEECH_UNAVAILABLE: install optional voice packages and configure a local model path")
+            return None
+    return None
 
 
 def _infer_trust_level(relation: str | None) -> str:
@@ -251,23 +289,54 @@ def main(enable_microphone: bool | None = None) -> None:
     speaker = get_speaker_from_env() if voice_enabled else WindowsTTSSpeaker(enabled=False)
 
     if enable_microphone is None:
+        print(
+            "Microphone stays off unless enabled. Audio is processed locally and discarded; "
+            "a transcript you approve is saved to SQLite and may be sent to the configured brain."
+        )
         mic_enabled = input("Enable microphone input? [y/N]: ").strip().lower() == "y"
     else:
         mic_enabled = enable_microphone
 
-    recognizer = WindowsSpeechRecognizer() if mic_enabled else None
+    recognizer = _build_speech_recognizer(mic_enabled)
 
     camera_enabled = input("Enable camera observation? [y/N]: ").strip().lower() == "y"
     camera_observer = get_default_camera_observer() if camera_enabled else None
 
     print("AURA_COMPANION_CONSOLE_READY")
     print("Type 'exit' to stop.")
-    print("Commands: /people, /introduce, /unknown-person")
+    print("Commands: /people, /introduce, /unknown-person, /private")
 
+    private_next_turn = False
     while True:
-        message = get_user_message(recognizer, mic_enabled)
+        message = get_user_message(recognizer, mic_enabled, private_turn=private_next_turn)
         if message.lower() == "exit":
             break
+
+        if not private_next_turn and message.strip().lower() == "/private":
+            private_next_turn = True
+            print(
+                "AURA_PRIVATE_TURN_ARMED: the next message will use no saved memories, "
+                "camera observation, chat history, or feedback. The selected brain provider "
+                "may receive the message under its own retention policy. Type /cancel-private "
+                "at the next prompt to cancel."
+            )
+            continue
+
+        if private_next_turn:
+            private_next_turn = False
+            if message.strip().lower() == "/cancel-private":
+                print("Private turn cancelled.")
+                continue
+            if not message.strip():
+                print("Private turn cancelled because no message was entered.")
+                continue
+            result = generate_private_response(message, use_llm=use_brain)
+            response = result["response"]
+            print("\nAURA (private turn; not saved):")
+            print(response)
+            if voice_enabled:
+                speaker.speak(response)
+            continue
 
         command = message.strip().lower()
         if command == "/people":

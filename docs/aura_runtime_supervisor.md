@@ -20,7 +20,7 @@ This starts:
 
 Health check: [http://127.0.0.1:8787/health](http://127.0.0.1:8787/health)
 
-Paste your `AURA_SENSOR_API_TOKEN` from `config/keys.env` in the dashboard if token auth is enabled.
+Paste your 32-character-or-longer `AURA_SENSOR_API_TOKEN` from `config/keys.env` in the dashboard to access protected data.
 
 ## Stop
 
@@ -57,7 +57,7 @@ Heartbeats are updated by:
 
 - **Voice actions** only run when `AURA_ENABLE_VOICE_ACTIONS=1` in `config/keys.env`. See [live_voice_actions.md](live_voice_actions.md).
 - **No real emergency calls**, SMS, Telegram, siren, or water pump actions in v0.1.
-- Keep the API on a **trusted local network** only. Use `AURA_SENSOR_API_TOKEN` when exposing beyond localhost.
+- Keep the API on a **trusted local network** only. Protected routes require `AURA_SENSOR_API_TOKEN` on localhost and LAN alike.
 
 ## Test
 

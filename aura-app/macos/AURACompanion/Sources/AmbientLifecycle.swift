@@ -1,0 +1,439 @@
+import Foundation
+import Security
+
+enum AmbientCaptureSettings {
+    static let cameraEnabledPreferenceKey = "auraAmbientCameraEnabled"
+    static let saveSceneSummariesPreferenceKey = "auraSaveSceneSummaries"
+    static let useCameraContextPreferenceKey = "auraUseCameraContext"
+    static let cameraEnabledByDefault = true
+    static let saveSceneSummariesByDefault = true
+    static let useCameraContextByDefault = true
+
+    static func cameraEnabled(from defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: cameraEnabledPreferenceKey) as? Bool ?? cameraEnabledByDefault
+    }
+
+    static func saveSceneSummaries(from defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: saveSceneSummariesPreferenceKey) as? Bool ?? saveSceneSummariesByDefault
+    }
+
+    static func useCameraContext(from defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: useCameraContextPreferenceKey) as? Bool ?? useCameraContextByDefault
+    }
+}
+
+enum AmbientSessionSettings {
+    static let autoPauseMinutesPreferenceKey = "auraAmbientAutoPauseMinutes"
+    static let defaultAutoPauseMinutes = 0
+    static let supportedAutoPauseMinutes = [0, 15, 30, 60]
+
+    static func autoPauseMinutes(from defaults: UserDefaults = .standard) -> Int {
+        let stored = defaults.object(forKey: autoPauseMinutesPreferenceKey) as? Int
+            ?? defaultAutoPauseMinutes
+        return supportedAutoPauseMinutes.contains(stored) ? stored : defaultAutoPauseMinutes
+    }
+}
+
+struct AmbientSessionWindow {
+    private(set) var generation: UInt64 = 0
+    private(set) var deadline: TimeInterval?
+
+    mutating func begin(now: TimeInterval, durationSeconds: Int) -> UInt64? {
+        guard now.isFinite, now >= 0,
+              [0, 900, 1_800, 3_600].contains(durationSeconds) else { return nil }
+        generation &+= 1
+        deadline = durationSeconds == 0 ? nil : now + TimeInterval(durationSeconds)
+        return generation
+    }
+
+    func shouldPause(generation token: UInt64, now: TimeInterval) -> Bool {
+        guard generation == token, now.isFinite, let deadline else { return false }
+        return now >= deadline
+    }
+
+    mutating func cancel() {
+        generation &+= 1
+        deadline = nil
+    }
+}
+
+enum AmbientReplyContext {
+    static func observation(labels: [String], personPresent: Bool, enabled: Bool) -> String {
+        guard enabled else { return "" }
+        let label = labels.prefix(5).joined(separator: ", ")
+        guard !label.isEmpty else { return "" }
+        return "Local camera context: \(label). Person present: \(personPresent ? "yes" : "no")."
+    }
+}
+
+enum AmbientReplyRequest {
+    static func endpoint(privateMode: Bool) -> String {
+        privateMode ? "/api/private" : "/api/ambient"
+    }
+
+    static func payload(
+        message: String,
+        observation: String,
+        privateMode: Bool,
+        localOnly: Bool = false
+    ) -> [String: Any] {
+        if privateMode {
+            var payload: [String: Any] = ["message": message, "consent": true]
+            if localOnly { payload["local_only"] = true }
+            return payload
+        }
+        var payload: [String: Any] = ["message": message, "observation": observation]
+        if localOnly { payload["local_only"] = true }
+        return payload
+    }
+}
+
+struct SessionReplyEngineChoice {
+    private(set) var usesBuiltInLocalEngine = false
+
+    mutating func setBuiltInLocalEngine(_ enabled: Bool, sessionActive: Bool) {
+        guard sessionActive else { return }
+        usesBuiltInLocalEngine = enabled
+    }
+
+    mutating func reset() {
+        usesBuiltInLocalEngine = false
+    }
+}
+
+struct SessionReplyPrivacy {
+    private(set) var privateRepliesEnabled = false
+
+    mutating func setPrivateReplies(enabled: Bool, sessionActive: Bool) {
+        privateRepliesEnabled = enabled && sessionActive
+    }
+
+    mutating func reset() {
+        privateRepliesEnabled = false
+    }
+}
+
+struct SessionSpeechOutput {
+    private(set) var enabled = true
+
+    mutating func setEnabled(_ enabled: Bool, sessionActive: Bool) {
+        guard sessionActive else { return }
+        self.enabled = enabled
+    }
+
+    mutating func reset() {
+        enabled = true
+    }
+}
+
+enum StartupWatchdog {
+    static func timeoutMessage(for stage: String) -> String {
+        switch stage {
+        case "Checking Speech Recognition permission…":
+            "Speech Recognition permission check timed out. Open Privacy Settings and allow AURA Companion."
+        case "Checking microphone access…":
+            "Microphone permission check timed out. Open Privacy Settings and allow AURA Companion."
+        case "Checking camera access…":
+            "Camera permission check timed out. Open Privacy Settings and allow AURA Companion."
+        case let pending where pending.hasPrefix("Waiting for macOS microphone permission"):
+            "Microphone permission request timed out. Check System Settings > Privacy & Security > Microphone, then try again."
+        case let pending where pending.hasPrefix("Waiting for macOS camera permission"):
+            "Camera permission request timed out. Check System Settings > Privacy & Security > Camera, then try again."
+        default:
+            "Ambient startup timed out while \(stage.lowercased()). Check permission prompts and connected devices, then try again."
+        }
+    }
+
+    @MainActor
+    static func schedule(
+        afterNanoseconds nanoseconds: UInt64,
+        onTimeout: @escaping @MainActor () -> Void
+    ) -> Task<Void, Never> {
+        Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: nanoseconds)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            onTimeout()
+        }
+    }
+
+    @MainActor
+    static func expire(
+        token: UInt64,
+        lifecycle: AmbientLifecycle,
+        isStarting: Bool,
+        onTimeout: @MainActor () -> Void
+    ) -> Bool {
+        guard lifecycle.contains(token), isStarting else { return false }
+        onTimeout()
+        return true
+    }
+}
+
+// Pure session state, shared by the native helper and its hardware-free tests.
+struct AmbientLifecycle {
+    enum Phase { case paused, starting, active }
+    private(set) var phase: Phase = .paused
+    private(set) var generation: UInt64 = 0
+
+    mutating func begin() -> UInt64? {
+        guard phase == .paused else { return nil }
+        generation &+= 1
+        phase = .starting
+        return generation
+    }
+
+    func contains(_ token: UInt64) -> Bool {
+        generation == token && phase != .paused
+    }
+
+    func canCompleteStop(_ token: UInt64) -> Bool {
+        generation == token && phase == .paused
+    }
+
+    func acceptsCaptureEvent(_ token: UInt64) -> Bool {
+        generation == token && phase == .active
+    }
+
+    mutating func activate(_ token: UInt64) -> Bool {
+        guard contains(token), phase == .starting else { return false }
+        phase = .active
+        return true
+    }
+
+    mutating func pause() {
+        generation &+= 1
+        phase = .paused
+    }
+}
+
+// Recognition callbacks can arrive after a newer utterance has begun. Tokens
+// let the pipeline ignore stale errors without dropping a valid late transcript.
+struct RecognitionGeneration {
+    private(set) var value: UInt64 = 0
+
+    mutating func issue() -> UInt64 {
+        value &+= 1
+        return value
+    }
+
+    func isCurrent(_ token: UInt64) -> Bool {
+        value == token
+    }
+
+    mutating func invalidate() {
+        value &+= 1
+    }
+}
+
+// A delayed pairing validation must not clear a newer user-authorized pairing.
+struct PairingGeneration {
+    private(set) var value: UInt64 = 0
+
+    mutating func issue() -> UInt64 {
+        value &+= 1
+        return value
+    }
+
+    func isCurrent(_ token: UInt64) -> Bool {
+        value == token
+    }
+}
+
+enum PairingValidationDecision: Equatable {
+    case verified
+    case expired
+    case temporarilyUnavailable
+
+    static func classify(statusCode: Int?) -> Self {
+        switch statusCode {
+        case 200: .verified
+        case 401: .expired
+        default: .temporarilyUnavailable
+        }
+    }
+}
+
+// Keep AURA's own speech from becoming a new ambient microphone request. A
+// generation prevents a delayed completion from re-opening recognition after
+// a newer utterance or a manual Pause.
+struct SpeechOutputSuppression {
+    private(set) var generation: UInt64 = 0
+    private(set) var isSuppressed = false
+
+    mutating func begin() -> UInt64 {
+        generation &+= 1
+        isSuppressed = true
+        return generation
+    }
+
+    func contains(_ token: UInt64) -> Bool {
+        generation == token && isSuppressed
+    }
+
+    mutating func finish(_ token: UInt64) -> Bool {
+        guard contains(token) else { return false }
+        isSuppressed = false
+        return true
+    }
+
+    mutating func cancel() {
+        generation &+= 1
+        isSuppressed = false
+    }
+}
+
+// Replace an existing credential in place; add only when no item exists. The
+// injected operations let the native tests verify failure handling without
+// modifying the user's real Keychain.
+enum KeychainPersistence {
+    static func save(update: () -> OSStatus, add: () -> OSStatus) -> Bool {
+        let updateStatus = update()
+        if updateStatus == errSecSuccess { return true }
+        guard updateStatus == errSecItemNotFound else { return false }
+        return add() == errSecSuccess
+    }
+}
+
+// Preserve an active ambient session across sleep, regardless of whether the
+// camera's serialized stop callback runs before or after the wake notification.
+struct WakeResumeState {
+    private(set) var shouldResume = false
+    private(set) var isSleeping = false
+
+    mutating func willSleep(wasActive: Bool) {
+        isSleeping = true
+        shouldResume = wasActive
+    }
+
+    mutating func didWake(cameraReady: Bool) -> Bool {
+        isSleeping = false
+        return takeResumeIfReady(cameraReady: cameraReady)
+    }
+
+    mutating func cameraStopped() -> Bool {
+        takeResumeIfReady(cameraReady: true)
+    }
+
+    mutating func cancel() {
+        shouldResume = false
+    }
+
+    private mutating func takeResumeIfReady(cameraReady: Bool) -> Bool {
+        guard shouldResume, !isSleeping, cameraReady else { return false }
+        shouldResume = false
+        return true
+    }
+}
+
+// Require a stable absence and entry before an optional person-presence notice.
+// This only reports presence; it never classifies identity or a visitor.
+struct PersonPresenceNoticeTracker {
+    static let preferenceKey = "auraPersonPresenceNoticesEnabled"
+    private(set) var isDetected = false
+    private var absenceSamples = 0
+    private var presenceSamples = 0
+    private var hasObservedAbsence = false
+
+    mutating func observe(isPresent: Bool, enabled: Bool) -> Bool {
+        if isPresent {
+            absenceSamples = 0
+            presenceSamples += 1
+            guard presenceSamples >= 3, !isDetected else { return false }
+            isDetected = true
+            return hasObservedAbsence && enabled
+        }
+
+        presenceSamples = 0
+        absenceSamples += 1
+        guard absenceSamples >= 10 else { return false }
+        hasObservedAbsence = true
+        isDetected = false
+        return false
+    }
+}
+
+enum AmbientPowerSettings {
+    static let keepAwakePreferenceKey = "auraKeepMacAwakeWhileAmbient"
+}
+
+struct SleepPreventionState {
+    private(set) var isPreventingSleep = false
+
+    mutating func update(isActive: Bool, enabled: Bool) -> Bool? {
+        let shouldPrevent = isActive && enabled
+        guard shouldPrevent != isPreventingSleep else { return nil }
+        isPreventingSleep = shouldPrevent
+        return shouldPrevent
+    }
+}
+
+enum PermissionSettings {
+    static func target(for status: String) -> String? {
+        if status.hasPrefix("Allow Speech Recognition") || status.hasPrefix("Speech Recognition permission check timed out") {
+            return "Privacy_SpeechRecognition"
+        }
+        if status.hasPrefix("Microphone access is off") || status.hasPrefix("Microphone permission check timed out") || status.hasPrefix("Microphone permission request timed out") {
+            return "Privacy_Microphone"
+        }
+        if status.hasPrefix("Camera access is off") || status.hasPrefix("Camera permission check timed out") || status.hasPrefix("Camera permission request timed out") {
+            return "Privacy_Camera"
+        }
+        return nil
+    }
+
+    static func fallbackMessage(for status: String) -> String? {
+        guard target(for: status) != nil else { return nil }
+        return "\(status) Open System Settings > Privacy & Security and allow AURA Companion to use the denied service."
+    }
+}
+
+// No speaker identity is inferred. Follow-ups require a fresh, per-session opt-in.
+struct ConversationTurnGate {
+    static let supportedFollowupDurations = [15, 30, 60]
+    private(set) var enabled = false
+    private(set) var generation: UInt64 = 0
+    private var followupDuration: TimeInterval = 30
+    private var deadline: TimeInterval?
+
+    mutating func configure(_ enabled: Bool, durationSeconds: Int = 30) {
+        self.enabled = enabled
+        followupDuration = Self.supportedFollowupDurations.contains(durationSeconds)
+            ? TimeInterval(durationSeconds)
+            : 30
+        generation &+= 1
+        deadline = nil
+    }
+
+    mutating func accepts(_ text: String, now: TimeInterval) -> Bool {
+        let addressed = text.range(of: #"^\s*(?:hey\s+)?aura\b"#, options: [.caseInsensitive, .regularExpression]) != nil
+        let followup = enabled && deadline.map { now < $0 } == true
+        deadline = nil // At most one turn per window, even after silence/expiry.
+        return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (addressed || followup)
+    }
+
+    mutating func replyFinished(generation token: UInt64, now: TimeInterval) {
+        guard enabled, token == generation else { return }
+        deadline = now + followupDuration
+    }
+}
+
+struct SpeechPlaybackGeneration {
+    private(set) var value: UInt64 = 0
+
+    mutating func begin() -> UInt64 {
+        value &+= 1
+        return value
+    }
+
+    mutating func invalidate() {
+        value &+= 1
+    }
+
+    func contains(_ token: UInt64) -> Bool {
+        value == token
+    }
+}

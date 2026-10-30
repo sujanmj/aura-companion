@@ -155,6 +155,70 @@ button:hover {
   font-size: 0.9rem;
 }
 
+.room-invitation-panel {
+  margin: 1rem 1.5rem;
+  padding: 1rem 1.25rem;
+}
+
+.room-invitation-status {
+  min-height: 1.4rem;
+  margin: 0.5rem 0;
+  font-weight: 600;
+}
+
+.room-invitation-details {
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.room-node-status {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.room-node-status h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.room-invitation-controls,
+.room-invitation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.room-invitation-controls label {
+  flex: 0 0 150px;
+  color: var(--text-muted);
+}
+
+.room-invitation-controls select {
+  flex: 1 1 240px;
+  min-width: 200px;
+  padding: 0.65rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card-alt);
+  color: var(--text);
+}
+
+.btn-danger {
+  background: var(--danger-bg);
+  color: var(--critical);
+  border: 1px solid var(--critical);
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
