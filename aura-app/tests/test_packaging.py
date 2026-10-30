@@ -8,8 +8,10 @@ import tempfile
 import unittest
 import zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 from bundle import package
 from build_provenance import write_provenance
+from verify_preview_archive import verify_preview_archive
 
 
 class PackagingTests(unittest.TestCase):
@@ -45,6 +47,9 @@ class PackagingTests(unittest.TestCase):
     def test_archive_hashes_and_commit_match_and_ignored_config_is_absent(self):
         self.write('config/keys.env', 'PRIVATE_TEST_CONFIGURATION=not-for-packaging')
         archive = package(self.root)
+        verification = verify_preview_archive(self.root)
+        self.assertEqual(verification["source_commit"], self.git("rev-parse", "HEAD"))
+        self.assertGreater(verification["file_count"], 0)
         checksum = archive.with_suffix('.zip.sha256').read_text().split()[0]
         self.assertEqual(checksum, hashlib.sha256(archive.read_bytes()).hexdigest())
         with zipfile.ZipFile(archive) as z:
@@ -57,6 +62,15 @@ class PackagingTests(unittest.TestCase):
             for name, digest in manifest['files'].items():
                 self.assertNotIn('\\', name)
                 self.assertEqual(digest, hashlib.sha256(z.read('AURA-Companion/' + name)).hexdigest())
+
+    def test_archive_verifier_rejects_an_unmanifested_member(self):
+        archive = package(self.root)
+        with zipfile.ZipFile(archive, 'a', zipfile.ZIP_DEFLATED) as bundle:
+            bundle.writestr('AURA-Companion/extra.txt', 'unexpected')
+        digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+        archive.with_suffix('.zip.sha256').write_text(f'{digest}  {archive.name}\n')
+        with self.assertRaisesRegex(ValueError, 'file list differs'):
+            verify_preview_archive(self.root)
 
     def test_dirty_source_refused_and_old_archive_preserved(self):
         archive = package(self.root)
