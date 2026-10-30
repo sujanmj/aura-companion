@@ -30,8 +30,11 @@ and heartbeat freshness without printing credentials. Its 19 focused sensor
 admin tests and the full Python suite pass locally. The three-platform PR run
 [41020624724](https://github.com/sujanmj/aura-companion/actions/runs/41020624724)
 passed and uploaded all preview archives. The Command Center now includes an
-enrolled-node heartbeat table; its cross-platform CI is pending. These results
-verify software only; Pi installation and physical node shutdown are untested.
+enrolled-node heartbeat table. Commit `c2da152` passed the three-platform PR
+workflow in
+[41021377750](https://github.com/sujanmj/aura-companion/actions/runs/41021377750),
+which uploaded all preview archives. These results verify software only; Pi
+installation and physical node shutdown are untested.
 
 ## Observation expiry
 

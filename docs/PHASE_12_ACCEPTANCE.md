@@ -61,7 +61,9 @@ These checks establish only the behavior covered by their tests:
   node-status CLI passed the three-platform PR run
   [41020624724](https://github.com/sujanmj/aura-companion/actions/runs/41020624724),
   also uploading all preview artifacts. A Command Center heartbeat table is
-  newly added; its cross-platform CI is pending.
+  added in commit `c2da152`; the three-platform PR run
+  [41021377750](https://github.com/sujanmj/aura-companion/actions/runs/41021377750)
+  passed and uploaded all preview artifacts.
   Revocation establishes hub credential rejection, not physical device
   shutdown.
 
