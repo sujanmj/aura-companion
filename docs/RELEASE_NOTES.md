@@ -13,14 +13,21 @@ a language model. A hosted provider may retain approved content under its own
 policy.
 
 Local checks pass: 131 app Python tests, 30 Node tests, 19 browser tests,
-TypeScript checking, lint and production build. Push CI for exact source commit
-`581fc8d` passed macOS, Windows and Ubuntu in
+TypeScript checking, lint and production build. Both push and PR CI for exact
+source commit `581fc8d` passed macOS, Windows and Ubuntu:
 [41109385300](https://github.com/sujanmj/aura-companion/actions/runs/41109385300)
-and uploaded all three preview archives (digest prefixes: macOS `ba89e9be`,
-Windows `918bda15`, Ubuntu `3d207c36`). The matching PR run
-[41109396159](https://github.com/sujanmj/aura-companion/actions/runs/41109396159)
-passed macOS and Ubuntu; its Windows job was still running when recorded. No
-live provider, multi-source, news or Raspberry Pi acceptance is claimed.
+and [41109396159](https://github.com/sujanmj/aura-companion/actions/runs/41109396159).
+Each run uploaded all three preview archives. Push digest prefixes: macOS
+`ba89e9be`, Windows `918bda15`, Ubuntu `3d207c36`; PR prefixes: macOS
+`7838a3f0`, Windows `8edb0f87`, Ubuntu `35b85638`.
+
+For branch tip `a43f422`, the locally built Mac archive passed integrity
+verification at SHA-256
+`9af397e33990622bc230ea4d499b1e09805baf476bacf95f048d4ebeb4d512b4`.
+Clean install and legacy SQLite upgrade smoke tests passed, preserving existing
+facts and conversations. This Mac build is ad-hoc signed and not notarized.
+No physical Pi or household acceptance is claimed. No live provider,
+multi-source or news acceptance is claimed.
 
 ## Local voice retry recovery (Phase 5)
 

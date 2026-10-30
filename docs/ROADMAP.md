@@ -690,10 +690,17 @@ Windows, and Ubuntu in
 which uploaded all three preview archives. Artifact digest prefixes: macOS
 `ba89e9be`, Windows `918bda15`, Ubuntu `3d207c36`. The matching PR run
 [41109396159](https://github.com/sujanmj/aura-companion/actions/runs/41109396159)
-passed macOS and Ubuntu; its Windows job was still running when this note was
-recorded. Wikipedia remains the only source adapter, so this is not multi-source
+also passed macOS, Windows, and Ubuntu and uploaded all three preview archives.
+PR artifact digest prefixes: macOS `7838a3f0`, Windows `8edb0f87`, Ubuntu
+`35b85638`. The local Mac preview for docs-only branch tip `a43f422` verified
+at SHA-256
+`9af397e33990622bc230ea4d499b1e09805baf476bacf95f048d4ebeb4d512b4`;
+clean installation and legacy SQLite upgrade smoke tests passed, preserving
+existing facts and conversations. It is ad-hoc signed and not notarized.
+Wikipedia remains the only source adapter, so this is not multi-source
 verification, live-news coverage, or automatic fact-checking. Hosted providers
-may retain an approved question and excerpts under their own policy.
+may retain an approved question and excerpts under their own policy. No physical
+Pi or household acceptance is claimed.
 
 ### Phase 11 — Opt-in routine and wellness support
 
