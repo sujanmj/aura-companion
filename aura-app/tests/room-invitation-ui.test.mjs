@@ -22,6 +22,14 @@ const kitchenNode = {
   online: 0,
   last_seen_at: null,
 };
+const inconsistentNode = {
+  node_id: "hallway",
+  display_name: "Hallway Node",
+  room: "hallway",
+  disabled: 0,
+  online: 1,
+  last_seen_at: null,
+};
 
 class Element {
   constructor() {
@@ -52,7 +60,7 @@ async function dashboardHarness(initialToken = token) {
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new Element()]));
   const requests = [];
-  let enrolledNodes = [node, kitchenNode];
+  let enrolledNodes = [node, kitchenNode, inconsistentNode];
   let promptAnswers = [];
   let activeSession = null;
   let loseNextMutationResponse = false;
@@ -165,12 +173,13 @@ test("saving or clearing the dashboard token reloads room status", async () => {
   ui.tokenChanged();
   await ui.settle();
   assert.equal(ui.requests.filter((request) => request.url === "/rooms/status").length, 1);
-  assert.equal(controls["room-invite-node"].options.length, 3);
+  assert.equal(controls["room-invite-node"].options.length, 4);
   const nodeRows = controls["room-node-health"].options;
-  assert.equal(nodeRows.length, 2);
+  assert.equal(nodeRows.length, 3);
   const renderedNodes = nodeRows.map((row) => row.options.map((cell) => cell.textContent).join(" | "));
   assert.match(renderedNodes[0], /Bedroom Pi \| bedroom \| Heartbeat or event in last 90 seconds \| 2026-10-30 07:00:00/);
   assert.match(renderedNodes[1], /Kitchen Pi \| kitchen \| No heartbeat or event in last 90 seconds \| Never/);
+  assert.match(renderedNodes[2], /Hallway Node \| hallway \| Status unavailable \| Never/);
   assert.doesNotMatch(renderedNodes.join(" "), /must-not-render|token/i);
 
   ui.setToken("");

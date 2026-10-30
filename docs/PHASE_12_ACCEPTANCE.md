@@ -77,6 +77,10 @@ These checks establish only the behavior covered by their tests:
   and PR run
   [41023365160](https://github.com/sujanmj/aura-companion/actions/runs/41023365160),
   both with all three preview artifacts uploaded.
+  Latest node-status refinement treats `online=true` without a valid last-seen
+  time as malformed/unavailable in both the CLI and Command Center. All 19
+  sensor-admin test cases pass locally, including the new inconsistent-record
+  regression case; exact-tree CI is pending.
   Revocation establishes hub credential rejection, not physical device
   shutdown.
 

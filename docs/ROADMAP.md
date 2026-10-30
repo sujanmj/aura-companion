@@ -1348,7 +1348,9 @@ an observed heartbeat/event is not proof of sensor, microphone, speaker, or
 room coverage. Refresh updates node and invitation state together; removing the
 admin token or a failed refresh clears the displayed node data. Values are
 rendered as text, malformed labels are excluded, and credentials are not shown.
-The 30 Node interaction tests, 95 app Python tests, 19 sensor-admin tests,
+The CLI rejects an online record without a valid last-seen timestamp, and the
+Command Center labels the same inconsistent record unavailable. The 30 Node
+interaction tests, 95 app Python tests, 19 sensor-admin tests,
 lint, build and 18 browser E2E tests pass locally. Cross-platform CI for this
 addition passed on macOS, Windows and Ubuntu in commit `c2da152` PR run
 [41021377750](https://github.com/sujanmj/aura-companion/actions/runs/41021377750),

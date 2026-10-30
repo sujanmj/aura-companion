@@ -87,9 +87,15 @@
     safeNodes.forEach(function (node) {
       var row = document.createElement("tr");
       var online = node.online === 1 || node.online === true;
-      var heartbeat = node.online === 0 || node.online === false
-        ? "No heartbeat or event in last 90 seconds"
-        : online ? "Heartbeat or event in last 90 seconds" : "Status unavailable";
+      var validOnline = node.online === 0 || node.online === 1 ||
+        node.online === false || node.online === true;
+      var validLastSeen = node.last_seen_at == null || validLabel(node.last_seen_at);
+      var hasLastSeen = validLabel(node.last_seen_at);
+      var heartbeat = !validOnline || !validLastSeen || (online && !hasLastSeen)
+        ? "Status unavailable"
+        : node.online === 0 || node.online === false
+          ? "No heartbeat or event in last 90 seconds"
+          : "Heartbeat or event in last 90 seconds";
       var lastSeen = node.last_seen_at == null ? "Never" :
         validLabel(node.last_seen_at) ? node.last_seen_at : "Unavailable";
       appendCell(row, node.display_name, true);

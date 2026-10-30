@@ -30,7 +30,8 @@ and heartbeat freshness without printing credentials. Its 19 focused sensor
 admin tests and the full Python suite pass locally. The three-platform PR run
 [41020624724](https://github.com/sujanmj/aura-companion/actions/runs/41020624724)
 passed and uploaded all preview archives. The Command Center now includes an
-enrolled-node heartbeat table. Commit `c2da152` passed the three-platform PR
+enrolled-node heartbeat table and marks online records without a valid last-seen
+time as unavailable. Commit `c2da152` passed the three-platform PR
 workflow in
 [41021377750](https://github.com/sujanmj/aura-companion/actions/runs/41021377750),
 which uploaded all preview archives. These results verify software only; Pi
@@ -40,7 +41,9 @@ The sensor API now tells HTTP caches not to store any JSON response, including
 unauthorized errors. Header regression tests cover both success and auth-failure
 responses. Local validation is green; cross-platform CI is pending. The live
 hub-auth probe was skipped because no hub token is configured in this workspace.
-The first two CI attempts passed macOS and Ubuntu but timed out different
+The latest node-status validation passes all 19 focused sensor-admin tests
+locally, including its inconsistent-record regression case; cross-platform CI
+is pending. The first two CI attempts passed macOS and Ubuntu but timed out different
 Windows E2E assertions at five seconds; each passed 17/18 browser cases. The
 Windows-only expectation timeout is now 15 seconds, and the full browser suite
 passes locally. Commit `f32a159` then passed all three platforms in push run

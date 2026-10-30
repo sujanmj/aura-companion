@@ -46,6 +46,7 @@ def format_node(node: Any) -> str:
         or type(online) not in (int, bool)
         or online not in (0, 1)
         or (last_seen_at is not None and not valid_label(last_seen_at))
+        or (bool(online) and last_seen_at is None)
     ):
         raise ValueError("invalid node record")
     last_seen = last_seen_at if last_seen_at is not None else "never"

@@ -92,6 +92,7 @@ class SensorAdminClientTests(unittest.TestCase):
             }],
             [{"node_id": "bad node", "display_name": "Bedroom", "room": "bedroom", "online": 1}],
             [{"node_id": "bedroom", "display_name": "Bedroom", "room": "bedroom", "online": 2}],
+            [{"node_id": "bedroom", "display_name": "Bedroom", "room": "bedroom", "online": 1}],
         ]
         for nodes in invalid_nodes:
             with (
