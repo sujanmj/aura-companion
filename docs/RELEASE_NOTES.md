@@ -25,9 +25,14 @@ uses a fresh in-memory SQLite database, skips camera observations and feedback,
 and is spoken only when voice output was separately enabled. The console uses
 the owner's already selected local/cloud brain setting; a hosted provider may
 receive the text and apply its own retention policy. `/cancel-private` cancels
-the armed turn. New store-isolation and transcript-disclosure regression tests
-are included; cross-platform CI is pending. No Pi or live-provider acceptance
-is claimed.
+the armed turn. Focused store-isolation, console-dispatch and transcript
+boundary tests pass locally, with 127 app Python tests, 30 Node tests, 19
+browser tests, lint and production build. Push CI
+[41106827966](https://github.com/sujanmj/aura-companion/actions/runs/41106827966)
+passed on macOS, Windows and Ubuntu and uploaded each preview archive. The PR
+matrix [41106836974](https://github.com/sujanmj/aura-companion/actions/runs/41106836974)
+passed macOS and Ubuntu; Windows was still running at this update. No Pi or
+live-provider acceptance is claimed.
 
 ## Optional local push-to-talk speech on Pi and Linux (Phase 5)
 

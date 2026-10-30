@@ -1699,6 +1699,14 @@ reply generation, and `/cancel-private` cancels it. Voice confirmation repeats
 that the saved-memory path is skipped and that a selected hosted provider may
 still receive the text. The user-selected local/cloud brain setting applies;
 private messages are never sent to a provider if local-only mode was selected.
-Focused store-isolation and transcript-boundary tests pass locally; full app
-tests and cross-platform CI are pending. This does not establish live-provider
-retention behavior or Raspberry Pi acceptance.
+Focused store-isolation, console-dispatch and transcript-boundary tests pass,
+along with all 127 app Python tests, 30 Node tests, 19 browser tests, lint and
+production build. Push CI
+[41106827966](https://github.com/sujanmj/aura-companion/actions/runs/41106827966)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+The matching PR run
+[41106836974](https://github.com/sujanmj/aura-companion/actions/runs/41106836974)
+has passed macOS and Ubuntu; Windows was still running at this update. Push
+artifact digest prefixes: macOS `dee291aa`, Windows `799f10d2`, Ubuntu
+`63996f0e`. This does not establish live-provider retention behavior or
+Raspberry Pi acceptance.
