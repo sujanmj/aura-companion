@@ -1,5 +1,15 @@
 # AURA development preview — 2026-10-30
 
+## Editable routine reminders (Phase 11)
+
+Memory now lets the owner change a reminder's wording, local time, and selected
+weekdays. The edit is owner-scoped and preserves its active/paused state and
+the record of whether today's delivered occurrence was acknowledged or
+dismissed, preventing a schedule edit from causing a second delivery that day.
+Local verification passed 99 app Python tests, 30 Node tests, 18 browser E2E
+tests, lint, and the production build. Cross-platform CI is pending; no
+medication or health-device integration is implied.
+
 ## Reminder acknowledgment (Phase 11)
 
 After a scheduled reminder is delivered, its owner can acknowledge that they saw

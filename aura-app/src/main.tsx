@@ -242,7 +242,11 @@ function App() {
     [reminderLabel, setReminderLabel] = useState(""),
     [reminderTime, setReminderTime] = useState("20:00"),
     [reminderDays, setReminderDays] = useState([1, 2, 3, 4, 5, 6, 7]),
-    [reminderConsent, setReminderConsent] = useState(false);
+    [reminderConsent, setReminderConsent] = useState(false),
+    [editingReminder, setEditingReminder] = useState<number | null>(null),
+    [reminderDraft, setReminderDraft] = useState(""),
+    [reminderDraftTime, setReminderDraftTime] = useState("20:00"),
+    [reminderDraftDays, setReminderDraftDays] = useState<number[]>([]);
   const stopListen = useRef<(() => void) | null>(null),
     refreshGeneration = useRef(0),
     bottom = useRef<HTMLDivElement>(null),
@@ -1324,12 +1328,89 @@ function App() {
                           {reminder.days_of_week.split(",").map((day) => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][Number(day) - 1]).join(", ")} · {reminder.local_time} local time ·{" "}
                           {reminder.enabled ? "active" : "paused"}
                         </small>
-                        <p>{reminder.label}</p>
+                        {editingReminder === reminder.id ? (
+                          <form
+                            className="person-form"
+                            onSubmit={async (event) => {
+                              event.preventDefault();
+                              try {
+                                await api("reminder/update", {
+                                  reminder_id: reminder.id,
+                                  label: reminderDraft,
+                                  local_time: reminderDraftTime,
+                                  days_of_week: reminderDraftDays,
+                                });
+                                await refresh();
+                                setEditingReminder(null);
+                                setError("Reminder updated.");
+                              } catch (e) {
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            <label htmlFor={`reminder-edit-label-${reminder.id}`}>Reminder text</label>
+                            <input
+                              id={`reminder-edit-label-${reminder.id}`}
+                              value={reminderDraft}
+                              maxLength={120}
+                              onChange={(event) => setReminderDraft(event.target.value)}
+                              required
+                            />
+                            <label htmlFor={`reminder-edit-time-${reminder.id}`}>Local reminder time</label>
+                            <input
+                              id={`reminder-edit-time-${reminder.id}`}
+                              type="time"
+                              value={reminderDraftTime}
+                              onChange={(event) => setReminderDraftTime(event.target.value)}
+                              required
+                            />
+                            <fieldset>
+                              <legend>Repeat on</legend>
+                              <div className="weekday-options">
+                                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => {
+                                  const value = index + 1;
+                                  return (
+                                    <label key={day}>
+                                      <input
+                                        type="checkbox"
+                                        checked={reminderDraftDays.includes(value)}
+                                        onChange={(event) => setReminderDraftDays((current) =>
+                                          event.target.checked
+                                            ? [...current, value].sort()
+                                            : current.filter((selected) => selected !== value))}
+                                      />
+                                      {day}
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </fieldset>
+                            <div className="fact-actions">
+                              <button className="primary" disabled={!reminderDraft.trim() || reminderDraftDays.length === 0}>
+                                Save reminder changes
+                              </button>
+                              <button type="button" onClick={() => setEditingReminder(null)}>Cancel</button>
+                            </div>
+                          </form>
+                        ) : <p>{reminder.label}</p>}
                         {reminder.last_delivered_on && (
                           <time>Last delivered {reminder.last_delivered_on}</time>
                         )}
                         <div className="fact-actions">
+                          {editingReminder !== reminder.id && (
+                            <button
+                              onClick={() => {
+                                setEditingReminder(reminder.id);
+                                setReminderDraft(reminder.label);
+                                setReminderDraftTime(reminder.local_time);
+                                setReminderDraftDays(reminder.days_of_week.split(",").map(Number));
+                              }}
+                            >
+                              Edit reminder
+                            </button>
+                          )}
                           <button
+                            disabled={editingReminder === reminder.id}
                             onClick={async () => {
                               try {
                                 await api("reminder/enabled", {

@@ -105,6 +105,19 @@ def main():
                         req.get('days_of_week'),
                     )
                     result = {'created': True, 'reminder_id': reminder_id}
+                elif op == 'update_reminder':
+                    reminder_id = req.get('reminder_id')
+                    if not isinstance(reminder_id, int) or isinstance(reminder_id, bool) or reminder_id <= 0:
+                        raise ValueError('Invalid reminder')
+                    if not store.update_routine_reminder(
+                        user,
+                        reminder_id,
+                        req.get('label'),
+                        req.get('local_time'),
+                        req.get('days_of_week'),
+                    ):
+                        raise ValueError('Reminder not found')
+                    result = {'ok': True}
                 elif op == 'delete_reminder':
                     reminder_id = req.get('reminder_id')
                     if not isinstance(reminder_id, int) or isinstance(reminder_id, bool) or reminder_id <= 0:

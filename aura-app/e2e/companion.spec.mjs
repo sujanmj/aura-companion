@@ -378,13 +378,28 @@ test("scheduled reminders require opt-in, support selected weekdays, and can be 
   await add.click();
   await expect(page.getByRole("status")).toContainText("Daily reminder saved.");
   await page.evaluate(() => window.releaseStatusResponse?.());
-  const reminder = page.locator(".fact").filter({ hasText: "Stretch" });
+  let reminder = page.locator(".fact").filter({ hasText: "Stretch" });
   await expect(reminder).toContainText("21:00 local time");
   await expect(reminder).toContainText("Mon, Tue, Wed, Thu, Fri, Sun");
   await expect(
     page.getByText("A reminder is not confirmation that you completed the task or took a dose."),
   ).toBeVisible();
   await expect(page.getByText("Acknowledge only records that you saw the reminder; it does not confirm the task or a dose.")).toBeVisible();
+  await reminder.getByRole("button", { name: "Edit reminder" }).click();
+  const editReminder = page.locator(".fact form").filter({ has: page.getByLabel("Reminder text") });
+  await editReminder.getByLabel("Reminder text").fill("Evening stretch");
+  await editReminder.getByLabel("Local reminder time").fill("21:30");
+  const editedWeekdays = editReminder.locator(".weekday-options input");
+  for (let index = 0; index < await editedWeekdays.count(); index++) {
+    const checkbox = editedWeekdays.nth(index);
+    if ([2, 4, 6].includes(index + 1)) await checkbox.check();
+    else await checkbox.uncheck();
+  }
+  await editReminder.getByRole("button", { name: "Save reminder changes" }).click();
+  await expect(page.getByRole("status")).toContainText("Reminder updated");
+  reminder = page.locator(".fact").filter({ hasText: "Evening stretch" });
+  await expect(reminder).toContainText("21:30 local time");
+  await expect(reminder).toContainText("Tue, Thu, Sat");
   await reminder.getByRole("button", { name: "Pause reminder" }).click();
   await expect(reminder).toContainText("paused");
   await expect(page.getByRole("status")).toContainText("Daily reminder paused");

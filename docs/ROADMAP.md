@@ -1446,3 +1446,15 @@ The local Mac preview for source commit `de7dfbd` has SHA-256
 `a35787b750a6ac5b4d3e93a2e0401f20844e7ffe10c8353eb1bb65a9eb58ecbd`; it is
 ad-hoc signed and not notarized. This is a simulated database recovery check,
 not a home upgrade, cross-device restore or hardware acceptance result.
+
+## 2026-10-30 continuation — editable routine reminders (Phase 11)
+
+Owners can correct an existing reminder's label, local time, and selected
+weekdays in Memory without deleting and recreating it. Edits remain scoped to
+the owner and preserve the current delivery, acknowledgment, dismissal, and
+enabled state, so changing the schedule cannot deliver the same reminder twice
+on the same local date. Invalid schedules are rejected by the authenticated
+API and SQLite store. Local verification passed 99 app Python tests, 30 Node
+tests, all 18 browser E2E tests, lint, and the production build. Cross-platform
+CI for the change is pending. This is a reminder scheduling control, not dose
+tracking or health-device integration.

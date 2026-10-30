@@ -141,6 +141,45 @@ class MemoryControlsTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.store.add_routine_reminder(self.owner, 'Reminder', '09:00', days)
 
+    def test_reminder_edits_are_validated_owner_scoped_and_keep_delivery_state(self):
+        reminder_id = self.store.add_routine_reminder(
+            self.owner, 'Water plants', '09:00', [1, 3, 5]
+        )
+        day = datetime(2026, 10, 21, 9, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+        self.assertEqual(
+            self.store.create_due_routine_reminder(self.owner, day)['reminder_id'],
+            reminder_id,
+        )
+        self.assertTrue(self.store.acknowledge_routine_reminder(self.owner, reminder_id, day))
+        self.assertFalse(self.store.update_routine_reminder(
+            self.other, reminder_id, 'Private edit', '10:00', [2, 4]
+        ))
+        for label, local_time, days in (
+            ('  ', '10:00', [2]),
+            ('Water plants', '25:00', [2]),
+            ('Water plants', '10:00', []),
+            ('Water plants', '10:00', [2, 2]),
+        ):
+            with self.assertRaises(ValueError):
+                self.store.update_routine_reminder(
+                    self.owner, reminder_id, label, local_time, days
+                )
+        current = self.store.get_routine_reminders(self.owner)[0]
+        self.assertEqual(current['label'], 'Water plants')
+        self.assertEqual(current['local_time'], '09:00')
+        self.assertEqual(current['days_of_week'], '1,3,5')
+        self.assertEqual(current['acknowledged_on'], '2026-10-21')
+        self.assertTrue(self.store.update_routine_reminder(
+            self.owner, reminder_id, 'Water garden', '10:30', [2, 4]
+        ))
+        updated = self.store.get_routine_reminders(self.owner)[0]
+        self.assertEqual(updated['label'], 'Water garden')
+        self.assertEqual(updated['local_time'], '10:30')
+        self.assertEqual(updated['days_of_week'], '2,4')
+        self.assertEqual(updated['acknowledged_on'], '2026-10-21')
+        self.assertEqual(updated['last_delivered_on'], '2026-10-21')
+        self.assertIsNone(self.store.create_due_routine_reminder(self.owner, day))
+
     def test_existing_daily_reminders_migrate_to_all_weekdays(self):
         legacy_path = Path(self.temp.name) / 'legacy.db'
         legacy = sqlite3.connect(legacy_path)

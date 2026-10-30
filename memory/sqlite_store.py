@@ -315,6 +315,35 @@ class AuraMemoryStore:
         self.conn.commit()
         return int(cur.lastrowid)
 
+    def update_routine_reminder(
+        self, user_id: int, reminder_id: int, label: str, local_time: str,
+        days_of_week: list[int],
+    ) -> bool:
+        label = label.strip() if isinstance(label, str) else ""
+        if not 1 <= len(label) <= 120:
+            raise ValueError("Reminder label must contain 1–120 characters")
+        try:
+            parsed_time = time.fromisoformat(local_time)
+        except (TypeError, ValueError):
+            raise ValueError("Reminder time must use HH:MM") from None
+        if parsed_time.second or parsed_time.microsecond or parsed_time.tzinfo:
+            raise ValueError("Reminder time must use HH:MM")
+        if (
+            not isinstance(days_of_week, list)
+            or not days_of_week
+            or any(type(day) is not int or day < 1 or day > 7 for day in days_of_week)
+            or len(set(days_of_week)) != len(days_of_week)
+        ):
+            raise ValueError("Reminder days must be a non-empty list of unique weekdays")
+        days_text = ",".join(str(day) for day in sorted(days_of_week))
+        cur = self.conn.execute(
+            """UPDATE routine_reminders SET label=?, local_time=?, days_of_week=?
+               WHERE id=? AND user_id=?""",
+            (label, parsed_time.strftime("%H:%M"), days_text, reminder_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
     def delete_routine_reminder(self, user_id: int, reminder_id: int) -> bool:
         cur = self.conn.execute(
             "DELETE FROM routine_reminders WHERE id=? AND user_id=?",

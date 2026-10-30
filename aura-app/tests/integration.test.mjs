@@ -690,6 +690,42 @@ test("people memory is private and forget removes its associated timeline", asyn
     assert.equal(reminderResponse.status, 201);
     const reminder = await reminderResponse.json();
     assert.equal(
+      (await post("reminder/update", {
+        reminder_id: reminder.reminder_id,
+        label: "Read a book",
+        local_time: "20:15",
+        days_of_week: [2, 4, 6],
+      }, cookie, "https://evil.test")).status,
+      403,
+    );
+    assert.equal(
+      (await post("reminder/update", {
+        reminder_id: reminder.reminder_id,
+        label: "Read a book",
+        local_time: "20:15",
+        days_of_week: [2, 2],
+      }, cookie)).status,
+      400,
+    );
+    assert.equal(
+      (await post("reminder/update", {
+        reminder_id: 999999,
+        label: "Read a book",
+        local_time: "20:15",
+        days_of_week: [2, 4, 6],
+      }, cookie)).status,
+      404,
+    );
+    assert.equal(
+      (await post("reminder/update", {
+        reminder_id: reminder.reminder_id,
+        label: "Read a book",
+        local_time: "20:15",
+        days_of_week: [2, 4, 6],
+      }, cookie)).status,
+      200,
+    );
+    assert.equal(
       (await post("reminder/enabled", { reminder_id: reminder.reminder_id, enabled: "false" }, cookie)).status,
       400,
     );
@@ -704,8 +740,9 @@ test("people memory is private and forget removes its associated timeline", asyn
     const reminderStatus = await (
       await fetch(base + "/api/status", { headers: { Cookie: cookie } })
     ).json();
-    assert.equal(reminderStatus.reminders[0].label, "Take medication");
-    assert.equal(reminderStatus.reminders[0].days_of_week, "1,3,5");
+    assert.equal(reminderStatus.reminders[0].label, "Read a book");
+    assert.equal(reminderStatus.reminders[0].local_time, "20:15");
+    assert.equal(reminderStatus.reminders[0].days_of_week, "2,4,6");
     assert.equal(reminderStatus.reminders[0].enabled, false);
     assert.equal(
       (await post("reminder/enabled", { reminder_id: reminder.reminder_id, enabled: true }, cookie)).status,
