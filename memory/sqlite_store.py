@@ -124,9 +124,14 @@ class AuraMemoryStore:
 
     def list_sensor_nodes(self, user_id: int) -> list[dict[str, Any]]:
         rows = self.conn.execute(
-            """SELECT id, node_id, display_name, room, created_at, last_seen_at,
-                      CASE WHEN last_seen_at >= datetime('now', '-90 seconds')
-                                AND last_seen_at <= datetime('now')
+            """SELECT id, node_id, display_name, room, created_at,
+                      CASE WHEN last_seen_at IS NULL THEN NULL
+                           WHEN datetime(last_seen_at) IS NULL
+                             OR datetime(last_seen_at) > datetime('now')
+                           THEN 'Unavailable'
+                           ELSE last_seen_at END AS last_seen_at,
+                      CASE WHEN datetime(last_seen_at) >= datetime('now', '-90 seconds')
+                                AND datetime(last_seen_at) <= datetime('now')
                            THEN 1 ELSE 0 END AS online
                FROM sensor_nodes WHERE user_id = ? AND disabled = 0
                ORDER BY node_id""",

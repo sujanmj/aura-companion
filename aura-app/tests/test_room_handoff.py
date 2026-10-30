@@ -69,6 +69,22 @@ class RoomHandoffTests(unittest.TestCase):
             if item['node_id'] == 'bedroom'
         )
         self.assertEqual(node['online'], 0)
+        self.assertEqual(node['last_seen_at'], 'Unavailable')
+        with self.assertRaisesRegex(HandoffDenied, 'node_unavailable'):
+            self.start()
+
+    def test_malformed_heartbeat_is_unavailable_and_rejected_for_handoff(self):
+        self.store.conn.execute(
+            "UPDATE sensor_nodes SET last_seen_at='not-a-time' WHERE node_id='bedroom'"
+        )
+        self.store.conn.commit()
+
+        node = next(
+            item for item in self.store.list_sensor_nodes(self.user)
+            if item['node_id'] == 'bedroom'
+        )
+        self.assertEqual(node['online'], 0)
+        self.assertEqual(node['last_seen_at'], 'Unavailable')
         with self.assertRaisesRegex(HandoffDenied, 'node_unavailable'):
             self.start()
 
