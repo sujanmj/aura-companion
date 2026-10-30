@@ -84,7 +84,10 @@ on Linux/Raspberry Pi and macOS. Install the packages from
 model. At startup, microphone input is off unless the user explicitly enables
 it; each capture begins only after Enter is pressed, is limited to 15 seconds,
 and is immediately closed after one utterance. The recognized text is shown for
-confirmation before the existing SQLite memory/personality flow processes it.
+confirmation before the existing SQLite memory/personality flow processes it;
+the confirmation names that normal memory/provider path. If capture fails on
+the first attempt or a requested retry, AURA returns to typed input rather than
+terminating the console.
 Raw PCM stays in memory and is not written to disk. If the user enabled a
 hosted brain earlier in the console, the approved transcript follows that
 existing provider path; otherwise the local companion engine responds. If

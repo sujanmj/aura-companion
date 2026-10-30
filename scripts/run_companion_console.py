@@ -21,10 +21,20 @@ def _ask_typed_message() -> str:
     return input("\nUser message: ").strip()
 
 
+def _listen_once_or_fallback(recognizer) -> str | None:
+    try:
+        return recognizer.listen_once()
+    except Exception:
+        print("AURA_MICROPHONE_UNAVAILABLE: check local audio permissions and the selected input device")
+        return None
+
+
 def _confirm_transcript(recognizer, transcript: str) -> str | None:
     while True:
         print(f"You said: {transcript}")
-        choice = input("Use this transcript? [Y/edit/retry/n]: ").strip().lower()
+        choice = input(
+            "Use this transcript in AURA's normal memory/provider flow? [Y/edit/retry/n]: "
+        ).strip().lower()
 
         if choice in {"", "y", "yes"}:
             return transcript
@@ -36,7 +46,7 @@ def _confirm_transcript(recognizer, transcript: str) -> str | None:
             continue
 
         if choice == "retry":
-            retry_text = recognizer.listen_once()
+            retry_text = _listen_once_or_fallback(recognizer)
             if retry_text:
                 transcript = retry_text
                 continue
@@ -58,10 +68,8 @@ def get_user_message(recognizer, mic_enabled: bool) -> str:
         if raw:
             return raw
 
-        try:
-            text = recognizer.listen_once()
-        except Exception:
-            print("AURA_MICROPHONE_UNAVAILABLE: check local audio permissions and the selected input device")
+        text = _listen_once_or_fallback(recognizer)
+        if text is None:
             typed = _ask_typed_message()
             if typed:
                 return typed
