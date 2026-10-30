@@ -204,7 +204,12 @@ class CompanionReactionEngine:
             "has_work_event_signal": has_work_event_signal,
         }
 
-    def generate_reaction(self, user_id: int) -> dict[str, Any]:
+    def generate_reaction(
+        self,
+        user_id: int,
+        *,
+        use_llm: bool | None = None,
+    ) -> dict[str, Any]:
         context = self.build_context(user_id)
         latest_user_message = self._latest_user_message(context.get("conversations", []))
         inference = self.infer_situation(context)
@@ -251,7 +256,8 @@ class CompanionReactionEngine:
 
         reasons = list(inference["reasons"])
         response = fallback_response
-        if self.use_llm:
+        use_provider = self.use_llm if use_llm is None else use_llm
+        if use_provider:
             prompt = self.prompt_builder.build_companion_prompt(user_id, inference)
             llm_response = self.llm_provider.generate(prompt)
             if llm_response:

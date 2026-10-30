@@ -77,7 +77,9 @@ def main():
                     store.expire_observations(user)
                     expire_conversations_with_cloud_cleanup(store, user)
                 if op == 'private_chat':
-                    result = generate_private_response(req.get('message'))
+                    result = generate_private_response(
+                        req.get('message'), use_llm=req.get('local_only') is not True
+                    )
                 elif op == 'readiness':
                     store.conn.execute('SELECT 1').fetchone()
                     result = {'brain': brain_readiness(), 'memory': 'available'}
@@ -344,7 +346,9 @@ def main():
                     if isinstance(observation, str) and observation.strip():
                         store.add_observation(user, event_type='ambient_context', event_summary=observation[:500], confidence=0.75, source='mac_local')
                     actions = extractor.process_user_message(user, message.strip())
-                    result = engine.generate_reaction(user)
+                    result = engine.generate_reaction(
+                        user, use_llm=req.get('local_only') is not True
+                    )
                     result['id'] = store.add_conversation(user, role='assistant', message=result['response'], emotion_tag=result['tone'])
                     rows = store.conn.execute(
                         "SELECT id, role, message, created_at FROM conversation_logs "

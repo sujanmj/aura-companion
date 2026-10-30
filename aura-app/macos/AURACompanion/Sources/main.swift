@@ -76,10 +76,12 @@ struct AURAAmbientApp: App {
     @Published private(set) var followupsEnabled = false
     @Published private(set) var followupDurationSeconds = 30
     @Published private(set) var privateRepliesEnabled = false
+    @Published private(set) var usesBuiltInLocalEngine = false
     @Published private(set) var speakRepliesEnabled = true
     @Published private(set) var isSpeaking = false
     private var conversationTurns = ConversationTurnGate()
     private var replyPrivacy = SessionReplyPrivacy()
+    private var replyEngineChoice = SessionReplyEngineChoice()
     private var sessionSpeechOutput = SessionSpeechOutput()
     private var speechPlaybackGeneration = SpeechPlaybackGeneration()
 
@@ -595,6 +597,11 @@ struct AURAAmbientApp: App {
         privateRepliesEnabled = replyPrivacy.privateRepliesEnabled
     }
 
+    func setBuiltInLocalEngineEnabled(_ enabled: Bool) {
+        replyEngineChoice.setBuiltInLocalEngine(enabled, sessionActive: isActive)
+        usesBuiltInLocalEngine = replyEngineChoice.usesBuiltInLocalEngine
+    }
+
     func setSpeakRepliesEnabled(_ enabled: Bool) {
         sessionSpeechOutput.setEnabled(enabled, sessionActive: isActive)
         speakRepliesEnabled = sessionSpeechOutput.enabled
@@ -609,6 +616,7 @@ struct AURAAmbientApp: App {
     private func sendToCompanion(_ transcript: String, generation: UInt64, turnGeneration: UInt64) async {
         guard lifecycle.contains(generation), !Task.isCancelled else { return }
         let privateMode = replyPrivacy.privateRepliesEnabled
+        let localOnly = replyEngineChoice.usesBuiltInLocalEngine
         let endpoint = AmbientReplyRequest.endpoint(privateMode: privateMode)
         guard let cookie, let url = URL(string: "http://127.0.0.1:8790\(endpoint)") else { return }
         let observation = AmbientReplyContext.observation(
@@ -624,7 +632,8 @@ struct AURAAmbientApp: App {
             request.httpBody = try JSONSerialization.data(withJSONObject: AmbientReplyRequest.payload(
                 message: transcript,
                 observation: observation,
-                privateMode: privateMode
+                privateMode: privateMode,
+                localOnly: localOnly
             ))
             request.timeoutInterval = 45
             let (data, httpResponse) = try await URLSession.shared.data(for: request)
@@ -700,6 +709,8 @@ struct AURAAmbientApp: App {
         setFollowups(false)
         replyPrivacy.reset()
         privateRepliesEnabled = replyPrivacy.privateRepliesEnabled
+        replyEngineChoice.reset()
+        usesBuiltInLocalEngine = replyEngineChoice.usesBuiltInLocalEngine
         sessionSpeechOutput.reset()
         speakRepliesEnabled = sessionSpeechOutput.enabled
         startupTimeoutTask?.cancel()
@@ -1342,7 +1353,14 @@ private struct MenuView: View {
                 set: { monitor.setPrivateRepliesEnabled($0) }
             ))
             .disabled(!monitor.isActive)
-            Text("New addressed phrases use no saved AURA memories, camera context, or saved chat history. They still go to your configured provider, which may retain requests under its policy. Pause clears this session-only choice; it cannot change requests already sent.")
+            Text("New addressed phrases use no saved AURA memories, camera context, or saved chat history. By default they still go to your configured provider, which may retain requests under its policy; use the local reply toggle below to skip it. Pause clears these session-only choices.")
+                .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Use AURA's built-in local reply engine", isOn: Binding(
+                get: { monitor.usesBuiltInLocalEngine },
+                set: { monitor.setBuiltInLocalEngineEnabled($0) }
+            ))
+            .disabled(!monitor.isActive)
+            Text("Skips the configured language model for new ambient replies. Saved conversation and memory still follow your normal storage choices and may sync if cloud sync is enabled. Pause resets this session-only choice.")
                 .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             Toggle("Speak AURA's replies", isOn: Binding(
                 get: { monitor.speakRepliesEnabled },

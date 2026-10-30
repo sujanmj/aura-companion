@@ -1002,6 +1002,26 @@ class CompanionTest(unittest.TestCase):
             self.assertIn('presentation',generate.call_args.args[0])
             self.assertTrue(store.get_memory_facts(user))
             store.close()
+
+    def test_session_local_override_skips_provider_without_changing_engine_default(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'test.db')
+            store.apply_schema()
+            user = store.get_or_create_user('Owner')
+            MemoryExtractor(store).process_user_message(
+                user, "I'm nervous about my presentation tomorrow."
+            )
+            engine = CompanionReactionEngine(store, use_llm=True)
+            with patch.object(engine.llm_provider, 'generate', return_value='A model reply.') as generate:
+                local_result = engine.generate_reaction(user, use_llm=False)
+                self.assertNotIn('LLM provider generated response', local_result['reasons'])
+                self.assertNotEqual(local_result['response'], 'A model reply.')
+                generate.assert_not_called()
+                provider_result = engine.generate_reaction(user)
+                self.assertIn('LLM provider generated response', provider_result['reasons'])
+                self.assertEqual(provider_result['response'], 'A model reply.')
+                generate.assert_called_once()
+            store.close()
     def test_sonnet_request_is_server_side(self):
         with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'test-key','ANTHROPIC_MODEL':'claude-sonnet-4-6'}):
             with patch('urllib.request.urlopen') as request:

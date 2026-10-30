@@ -660,6 +660,62 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
   }
 });
 
+test("ambient local reply choice skips the configured model while normal chat memory stays enabled", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "aura-ambient-local-reply-"));
+  const db = path.join(dir, "memory.db");
+  const modelRequests = [];
+  const model = http.createServer(async (req, res) => {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    modelRequests.push(JSON.parse(body));
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ response: "A model-backed reply." }));
+  });
+  await new Promise((resolve) => model.listen(0, "127.0.0.1", resolve));
+  const modelUrl = `http://127.0.0.1:${model.address().port}/api/generate`;
+  try {
+    await start(db, {
+      AURA_BRAIN_PROVIDER: "ollama",
+      OLLAMA_MODEL: "test-model",
+      OLLAMA_URL: modelUrl,
+    });
+    const cookie = await login();
+    assert.equal((await post("chat", {
+      message: "Use local replies for the next ambient turn.",
+      local_only: true,
+    }, cookie)).status, 400, "the session-only override is restricted to ambient and private routes");
+    assert.equal((await post("ambient", {
+      message: "I'm nervous about my presentation tomorrow. Can you help me plan?",
+      observation: "Local camera context: desk",
+      local_only: "yes",
+    }, cookie)).status, 400);
+    const localReply = await post("ambient", {
+      message: "I'm nervous about my presentation tomorrow. Can you help me plan?",
+      observation: "Local camera context: desk",
+      local_only: true,
+    }, cookie);
+    assert.equal(localReply.status, 200);
+    assert.equal((await localReply.json()).provider, "local");
+    assert.equal(modelRequests.length, 0, "a local-only reply never reaches the configured model");
+
+    const regularReply = await post("ambient", {
+      message: "I'm worried about a job interview next week. Can we talk?",
+    }, cookie);
+    assert.equal(regularReply.status, 200);
+    assert.equal((await regularReply.json()).provider, "ollama");
+    assert.equal(modelRequests.length, 1, "the per-turn choice does not mutate later requests");
+
+    const status = await (await fetch(base + "/api/status", { headers: { Cookie: cookie } })).json();
+    assert.ok(status.conversations.some((row) => row.message.includes("presentation tomorrow")));
+    assert.ok(status.conversations.some((row) => row.message === "A model-backed reply."));
+    assert.ok(status.observations.some((row) => row.event_summary.includes("Local camera context: desk")));
+  } finally {
+    await stop();
+    await new Promise((resolve) => model.close(resolve));
+    await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+});
+
 test("people memory is private and forget removes its associated timeline", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "aura-people-test-"));
   const db = path.join(dir, "memory.db");
@@ -1024,6 +1080,14 @@ test("private message uses only temporary SQLite context and never enters saved 
     assert.match(modelRequests[0].prompt, /I want a private reply about this moment only/);
     for (const sentinel of ["saved-memory-sentinel", "saved-conversation-sentinel", "saved-observation-sentinel", "saved-routine-sentinel"])
       assert.doesNotMatch(modelRequests[0].prompt, new RegExp(sentinel));
+    const localPrivate = await post("private", {
+      message: "Use the local companion engine for this private turn.",
+      consent: true,
+      local_only: true,
+    }, cookie);
+    assert.equal(localPrivate.status, 200);
+    assert.equal((await localPrivate.json()).provider, "local");
+    assert.equal(modelRequests.length, 1, "local-only private replies also bypass the configured model");
     const counts = execFileSync(pythonCommand(), ["-c", [
       "import sqlite3, sys",
       "from pathlib import Path",

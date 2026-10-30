@@ -657,6 +657,10 @@ const server = http.createServer(async (req, res) => {
         return json(res, 400, {
           error: "Message must contain 1–8000 characters",
         });
+      if (Object.hasOwn(data, "local_only") &&
+          (!["/api/ambient", "/api/private"].includes(url.pathname) ||
+           typeof data.local_only !== "boolean"))
+        return json(res, 400, { error: "Local reply choice must be a boolean on an ambient or private turn." });
       if (busy)
         return json(res, 409, { error: "AURA is finishing another request." });
       if (url.pathname === "/api/private") {
@@ -664,7 +668,10 @@ const server = http.createServer(async (req, res) => {
           return json(res, 400, { error: "Review the message and confirm this private turn." });
         busy = true;
         try {
-          return json(res, 200, await memory("private_chat", { message: data.message }));
+          return json(res, 200, await memory("private_chat", {
+            message: data.message,
+            local_only: data.local_only === true,
+          }));
         } finally { busy = false; }
       }
       if (url.pathname === "/api/shared") {
@@ -689,6 +696,7 @@ const server = http.createServer(async (req, res) => {
                 typeof data.observation === "string"
                   ? data.observation.slice(0, 500)
                   : "",
+              local_only: url.pathname === "/api/ambient" && data.local_only === true,
             }),
           );
         } finally {

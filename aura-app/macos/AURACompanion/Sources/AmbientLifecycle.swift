@@ -71,11 +71,33 @@ enum AmbientReplyRequest {
         privateMode ? "/api/private" : "/api/ambient"
     }
 
-    static func payload(message: String, observation: String, privateMode: Bool) -> [String: Any] {
+    static func payload(
+        message: String,
+        observation: String,
+        privateMode: Bool,
+        localOnly: Bool = false
+    ) -> [String: Any] {
         if privateMode {
-            return ["message": message, "consent": true]
+            var payload: [String: Any] = ["message": message, "consent": true]
+            if localOnly { payload["local_only"] = true }
+            return payload
         }
-        return ["message": message, "observation": observation]
+        var payload: [String: Any] = ["message": message, "observation": observation]
+        if localOnly { payload["local_only"] = true }
+        return payload
+    }
+}
+
+struct SessionReplyEngineChoice {
+    private(set) var usesBuiltInLocalEngine = false
+
+    mutating func setBuiltInLocalEngine(_ enabled: Bool, sessionActive: Bool) {
+        guard sessionActive else { return }
+        usesBuiltInLocalEngine = enabled
+    }
+
+    mutating func reset() {
+        usesBuiltInLocalEngine = false
     }
 }
 

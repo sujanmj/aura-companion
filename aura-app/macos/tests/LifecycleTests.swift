@@ -88,6 +88,21 @@ struct LifecycleTests {
             privateMode: false
         )
         precondition(ambientPayload["observation"] as? String == "Local camera context: cup. Person present: yes.")
+        precondition(ambientPayload["local_only"] == nil, "Existing ambient turns keep their configured provider behavior")
+        let localAmbientPayload = AmbientReplyRequest.payload(
+            message: "Hey AURA, stay on this Mac",
+            observation: "",
+            privateMode: false,
+            localOnly: true
+        )
+        precondition(localAmbientPayload["local_only"] as? Bool == true)
+        let localPrivatePayload = AmbientReplyRequest.payload(
+            message: "Keep this private and local",
+            observation: "",
+            privateMode: true,
+            localOnly: true
+        )
+        precondition(Set(localPrivatePayload.keys) == Set(["message", "consent", "local_only"]))
 
         var replyPrivacy = SessionReplyPrivacy()
         replyPrivacy.setPrivateReplies(enabled: true, sessionActive: false)
@@ -107,6 +122,14 @@ struct LifecycleTests {
         precondition(!speechOutput.enabled, "A paused toggle cannot change the previous session")
         speechOutput.reset()
         precondition(speechOutput.enabled, "The next session keeps the established speak-by-default behavior")
+
+        var replyEngine = SessionReplyEngineChoice()
+        replyEngine.setBuiltInLocalEngine(true, sessionActive: false)
+        precondition(!replyEngine.usesBuiltInLocalEngine, "The per-session provider choice cannot change while paused")
+        replyEngine.setBuiltInLocalEngine(true, sessionActive: true)
+        precondition(replyEngine.usesBuiltInLocalEngine)
+        replyEngine.reset()
+        precondition(!replyEngine.usesBuiltInLocalEngine, "Pause restores the configured provider choice for the next session")
 
         var turns = ConversationTurnGate()
         for phrase in ["I need help", "what do you think", "I talked to Aura yesterday", "aural music", ""] {
