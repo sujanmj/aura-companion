@@ -1611,7 +1611,9 @@ Added a software integration test that combines the real SQLite-backed room
 lease and reservation logic with the invited-reply gate. It transfers the lease
 between reservation and validation and confirms the old room cannot play; the
 newly invited room can play one reply, while a duplicate logical turn is
-rejected. The simulation leaves conversation history empty. Local verification
+rejected. A second path drives the simulator's real claim and validation
+clients over the authenticated loopback HTTP API before the reply gate. The
+simulation leaves conversation history empty. Local verification
 passed all 127 app Python tests, 30 Node tests, and the 24 focused room client,
 invitation, and reply-gate tests. This uses temporary databases and a fake
 playback callback; it does not test speakers, Pi hardware, acoustic handoff, or

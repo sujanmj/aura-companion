@@ -159,10 +159,12 @@ change, one request after a lost mutation response, status refresh, and safe
 rendering. The loopback API test checks that the dashboard serves this script.
 
 The SQLite-backed handoff and reply gate are also tested together in
-`aura-app/tests/test_room_handoff.py`. The simulation moves the invitation
+`aura-app/tests/test_room_handoff.py`. The simulation moves an invitation
 between claim and validation, verifies that the prior room cannot play, then
-allows one playback callback in the newly invited room and rejects a duplicate
-turn. It verifies that the reply text does not enter conversation history. This
-is software-only evidence using a fake playback callback and a temporary
-database, not a physical speaker or Pi test. Validation remains a point-in-time
-check, so real playback will still need a cancellation/fencing boundary.
+allows one callback in the newly invited room and rejects a duplicate turn. A
+second path runs the Pi simulator's real claim and validation clients over the
+authenticated loopback HTTP API before invoking the reply gate. It verifies that
+reply text does not enter conversation history. This uses a temporary database
+and a fake playback callback, not a physical speaker or Pi test. Validation
+remains a point-in-time check, so real playback will still need a
+cancellation/fencing boundary.

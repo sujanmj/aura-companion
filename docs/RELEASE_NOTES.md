@@ -718,10 +718,12 @@ on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
 
 ## Simulated invited-room reply handoff (Phase 5)
 
-The room handoff test now exercises the real SQLite lease and claim store with
-the fail-closed reply gate. It verifies that a transfer between reservation
-and validation blocks the former room, the newly invited room can play once,
-and the same logical turn cannot play twice. Local verification passed all
-127 app Python tests, 30 Node tests, and 24 focused room client, invitation,
-and reply-gate tests. Playback remains simulated; Pi, sensor, network-room,
+The room handoff tests exercise the real SQLite lease and claim store with the
+fail-closed reply gate. They verify that a transfer between reservation and
+validation blocks the former room, the newly invited room can play once, and
+the same logical turn cannot play twice. Another path drives the simulator's
+claim and validation clients through the authenticated loopback API before
+allowing a fake playback callback. Local verification passed all 127 app
+Python tests, 30 Node tests, and 24 focused room client, invitation, and
+reply-gate tests. Playback remains simulated; Pi, sensor, network-room,
 speaker, and acoustic acceptance still require physical hardware.

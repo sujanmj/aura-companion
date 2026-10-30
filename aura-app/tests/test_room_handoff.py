@@ -328,6 +328,27 @@ class RoomHandoffTests(unittest.TestCase):
                 self.assertEqual(post('claim', claim, self.tokens['bedroom'])[0], 200)
                 self.assertEqual(post('claim/validate', claim, self.tokens['bedroom'])[0], 200)
                 self.assertEqual(post('claim', claim, self.tokens['bedroom'])[0], 409)
+                reply_turn = str(uuid.uuid4())
+                played = []
+                hub_url = f'http://127.0.0.1:{server.server_port}'
+                def node_operation(client):
+                    return lambda session_id, generation, turn_id: client(
+                        session_id, generation, turn_id, hub_url,
+                        token=self.tokens['bedroom'],
+                    )
+                self.assertTrue(deliver_invited_reply(
+                    session['session_id'], 1, reply_turn, 'Loopback simulated reply.',
+                    claim=node_operation(pi_node_simulator.claim_invited_room_turn),
+                    validate=node_operation(pi_node_simulator.validate_invited_room_turn),
+                    playback=played.append,
+                ))
+                self.assertFalse(deliver_invited_reply(
+                    session['session_id'], 1, reply_turn, 'Loopback simulated reply.',
+                    claim=node_operation(pi_node_simulator.claim_invited_room_turn),
+                    validate=node_operation(pi_node_simulator.validate_invited_room_turn),
+                    playback=played.append,
+                ))
+                self.assertEqual(played, ['Loopback simulated reply.'])
                 with (
                     patch.object(room_invitation, 'load_env_file'),
                     patch('builtins.input', return_value='TRANSFER kitchen'),
