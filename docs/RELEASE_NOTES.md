@@ -1009,3 +1009,14 @@ Push digest prefixes: macOS `7b1ca335`, Ubuntu `7855aa22`, Windows `1ec7acb3`;
 PR prefixes: macOS `2315b657`, Ubuntu `58bc56ff`, Windows `b909b2b7`. This
 verifies software behavior only, not physical room, Pi, sensor, or acoustic
 acceptance.
+
+Follow-up commit `8fcb16f` adds an end-to-end regression proving that a failed
+local shared turn produces no contribution and clears the local-only and
+participant-agreement choices. The focused test and full 20-test browser suite
+pass locally. Push CI
+[41127315467](https://github.com/sujanmj/aura-companion/actions/runs/41127315467)
+and PR CI
+[41127323112](https://github.com/sujanmj/aura-companion/actions/runs/41127323112)
+passed on macOS, Windows and Ubuntu; both uploaded all three preview archives.
+Push digest prefixes: macOS `f74f6456`, Ubuntu `94f9b353`, Windows `414a019c`;
+PR prefixes: macOS `43f6d5dc`, Ubuntu `90e54fc8`, Windows `1d4284d0`.

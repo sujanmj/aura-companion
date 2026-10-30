@@ -10,6 +10,16 @@ missing prerequisite is available.
 
 These checks establish only the behavior covered by their tests:
 
+- Exact source commit `8fcb16f` adds browser coverage that a failed local shared
+  turn shows no contribution and clears both the local-only choice and fresh
+  group agreement. The focused test and all 20 browser tests pass locally. Push
+  CI [41127315467](https://github.com/sujanmj/aura-companion/actions/runs/41127315467)
+  and PR CI
+  [41127323112](https://github.com/sujanmj/aura-companion/actions/runs/41127323112)
+  passed on macOS, Windows and Ubuntu and uploaded all three previews. Push
+  digest prefixes: macOS `f74f6456`, Ubuntu `94f9b353`, Windows `414a019c`;
+  PR prefixes: macOS `43f6d5dc`, Ubuntu `90e54fc8`, Windows `1d4284d0`.
+
 - Exact source commit `6de06d2` adds a one-turn local reply option to invited
   shared conversation. Every participant still agrees to the current turn; local
   mode skips the configured provider, excludes prior shared turns from the local

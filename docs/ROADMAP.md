@@ -919,6 +919,17 @@ archives. Push digest prefixes: macOS `7b1ca335`, Ubuntu `7855aa22`, Windows
 `b909b2b7`. No physical shared-room, Pi, sensor, or acoustic acceptance is
 claimed.
 
+Follow-up exact source commit `8fcb16f` adds a browser regression for a failed
+local shared turn: the request error leaves no shared reply, and both the
+local-only choice and fresh-agreement checkbox reset before another attempt.
+The focused case and all 20 browser tests pass locally. Push CI
+[41127315467](https://github.com/sujanmj/aura-companion/actions/runs/41127315467)
+and PR CI
+[41127323112](https://github.com/sujanmj/aura-companion/actions/runs/41127323112)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+Push digest prefixes: macOS `f74f6456`, Ubuntu `94f9b353`, Windows `414a019c`;
+PR prefixes: macOS `43f6d5dc`, Ubuntu `90e54fc8`, Windows `1d4284d0`.
+
 ## 2026-10-28 continuation — observation expiry (Phases 4, 7, 8)
 
 Baseline `0a121ba9589155f8bee311d50380b817a3c2775f` was verified against
