@@ -132,8 +132,14 @@ Status: software reliability milestones implemented; hardware acceptance remains
   request omits saved-memory access and camera context and does not enter saved
   chat history. Pause, sleep or closing the window clears the choice. Native
   tests verify private routing and payload exclusions; the existing API suite
-  covers unsaved private turns. Local Mac build and native tests pass; CI and
-  live provider behavior remain pending.
+  covers unsaved private turns. Local verification passes: 28 Node tests, 94
+  Python tests, lint, native lifecycle/speech tests and an ad-hoc Mac app build.
+  CI passed on macOS, Windows and Ubuntu for the exact same source tree in push
+  run [41010752411](https://github.com/sujanmj/aura-companion/actions/runs/41010752411)
+  and pull-request run [41010757482](https://github.com/sujanmj/aura-companion/actions/runs/41010757482).
+  Both runs uploaded all three preview archives. The upload correction commit
+  `0cb28f8` has an identical tree to the locally tested feature commit. Provider
+  retention and live provider behavior remain outside this verification.
 - Fixed: AURA's spoken reply temporarily suppresses microphone transcription and
   cancels any in-flight recognition, then resumes after a quiet grace period.
   Stale speech-completion callbacks cannot reopen the microphone after a newer
