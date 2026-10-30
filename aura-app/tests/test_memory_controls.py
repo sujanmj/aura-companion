@@ -91,6 +91,29 @@ class MemoryControlsTest(unittest.TestCase):
         self.assertTrue(self.store.delete_routine_reminder(self.owner, reminder_id))
         self.assertEqual(self.store.get_routine_reminders(self.owner), [])
 
+    def test_reminder_is_not_duplicated_during_a_repeated_daylight_saving_hour(self):
+        reminder_id = self.store.add_routine_reminder(self.owner, 'Morning routine', '01:30')
+        # These instants model the repeated 01:30 when clocks fall back from UTC-4 to UTC-5.
+        first_occurrence = datetime(
+            2026, 11, 1, 1, 30, tzinfo=timezone(timedelta(hours=-4))
+        )
+        second_occurrence = datetime(
+            2026, 11, 1, 1, 30, tzinfo=timezone(timedelta(hours=-5))
+        )
+        self.assertGreater(second_occurrence.astimezone(timezone.utc),
+                           first_occurrence.astimezone(timezone.utc))
+        self.assertEqual(
+            self.store.create_due_routine_reminder(self.owner, first_occurrence)['reminder_id'],
+            reminder_id,
+        )
+        self.assertIsNone(
+            self.store.create_due_routine_reminder(self.owner, second_occurrence)
+        )
+        self.assertEqual(
+            self.store.get_routine_reminders(self.owner)[0]['last_delivered_on'],
+            '2026-11-01',
+        )
+
     def test_reminder_acknowledgement_records_seen_not_completion(self):
         reminder_id = self.store.add_routine_reminder(self.owner, 'Take medication', '20:00')
         day = datetime(2026, 10, 21, 20, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
