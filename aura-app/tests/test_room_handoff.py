@@ -58,6 +58,20 @@ class RoomHandoffTests(unittest.TestCase):
         with self.assertRaisesRegex(HandoffDenied, 'node_unavailable'):
             self.start()
 
+    def test_future_heartbeat_is_not_reported_online_or_accepted_for_handoff(self):
+        self.store.conn.execute(
+            "UPDATE sensor_nodes SET last_seen_at=datetime('now','+1 hour') WHERE node_id='bedroom'"
+        )
+        self.store.conn.commit()
+
+        node = next(
+            item for item in self.store.list_sensor_nodes(self.user)
+            if item['node_id'] == 'bedroom'
+        )
+        self.assertEqual(node['online'], 0)
+        with self.assertRaisesRegex(HandoffDenied, 'node_unavailable'):
+            self.start()
+
     def test_transfer_fences_old_node_and_deduplicates_across_rooms(self):
         session = self.start()
         sid = session['session_id']

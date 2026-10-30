@@ -33,7 +33,9 @@ class RoomHandoff:
             raise HandoffDenied('invalid_node')
         node = self.db.execute(
             """SELECT node_id FROM sensor_nodes WHERE user_id=? AND node_id=?
-               AND disabled=0 AND last_seen_at >= datetime('now', '-90 seconds')""",
+               AND disabled=0
+               AND last_seen_at >= datetime('now', '-90 seconds')
+               AND last_seen_at <= datetime('now')""",
             (user_id, node_id),
         ).fetchone()
         if not node:
