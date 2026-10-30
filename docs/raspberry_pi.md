@@ -85,18 +85,19 @@ confirmation before the existing SQLite memory/personality flow processes it.
 Raw PCM stays in memory and is not written to disk. If the user enabled a
 hosted brain earlier in the console, the approved transcript follows that
 existing provider path; otherwise the local companion engine responds. If
-device setup fails, the console falls back to typed input. This is push-to-talk only: it does not
-implement a wake word, background listening, local speech output on Pi, camera
+device setup fails, the console falls back to typed input. This is push-to-talk
+only: it does not implement a wake word, background listening, camera
 perception, or a network Pi-to-hub conversation. Automated tests use injected
 audio/model doubles and do not test microphone permissions, acoustic quality,
 or Raspberry Pi hardware.
 
 ```sh
-sudo apt install libportaudio2 python3-venv
+sudo apt install libportaudio2 espeak-ng python3-venv
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -r requirements-pi-voice.txt
 export AURA_VOSK_MODEL_PATH=/opt/aura/models/vosk-model-small-en-us
+export AURA_TTS_PROVIDER=espeak-ng
 python3 scripts/run_companion_console.py
 ```
 
@@ -105,6 +106,11 @@ put model files, recordings, transcripts, or voice credentials in Git.
 `vosk` is pinned to its available `0.3.45` release; check wheel compatibility
 and package provenance on the target OS before installing it. The software
 prototype does not establish deployment support for a specific Pi OS image.
+Set `AURA_TTS_PROVIDER=espeak-ng` only when you want local system speech;
+console voice output still requires a separate explicit Yes at startup. AURA
+passes replies to `espeak-ng` through standard input, imposes a length and time
+limit, and does not save generated audio. Automated tests replace the binary
+with a fake process; speaker hardware and voice quality remain untested.
 
 Sensor configuration must specify exact board, module, room, GPIO/ADC channel, units, calibration, and safe threshold for each sensor. A generic `gas`, `fire`, or `water` threshold is unsafe because modules use different scales and false-alarm behavior. Until each mapping is calibrated and tested against a known reference, sensor reports must be presented as advisory and must not trigger external or physical actions.
 

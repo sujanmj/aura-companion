@@ -511,8 +511,14 @@ Status: security hardening is progressing; kiosk UI, event API and simulators ex
   on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
   The follow-up CI changes add optional voice requirements to the dependency
   audit; that updated audit is awaiting this follow-up run. Wake-word and
-  background listening, Pi playback, camera and hub integration remain open;
-  no Pi hardware acceptance is claimed.
+  background listening, camera and hub integration remain open; Pi speaker
+  acceptance is outstanding. No Pi hardware acceptance is claimed.
+- Implemented software prototype: the Python console can use explicitly
+  selected `espeak-ng` for offline local replies on Linux/Pi. Reply text goes
+  over stdin rather than command arguments, and each utterance is bounded by a
+  size and timeout limit. Voice output stays behind the console's explicit
+  enable prompt; mocked tests cover success, missing binary, timeout and error
+  paths. Pi speaker playback and naturalness remain unverified.
 - Implemented: sensor and dashboard data routes fail closed unless a shared
   token of at least 32 characters is configured. Token checks use constant-time
   comparison, unauthenticated requests cannot update the service heartbeat, and

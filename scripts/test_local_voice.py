@@ -52,6 +52,15 @@ class FakeStream:
         self.closed = True
 
 
+class FakeClock:
+    def __init__(self):
+        self.current = 0.0
+
+    def __call__(self):
+        self.current += 0.4
+        return self.current
+
+
 class LocalVoiceTests(unittest.TestCase):
     def test_disabled_microphone_does_not_construct_a_recognizer(self):
         with patch("perception.local_voice.get_default_local_recognizer") as factory:
@@ -122,6 +131,33 @@ class LocalVoiceTests(unittest.TestCase):
                 recognizer.listen_once()
             self.assertTrue(streams[0].closed)
             self.assertFalse(streams[0].stopped)
+
+    def test_silence_stops_after_the_configured_bound(self):
+        with tempfile.TemporaryDirectory() as directory:
+            class SilentStream(FakeStream):
+                def start(self):
+                    self.started = True
+
+            streams = []
+
+            def stream_factory(**kwargs):
+                stream = SilentStream(kwargs.pop("callback"), **kwargs)
+                streams.append(stream)
+                return stream
+
+            speech = FakeRecognizer(result="")
+            recognizer = LocalSpeechRecognizer(
+                directory,
+                max_seconds=1,
+                model_factory=lambda _path: object(),
+                recognizer_factory=lambda *_: speech,
+                stream_factory=stream_factory,
+                clock=FakeClock(),
+            )
+            self.assertIsNone(recognizer.listen_once())
+            self.assertTrue(streams[0].stopped)
+            self.assertTrue(streams[0].closed)
+            self.assertEqual(speech.accepted_blocks, [])
 
 
 if __name__ == "__main__":

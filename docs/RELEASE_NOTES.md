@@ -20,6 +20,13 @@ push archive SHA-256 prefixes are macOS `26ee08b2`, Windows `84de1dab`, and
 Ubuntu `5d61c697`; PR prefixes are macOS `932de5d8`, Windows `413c688b`, and
 Ubuntu `ed06d217`.
 
+The console also supports optional local Linux/Pi replies through `espeak-ng`,
+selected only with `AURA_TTS_PROVIDER=espeak-ng` and the existing voice-output
+confirmation. Replies are passed over stdin with bounded length and runtime;
+the feature does not generate saved audio. Mocked process tests cover failure
+handling. No Pi speaker, voice-quality or acoustic check has been run; CI
+verification for this follow-up is pending.
+
 ## Continuous dependency advisories (Phase 12)
 
 Ubuntu CI checks the locked npm dependency tree for high-severity or greater
