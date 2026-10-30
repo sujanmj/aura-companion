@@ -660,7 +660,7 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
   }
 });
 
-test("ambient local reply choice skips the configured model while normal chat memory stays enabled", async () => {
+test("session local reply choice skips the configured model in direct and ambient chat", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "aura-ambient-local-reply-"));
   const db = path.join(dir, "memory.db");
   const modelRequests = [];
@@ -681,9 +681,16 @@ test("ambient local reply choice skips the configured model while normal chat me
     });
     const cookie = await login();
     assert.equal((await post("chat", {
-      message: "Use local replies for the next ambient turn.",
+      message: "This invalid local reply flag should be rejected.",
+      local_only: "yes",
+    }, cookie)).status, 400, "the local reply choice must be a boolean");
+    const localChat = await post("chat", {
+      message: "Use the built-in local engine for this direct conversation turn.",
       local_only: true,
-    }, cookie)).status, 400, "the session-only override is restricted to ambient and private routes");
+    }, cookie);
+    assert.equal(localChat.status, 200);
+    assert.equal((await localChat.json()).provider, "local");
+    assert.equal(modelRequests.length, 0, "a local-only direct reply never reaches the configured model");
     assert.equal((await post("ambient", {
       message: "I'm nervous about my presentation tomorrow. Can you help me plan?",
       observation: "Local camera context: desk",
@@ -698,16 +705,24 @@ test("ambient local reply choice skips the configured model while normal chat me
     assert.equal((await localReply.json()).provider, "local");
     assert.equal(modelRequests.length, 0, "a local-only reply never reaches the configured model");
 
+    const regularChat = await post("chat", {
+      message: "Use my configured model for this ordinary conversation turn.",
+    }, cookie);
+    assert.equal(regularChat.status, 200);
+    assert.equal((await regularChat.json()).provider, "ollama");
+    assert.equal(modelRequests.length, 1, "the session choice can be turned off for the next direct turn");
+
     const regularReply = await post("ambient", {
       message: "I'm worried about a job interview next week. Can we talk?",
     }, cookie);
     assert.equal(regularReply.status, 200);
     assert.equal((await regularReply.json()).provider, "ollama");
-    assert.equal(modelRequests.length, 1, "the per-turn choice does not mutate later requests");
+    assert.equal(modelRequests.length, 2, "the per-turn choice does not mutate later requests");
 
     const status = await (await fetch(base + "/api/status", { headers: { Cookie: cookie } })).json();
     assert.ok(status.conversations.some((row) => row.message.includes("presentation tomorrow")));
     assert.ok(status.conversations.some((row) => row.message === "A model-backed reply."));
+    assert.ok(status.conversations.some((row) => row.message.includes("built-in local engine for this direct conversation turn")));
     assert.ok(status.observations.some((row) => row.event_summary.includes("Local camera context: desk")));
   } finally {
     await stop();

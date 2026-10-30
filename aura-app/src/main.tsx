@@ -240,6 +240,7 @@ function App() {
     [personMemoryRetentionDays, setPersonMemoryRetentionDays] = useState("0"),
     [conversationRetentionDays, setConversationRetentionDays] = useState("0"),
     [privateQuestion, setPrivateQuestion] = useState(""),
+    [localReplyOnly, setLocalReplyOnly] = useState(false),
     [privateConsent, setPrivateConsent] = useState(false),
     [privateBusy, setPrivateBusy] = useState(false),
     [privateReply, setPrivateReply] = useState<{ response: string; provider: string } | null>(null),
@@ -425,7 +426,7 @@ function App() {
         response: string;
         id: number;
         provider: string;
-      }>("chat", { message });
+      }>("chat", { message, local_only: localReplyOnly });
       setMessages((items) => [
         ...items,
         {
@@ -732,6 +733,17 @@ function App() {
                   <h3>Our conversation</h3>
                   <span>JUST YOU & AURA</span>
                 </div>
+                <label className="session-local-toggle">
+                  <input
+                    type="checkbox"
+                    checked={localReplyOnly}
+                    onChange={(event) => setLocalReplyOnly(event.target.checked)}
+                    disabled={busy}
+                  />
+                  Use AURA’s built-in local reply engine for this session. The
+                  configured model is skipped; your normal conversation and
+                  memory are still saved under the current storage settings.
+                </label>
                 <div className="messages" role="log" aria-live="polite">
                   {messages.length === 0 ? (
                     <div className="welcome">

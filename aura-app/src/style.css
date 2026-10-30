@@ -274,6 +274,21 @@ h1 {
   letter-spacing: 1.3px;
   color: #647488;
 }
+.session-local-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 24px;
+  border-bottom: 1px solid #ffffff12;
+  color: #b6becf;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.session-local-toggle input {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
 .messages {
   flex: 1;
   overflow: auto;

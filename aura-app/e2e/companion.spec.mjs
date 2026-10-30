@@ -10,11 +10,27 @@ test("conversation, memory, feedback and disabled actions work in the browser", 
   page,
 }) => {
   await connect(page);
+  const localReply = page.getByRole("checkbox", {
+    name: /Use AURA’s built-in local reply engine for this session/,
+  });
+  await expect(localReply).not.toBeChecked();
+  const chats = [];
+  page.on("request", (req) => {
+    if (req.url().endsWith("/api/chat")) chats.push(req);
+  });
   await page
     .getByLabel("Your message")
     .fill("I am nervous about my presentation");
   await page.getByRole("button", { name: "Send ↗" }).click();
   await expect(page.locator(".message.assistant").last()).toBeVisible();
+  expect(chats).toHaveLength(1);
+  expect(chats[0].postDataJSON().local_only).toBe(false);
+  await localReply.check();
+  await page.getByLabel("Your message").fill("Use the built-in local reply for this turn");
+  await page.getByRole("button", { name: "Send ↗" }).click();
+  await expect(page.locator(".message.assistant")).toHaveCount(2);
+  await expect.poll(() => chats.length).toBe(2);
+  expect(chats[1].postDataJSON().local_only).toBe(true);
   await page
     .getByRole("button", { name: "Helpful response", exact: true })
     .last()
@@ -34,6 +50,8 @@ test("conversation, memory, feedback and disabled actions work in the browser", 
   await expect(
     page.getByRole("heading", { name: "Actions are switched off." }),
   ).toBeVisible();
+  await page.reload();
+  await expect(localReply).not.toBeChecked();
 });
 test("kiosk requires review by default and honors current auto-send consent", async ({
   page,
