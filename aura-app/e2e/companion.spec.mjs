@@ -540,11 +540,13 @@ test("all observation notes can be cleared while other memories remain", async (
   await page.getByLabel("Your message").fill("I am nervous about my presentation");
   await page.getByRole("button", { name: "Send ↗" }).click();
   await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await expect(page.locator(".presence")).toHaveAttribute("aria-busy", "false");
   await page
     .getByLabel("Your message")
     .fill("Hey AURA, remember that I left the keys by the sofa.");
   await page.getByRole("button", { name: "Send ↗" }).click();
   await expect(page.locator(".message.assistant").last()).toBeVisible();
+  await expect(page.locator(".presence")).toHaveAttribute("aria-busy", "false");
   const before = await page.evaluate(async () => (await (await fetch("/api/status")).json()));
   expect(before.observations.length).toBeGreaterThan(0);
   expect(before.facts.length).toBeGreaterThan(0);
