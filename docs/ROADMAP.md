@@ -1488,3 +1488,30 @@ and has SHA-256
 `997660d6f230a29e7a02d5dd47edacbd32070e9867c0524029966ac32b441e54`.
 It is ad-hoc signed and not notarized. This is software recovery evidence;
 home restore, cross-device privacy and hardware acceptance remain NOT RUN.
+
+## 2026-10-30 continuation — packaged legacy SQLite upgrade (Phases 6, 12)
+
+The extracted-preview smoke now launches AURA against both a clean temporary
+database and a synthetic database made from AURA's pre-weekday-reminder schema.
+It checks that the startup backup still contains the old fact and reminder,
+that the upgraded app retains the existing fact, conversation and reminder,
+and that the reminder receives the expected all-days default and empty
+acknowledgment field. It runs SQLite `quick_check` on the backup and upgraded
+database, and confirms the unauthenticated API cannot read either account's
+memory. All data is disposable; the test never opens the configured home DB.
+
+Local verification passed 109 Python app tests, 30 Node tests, 19 browser E2E
+tests, lint, production build, native Mac lifecycle tests, archive verification,
+and the extracted clean-install/legacy-upgrade smoke. `npm audit --json`
+reported zero known vulnerabilities across the resolved Node tree; `pip-audit`
+reported none for the Python requirements. Commit `75ab2e2` passed the
+three-platform push workflow
+[41040534258](https://github.com/sujanmj/aura-companion/actions/runs/41040534258)
+and matching PR workflow
+[41040541589](https://github.com/sujanmj/aura-companion/actions/runs/41040541589)
+also passed on macOS, Windows and Ubuntu; both uploaded all three preview
+archives. The local Mac archive for source commit `75ab2e2` matches its
+manifest and has SHA-256
+`885180b0d5d53b1f1c5625c350319f807d6b2554de097c7eb4fccc5473b88a6c`; it is
+ad-hoc signed, not notarized. This is simulated migration and packaging
+evidence, not an upgrade of the owner's home database or hardware acceptance.

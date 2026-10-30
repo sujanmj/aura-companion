@@ -1,5 +1,30 @@
 # AURA development preview — 2026-10-30
 
+## Existing-memory upgrade smoke (Phases 6 and 12)
+
+The extracted preview is now tested against a synthetic database created from
+AURA's schema immediately before weekday reminder scheduling was introduced.
+The check verifies that its startup backup retains the original fact and
+reminder before migration, and that startup preserves the fact, conversation
+and reminder while adding the reminder schedule and acknowledgment fields. It
+also verifies backup and upgraded-database integrity, local-only provider
+mode, disabled external actions and authentication. The test uses temporary
+files only; no configured home database is opened or changed.
+
+Local checks passed 109 Python app tests, 30 Node tests, 19 browser E2E tests,
+lint, build, native Mac lifecycle tests and the packaged clean-install/upgrade
+smoke. The Node and Python dependency audits reported no known vulnerabilities
+for the resolved trees on 2026-10-30. Commit `75ab2e2` passed all three
+platforms in push run
+[41040534258](https://github.com/sujanmj/aura-companion/actions/runs/41040534258)
+and matching PR run
+[41040541589](https://github.com/sujanmj/aura-companion/actions/runs/41040541589)
+also passed on all three platforms; both uploaded all three preview archives.
+The local Mac preview matches its embedded manifest and has
+SHA-256 `885180b0d5d53b1f1c5625c350319f807d6b2554de097c7eb4fccc5473b88a6c`.
+It is ad-hoc signed and not notarized. This software simulation does not
+establish home upgrade, Pi, multi-room, emergency or hardware acceptance.
+
 ## Read-only backup verification (Phases 4 and 12)
 
 Owners can check an existing local SQLite snapshot at any time without restoring

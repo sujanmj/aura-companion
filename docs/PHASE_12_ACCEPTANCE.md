@@ -10,6 +10,25 @@ missing prerequisite is available.
 
 These checks establish only the behavior covered by their tests:
 
+- Commit `75ab2e2` tests a packaged preview startup against disposable memory
+  from AURA's schema before weekday reminders. The test checks that a
+  pre-migration startup backup contains the original fact and reminder, then
+  verifies the upgraded app retains the fact, conversation and reminder,
+  supplies the default weekday schedule and nullable acknowledgment field, and
+  passes SQLite integrity checks on both copies. Local verification passed 109
+  Python app tests, 30 Node tests, 19 browser E2E tests, lint, build, native Mac
+  lifecycle checks and the clean-install/upgrade smoke. Push CI
+  [41040534258](https://github.com/sujanmj/aura-companion/actions/runs/41040534258)
+  passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+  Matching PR CI
+  [41040541589](https://github.com/sujanmj/aura-companion/actions/runs/41040541589)
+  also passed on all three platforms; both runs uploaded all three preview
+  archives. The local Mac archive matches the embedded manifest and has
+  SHA-256
+  `885180b0d5d53b1f1c5625c350319f807d6b2554de097c7eb4fccc5473b88a6c`; it is
+  ad-hoc signed and not notarized. This test uses temporary synthetic data and
+  does not upgrade the owner's database or pass any physical-device check.
+
 - Commit `b5bc888` adds an authenticated, read-only integrity check for an
   existing named SQLite snapshot. It refuses traversal and symlinks, returns no
   local filesystem path, and never restores or changes the active database.
