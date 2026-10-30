@@ -197,8 +197,8 @@ test("node revocation requires exact confirmation and refreshes active room stat
   assert.equal(mutation[0].init.headers["X-AURA-API-Token"], token);
   assert.match(controls["room-invitation-details"].textContent, /No active room invitation/);
   assert.equal(controls["room-revoke-node"].options.some((option) => option.value === "bedroom"), false);
-  assert.match(controls["room-invitation-status"].textContent, /No active room invitation/);
-  assert.doesNotMatch(controls["room-invitation-status"].textContent, /powered off/);
+  assert.match(controls["room-invitation-status"].textContent, /credential revoked/);
+  assert.match(controls["room-invitation-status"].textContent, /not powered off/);
 });
 
 test("lost revocation response cannot trigger an automatic retry", async () => {

@@ -209,8 +209,11 @@
     setStatus("Revoking the selected node credential…");
     makeRequest("/nodes/revoke", "POST", { node_id: nodeId }).then(function (body) {
       if (body.revoked !== true) throw new Error("The hub did not confirm node revocation.");
-      setStatus("Node credential revoked. The device itself was not powered off.");
-      return refresh();
+      return refresh().then(function () {
+        if (!needsRefresh) {
+          setStatus("Node credential revoked. The device itself was not powered off.");
+        }
+      });
     }).catch(function (error) {
       needsRefresh = true;
       setStatus(errorMessage(error));
