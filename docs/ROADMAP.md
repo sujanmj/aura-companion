@@ -785,6 +785,29 @@ macOS `79d966cf`, Windows `73bc9845`, Ubuntu `8fd6d83f`. No Pi audio,
 permission, model-quality, speaker or hardware acceptance is claimed; those
 require the user's future hardware.
 
+## 2026-10-31 continuation — optional ambient-session auto-pause (Phase 2)
+
+The Mac preview now offers an optional ambient capture limit of 15, 30 or 60
+minutes. It defaults to no limit to preserve existing behavior. The monotonic
+timer starts only after capture becomes active; at its deadline, the existing
+stop lifecycle closes capture and leaves AURA paused. Manual Pause cancels the
+pending timer, and the choice is locked while a session is active. Native tests
+cover settings bounds/defaults, exact expiry, no limit and stale-timer rejection.
+Local verification passed native lifecycle and speech tests, 34 Node tests, all
+19 browser tests, lint, TypeScript check, production build, ad-hoc Mac app
+signature checks, preview archive integrity and clean-install/legacy-database
+upgrade smoke. Exact source commit `f3c9ed5` passed three-platform push CI
+([41117041595](https://github.com/sujanmj/aura-companion/actions/runs/41117041595))
+and PR CI
+([41117048235](https://github.com/sujanmj/aura-companion/actions/runs/41117048235));
+each uploaded macOS, Windows and Ubuntu preview archives. Push digest prefixes:
+macOS `95169f08`, Windows `db482af0`, Ubuntu `b67e3bf2`; PR prefixes: macOS
+`e3be89e4`, Windows `4058e479`, Ubuntu `4d185216`. The exact-head Mac archive
+SHA-256 is
+`bf0bd26e1adcc94d0976878315136b48b6e3296a66b77479008dad6e6d4ee56b`; it is
+ad-hoc signed and not notarized. This does not establish real permission,
+long-duration, acoustic or hardware acceptance.
+
 ## 2026-10-28 continuation — observation expiry (Phases 4, 7, 8)
 
 Baseline `0a121ba9589155f8bee311d50380b817a3c2775f` was verified against

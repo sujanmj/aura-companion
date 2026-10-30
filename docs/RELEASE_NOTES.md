@@ -1,5 +1,30 @@
 # AURA development preview — 2026-10-31
 
+## Optional ambient-session auto-pause (Phase 2)
+
+Mac ambient mode now offers an optional 15, 30 or 60-minute capture limit. It
+defaults to no limit, preserving existing behavior. The timer begins only after
+the microphone and selected camera mode are live; reaching the limit closes
+capture and leaves AURA paused. Manual Pause invalidates the timer, and the
+setting can only be changed while capture is stopped.
+
+Native tests cover saved-setting defaults and bounds, the exact expiry boundary,
+manual cancellation and the no-limit option. Local verification passed the
+native lifecycle and speech tests, 34 Node tests, all 19 browser tests, lint,
+TypeScript checking, production build, Mac app signature verification, preview
+archive integrity and clean-install/legacy-database upgrade smoke tests. Exact
+source commit `f3c9ed5` passed push CI
+[41117041595](https://github.com/sujanmj/aura-companion/actions/runs/41117041595)
+and pull-request CI
+[41117048235](https://github.com/sujanmj/aura-companion/actions/runs/41117048235)
+on macOS, Windows and Ubuntu. Both runs uploaded all three preview archives.
+Push digest prefixes: macOS `95169f08`, Windows `db482af0`, Ubuntu `b67e3bf2`;
+pull-request prefixes: macOS `e3be89e4`, Windows `4058e479`, Ubuntu `4d185216`.
+The exact-head local Mac archive SHA-256 is
+`bf0bd26e1adcc94d0976878315136b48b6e3296a66b77479008dad6e6d4ee56b`. It is
+ad-hoc signed and not notarized. This does not verify live permission prompts,
+long-duration capture, acoustic behavior or physical hardware.
+
 ## Pi voice software preflight (Phase 5)
 
 Added an offline readiness command for the optional Pi push-to-talk software.
