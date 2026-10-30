@@ -10,6 +10,60 @@ missing prerequisite is available.
 
 These checks establish only the behavior covered by their tests:
 
+- Exact source commit `6de06d2` adds a one-turn local reply option to invited
+  shared conversation. Every participant still agrees to the current turn; local
+  mode skips the configured provider, excludes prior shared turns from the local
+  request, remains off by default, resets after the reply, and does not persist
+  shared content. Local verification passed 134 app Python tests, 35 Node tests,
+  all 19 browser E2E tests, native Mac lifecycle checks, typecheck, lint and
+  production build. The Mac preview archive SHA-256 is
+  `d39aa450e0035733b58f0a77b78c1bd39edd374a1e2f9038b98807dd7a094afa`; it is
+  ad-hoc signed and not notarized. Push CI
+  [41125878158](https://github.com/sujanmj/aura-companion/actions/runs/41125878158)
+  and PR CI
+  [41125884326](https://github.com/sujanmj/aura-companion/actions/runs/41125884326)
+  passed on macOS, Windows and Ubuntu; both uploaded all three preview
+  archives. Push artifact digest prefixes: macOS `7b1ca335`, Ubuntu
+  `7855aa22`, Windows `1ec7acb3`; PR prefixes: macOS `2315b657`, Ubuntu
+  `58bc56ff`, Windows `b909b2b7`. This is not physical room, Pi, sensor, or
+  acoustic acceptance.
+
+- Exact source commit `78f8145` adds an explicit one-turn local-engine option
+  to the unsaved private-question flow. It skips the configured model, remains
+  off by default, resets after the reply, and does not change the private
+  turn's existing memory-isolation behavior. Local verification passed 132 app
+  Python tests, 35 Node tests, all 19 browser E2E tests, typecheck, lint and
+  production build. PR CI
+  [41124019452](https://github.com/sujanmj/aura-companion/actions/runs/41124019452)
+  passed on macOS, Windows and Ubuntu and uploaded all three preview archives
+  (digest prefixes: macOS `60638525`, Windows `5a679382`, Ubuntu `05c56183`).
+  Push CI
+  [41124012944](https://github.com/sujanmj/aura-companion/actions/runs/41124012944)
+  also passed on all three platforms and uploaded all three preview archives
+  (digest prefixes: macOS `b2a2721f`, Windows `bf11e663`, Ubuntu `7bcce959`).
+  The exact-head Mac preview ZIP SHA-256 is
+  `6cb42de000ff1c0de6be2dd0c67147518fe1b71a44dd4e74ab6f7132f1e408cc`; it is
+  ad-hoc signed and not notarized. No physical permission, acoustic, Pi,
+  multi-room or home acceptance is established.
+
+- Exact source commit `63c670c` adds the session-only local reply option to the
+  main web conversation and prevents a stale reminder refresh from replacing a
+  newer action notice. The local-only direct turn skips the configured model
+  while keeping normal saved-memory behavior; the browser test delays the older
+  response to exercise the notice race. Local verification passed 132 app
+  Python tests, 35 Node tests, all 19 browser E2E tests, native lifecycle/speech
+  tests, typecheck, lint and production build. Push CI
+  [41122204230](https://github.com/sujanmj/aura-companion/actions/runs/41122204230)
+  and PR CI
+  [41122214370](https://github.com/sujanmj/aura-companion/actions/runs/41122214370)
+  passed on macOS, Windows and Ubuntu; each uploaded three preview archives.
+  Push artifact digest prefixes: macOS `0d145561`, Windows `a69ba6eb`, Ubuntu
+  `38a5af01`; PR prefixes: macOS `aba1f9da`, Windows `43960fb3`, Ubuntu
+  `fd0ed3aa`. The exact-head Mac archive SHA-256 is
+  `1d7bf44ee6f6db79d2ce941d82f25fa688a88f4192ef2bd3300ed4a242a4233f`; its
+  signature is ad-hoc and it is not notarized. Sensor permissions, home
+  hardware, acoustic behavior, and physical acceptance remain unverified.
+
 - Commit `811332a` adds continuous Node and Python dependency advisory checks to
   Ubuntu CI. The npm audit blocks high-severity advisories; `pip-audit` 2.10.1
   examines `requirements.txt` from an isolated temporary environment. Both

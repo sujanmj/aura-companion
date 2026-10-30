@@ -834,6 +834,91 @@ archive SHA-256 is
 `c9f66cc41c0041b817f382cf4922bfe37f97d07f752b238a076e7d14dff0cc7b`; it is
 ad-hoc signed and not notarized. No home hardware acceptance is claimed.
 
+## 2026-10-31 continuation — session-only local replies in direct chat (Phases 2, 4)
+
+The main web conversation now offers a session-only switch for AURA's built-in
+local reply engine. While enabled, direct chat skips the configured language
+model and keeps the existing SQLite memory, saved conversation and configured
+storage behavior. It is off by default and resets on page reload. The control
+explains that it does not change the existing storage or optional cloud-sync
+settings.
+
+An authenticated loopback integration test drives local and normal direct
+turns against a fake Ollama endpoint, verifies the local turn makes no model
+request, the ordinary turn still calls the configured provider, and saved
+conversation continues. Browser E2E tests cover default-off, request payload and
+session reset. Local verification passed 132 Python tests, 35 Node tests, all
+19 browser tests, native lifecycle/speech tests, typechecking, lint and
+production build. Source commit `0ed1b27` passed push CI on macOS, Windows and
+Ubuntu ([41120619773](https://github.com/sujanmj/aura-companion/actions/runs/41120619773))
+and uploaded all three preview archives. Its PR run
+([41120627219](https://github.com/sujanmj/aura-companion/actions/runs/41120627219))
+found a Windows-only stale reminder notice in an existing E2E test; 18 of 19
+browser tests passed. Follow-up commit `63c670c` guards against stale action
+notices and adds a controlled delayed-refresh regression. Focused and full
+browser suites pass locally. Follow-up push CI
+([41122204230](https://github.com/sujanmj/aura-companion/actions/runs/41122204230))
+and PR CI
+([41122214370](https://github.com/sujanmj/aura-companion/actions/runs/41122214370))
+passed on macOS, Windows and Ubuntu; both runs uploaded all three preview
+archives. Push digest prefixes: macOS `0d145561`, Windows `a69ba6eb`, Ubuntu
+`38a5af01`; PR prefixes: macOS `aba1f9da`, Windows `43960fb3`, Ubuntu
+`fd0ed3aa`. The exact-head local Mac archive for `63c670c` has SHA-256
+`1d7bf44ee6f6db79d2ce941d82f25fa688a88f4192ef2bd3300ed4a242a4233f`; it is
+ad-hoc signed and not notarized. No hardware or real permission acceptance is
+claimed.
+
+## 2026-10-31 continuation — one-turn local private reply (Phases 2, 4)
+
+The unsaved private-question panel now offers a one-turn choice to use AURA's
+built-in local reply engine and skip the configured model. It is off by default
+and clears after a reply. Private turns still use only a fresh temporary
+in-memory store, do not read or write saved conversation or personal memory,
+and remain in the browser only until cleared or closed.
+
+The browser test verifies default-off, request payload and reset after the
+reply; the authenticated server integration test verifies no model request or
+persistent-memory change in local-only private mode. Local verification passed
+132 Python tests, 35 Node tests, all 19 browser tests, typechecking, lint and
+production build. Exact source commit `78f8145` passed PR CI on macOS, Windows
+and Ubuntu
+([41124019452](https://github.com/sujanmj/aura-companion/actions/runs/41124019452)),
+which uploaded all three preview archives with digest prefixes macOS
+`60638525`, Windows `5a679382`, Ubuntu `05c56183`. Push CI
+([41124012944](https://github.com/sujanmj/aura-companion/actions/runs/41124012944))
+also passed on all three platforms and uploaded all three previews (prefixes:
+macOS `b2a2721f`, Windows `bf11e663`, Ubuntu `7bcce959`).
+Its exact-head local Mac archive SHA-256 is
+`6cb42de000ff1c0de6be2dd0c67147518fe1b71a44dd4e74ab6f7132f1e408cc`; it is
+ad-hoc signed and not notarized. This is software evidence only; no physical
+permission or home-hardware acceptance is claimed.
+
+## 2026-10-31 continuation — local replies in invited shared chat (Phase 10)
+
+An invited shared conversation now has an optional one-turn local reply choice.
+It is off by default, requires the same fresh agreement from every participant,
+and sends only the current reviewed question to AURA's built-in reply engine.
+The hosted provider is skipped, prior group turns are excluded from the local
+request, and no shared turn is saved. The choice resets after each reply. The
+existing provider route remains available when local mode is not selected.
+
+An authenticated loopback integration test verifies the local route avoids the
+configured provider and leaves shared history unchanged; browser E2E checks the
+default, empty local history, per-turn reset, and normal provider-backed follow-
+up. Local verification passed 134 Python tests, 35 Node tests, 19 browser
+tests, typechecking, lint, production build and native Mac lifecycle checks.
+Exact source commit `6de06d2` has a locally verified Mac preview archive with
+SHA-256 `d39aa450e0035733b58f0a77b78c1bd39edd374a1e2f9038b98807dd7a094afa`;
+it is ad-hoc signed, not notarized. Push CI
+[41125878158](https://github.com/sujanmj/aura-companion/actions/runs/41125878158)
+and PR CI
+[41125884326](https://github.com/sujanmj/aura-companion/actions/runs/41125884326)
+passed on macOS, Windows and Ubuntu; both uploaded all three preview
+archives. Push digest prefixes: macOS `7b1ca335`, Ubuntu `7855aa22`, Windows
+`1ec7acb3`; PR prefixes: macOS `2315b657`, Ubuntu `58bc56ff`, Windows
+`b909b2b7`. No physical shared-room, Pi, sensor, or acoustic acceptance is
+claimed.
+
 ## 2026-10-28 continuation — observation expiry (Phases 4, 7, 8)
 
 Baseline `0a121ba9589155f8bee311d50380b817a3c2775f` was verified against

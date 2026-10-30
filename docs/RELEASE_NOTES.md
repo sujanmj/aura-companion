@@ -1,5 +1,65 @@
 # AURA development preview — 2026-10-31
 
+## Session-only local replies in direct chat (Phases 2, 4)
+
+The web conversation now has a session-only switch for AURA's built-in local
+reply engine. When enabled, direct turns skip the configured language model
+while retaining normal conversation, memory, and storage behavior. The switch
+starts off and is not persisted after the page session. The UI states that local
+reply selection does not change memory or cloud-sync settings.
+
+An authenticated loopback integration test verifies that a local direct turn
+sends no request to a fake Ollama endpoint, that the ordinary direct turn uses
+the configured model, that the ambient override remains supported, and that
+normal saved conversation behavior continues. Browser E2E coverage checks the
+default-off state, outgoing choice and reset after reload. Local verification
+passed 132 Python tests, 35 Node tests, all 19 browser tests, native lifecycle
+and speech checks, TypeScript checking, lint and production build. Source commit
+`0ed1b27` passed push CI on macOS, Windows and Ubuntu in
+[41120619773](https://github.com/sujanmj/aura-companion/actions/runs/41120619773),
+with all three preview archives uploaded. Its matching PR run
+[41120627219](https://github.com/sujanmj/aura-companion/actions/runs/41120627219)
+found a Windows-only stale reminder notice in an existing browser test (18 of
+19 browser tests passed). Follow-up commit `63c670c` prevents an older
+acknowledgment refresh from replacing a newer action notice and adds a delayed-
+refresh regression test. The focused test and full 19-test browser suite pass
+locally. Follow-up push CI
+[41122204230](https://github.com/sujanmj/aura-companion/actions/runs/41122204230)
+and PR CI
+[41122214370](https://github.com/sujanmj/aura-companion/actions/runs/41122214370)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+Push artifact SHA-256 prefixes: macOS `0d145561`, Windows `a69ba6eb`, Ubuntu
+`38a5af01`. PR prefixes: macOS `aba1f9da`, Windows `43960fb3`, Ubuntu
+`fd0ed3aa`. The exact-head local Mac archive for `63c670c` has SHA-256
+`1d7bf44ee6f6db79d2ce941d82f25fa688a88f4192ef2bd3300ed4a242a4233f`; its
+native signature is ad-hoc and it is not notarized. No sensor permissions or
+home hardware acceptance are claimed.
+
+## One-turn local private reply (Phases 2, 4)
+
+The private-question panel now lets the owner use AURA's built-in reply engine
+for that unsaved turn, skipping the configured hosted model. The choice is
+off by default and resets after the reply. Private turns still use only their
+own temporary in-memory context, do not read or write saved conversations or
+memories, and remain visible only until cleared or the page closes.
+
+Browser coverage checks the default-off state, submitted local-only flag,
+one-turn reset, and unchanged conversation history. The existing authenticated
+server integration test verifies a local private turn makes no model request
+and leaves persistent data untouched. Local verification passed 132 Python
+tests, 35 Node tests, all 19 browser tests, typecheck, lint and production
+build. Exact source commit `78f8145` passed PR CI on macOS, Windows and Ubuntu
+in [41124019452](https://github.com/sujanmj/aura-companion/actions/runs/41124019452),
+which uploaded all three preview archives. PR digest prefixes: macOS
+`60638525`, Windows `5a679382`, Ubuntu `05c56183`.
+Push CI
+[41124012944](https://github.com/sujanmj/aura-companion/actions/runs/41124012944)
+also passed on all three platforms and uploaded all three archives; digest
+prefixes: macOS `b2a2721f`, Windows `bf11e663`, Ubuntu `7bcce959`.
+The exact-head local Mac preview archive SHA-256 is
+`6cb42de000ff1c0de6be2dd0c67147518fe1b71a44dd4e74ab6f7132f1e408cc`. It is
+ad-hoc signed, not notarized, and makes no hardware-acceptance claim.
+
 ## Session-only built-in local reply engine (Phases 2, 4)
 
 Mac ambient mode now lets the owner bypass the configured language model for
@@ -928,3 +988,24 @@ and PR CI
 [41088496958](https://github.com/sujanmj/aura-companion/actions/runs/41088496958)
 on macOS, Windows and Ubuntu; both runs uploaded previews for all three
 platforms.
+
+## Invited shared conversation local reply
+
+Commit `6de06d2` adds an optional one-turn local reply choice to invited shared
+conversation. It remains off by default; each participant must agree to the
+current turn, the local engine receives only the current reviewed question,
+the configured provider is skipped, prior group turns are excluded, and the
+conversation remains unsaved. The choice resets after each reply. Local
+verification passed 134 Python tests, 35 Node tests, all 19 browser E2E tests,
+native Mac lifecycle checks, typecheck, lint and production build. The exact-
+head Mac preview archive SHA-256 is
+`d39aa450e0035733b58f0a77b78c1bd39edd374a1e2f9038b98807dd7a094afa`; it is
+ad-hoc signed and not notarized. Push CI
+[41125878158](https://github.com/sujanmj/aura-companion/actions/runs/41125878158)
+and PR CI
+[41125884326](https://github.com/sujanmj/aura-companion/actions/runs/41125884326)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+Push digest prefixes: macOS `7b1ca335`, Ubuntu `7855aa22`, Windows `1ec7acb3`;
+PR prefixes: macOS `2315b657`, Ubuntu `58bc56ff`, Windows `b909b2b7`. This
+verifies software behavior only, not physical room, Pi, sensor, or acoustic
+acceptance.
