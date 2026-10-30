@@ -796,3 +796,16 @@ on macOS, Windows and Ubuntu, uploading all three preview archives in each
 run. Validation is still only a point-in-time fence; cancellation and fencing
 at a real playback boundary remain required. Raspberry Pi installation,
 physical speaker playback, and room-to-room acceptance are not claimed.
+
+## 2026-10-30 continuation — consented person memory notes
+
+The Memory screen can now save a short user-entered event note under a person
+whose name is already recorded with consent. Saving also requires a separate
+per-note permission confirmation. Notes stay in local SQLite, appear in memory
+export, can be deleted individually, and are removed when the person is
+forgotten. Prompt recall includes a note only when the user explicitly mentions
+that person's name; notes are labeled unverified and never come from face or
+identity inference. Local verification passed: all 116 Python tests, all 30
+Node tests, all 19 browser E2E tests, lint, and production build. Cross-platform
+CI is pending. This does not establish third-party consent beyond the user's
+confirmation, camera identification, or hardware behavior.

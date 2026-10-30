@@ -1275,13 +1275,58 @@ class AuraMemoryStore:
         self.conn.commit()
         return int(cur.lastrowid)
 
+    def add_person_memory_note(
+        self,
+        user_id: int,
+        person_id: int,
+        note: str,
+        consent_confirmed: bool,
+    ) -> int:
+        """Save an explicitly consented user note for an enrolled person."""
+        if type(person_id) is not int or person_id <= 0:
+            raise ValueError("Invalid person")
+        if type(consent_confirmed) is not bool or not consent_confirmed:
+            raise ValueError("Consent confirmation is required")
+        if not isinstance(note, str) or not 1 <= len(note.strip()) <= 500:
+            raise ValueError("Person memory note must contain 1–500 characters")
+        person = self.conn.execute(
+            "SELECT id FROM known_people WHERE id=? AND user_id=? AND consent_to_remember=1",
+            (person_id, user_id),
+        ).fetchone()
+        if not person:
+            raise ValueError("Consented person not found")
+        cur = self.conn.execute(
+            """INSERT INTO person_events (
+                   user_id, person_id, event_type, event_summary, source, confidence
+               ) VALUES (?, ?, 'user_memory_note', ?, 'user_explicit', 1.0)""",
+            (user_id, person_id, note.strip()),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def delete_person_memory_note(self, user_id: int, event_id: int) -> bool:
+        if type(event_id) is not int or event_id <= 0:
+            return False
+        cur = self.conn.execute(
+            """DELETE FROM person_events
+               WHERE id=? AND user_id=? AND event_type='user_memory_note'
+                 AND source='user_explicit'""",
+            (event_id, user_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
     def get_recent_person_events(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
         cur = self.conn.execute(
             """
-            SELECT id, person_id, event_type, event_summary, source, room, confidence, created_at
-            FROM person_events
-            WHERE user_id = ?
-            ORDER BY id DESC
+            SELECT event.id, event.person_id, person.display_name,
+                   person.consent_to_remember, event.event_type, event.event_summary,
+                   event.source, event.room, event.confidence, event.created_at
+            FROM person_events AS event
+            LEFT JOIN known_people AS person
+              ON person.id=event.person_id AND person.user_id=event.user_id
+            WHERE event.user_id = ?
+            ORDER BY event.id DESC
             LIMIT ?
             """,
             (user_id, limit),

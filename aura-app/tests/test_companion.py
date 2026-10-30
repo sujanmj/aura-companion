@@ -231,6 +231,34 @@ class CompanionTest(unittest.TestCase):
             self.assertNotIn('User usually eats dinner around eight.', prompt)
             store.close()
 
+    def test_contributed_person_memory_is_recalled_only_when_name_is_mentioned(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = AuraMemoryStore(Path(folder) / 'memory.db')
+            store.apply_schema()
+            owner = store.get_or_create_user('Owner')
+            person_id = store.add_known_person(
+                owner, 'Taylor', relation='friend', consent_to_remember=True
+            )
+            store.add_person_memory_note(
+                owner, person_id, 'We visited the science museum together.', True
+            )
+
+            store.add_conversation(owner, 'user', 'What did Taylor and I do recently?')
+            relevant = PromptBuilder(store).build_companion_prompt(
+                owner, {'situation': 'The user asks about Taylor.'}
+            )
+            self.assertIn('Relevant user-entered memories about consented people', relevant)
+            self.assertIn('We visited the science museum together.', relevant)
+            self.assertIn('unverified notes, not camera identification', relevant)
+
+            store.clear_conversation_history(owner)
+            store.add_conversation(owner, 'user', 'How was my weekend?')
+            unrelated = PromptBuilder(store).build_companion_prompt(
+                owner, {'situation': 'The user asks an unrelated question.'}
+            )
+            self.assertNotIn('We visited the science museum together.', unrelated)
+            store.close()
+
     def test_only_explicitly_consented_and_named_people_enter_prompt_context(self):
         with tempfile.TemporaryDirectory() as folder:
             store = AuraMemoryStore(Path(folder) / 'test.db')
