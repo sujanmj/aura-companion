@@ -1688,3 +1688,17 @@ archives. Push artifact digest prefixes: macOS `c124c179`, Windows `05685f85`,
 Ubuntu `150db30f`; PR prefixes: macOS `40e6002a`, Windows `dd91fda8`, Ubuntu
 `8947b1b4`. This does not establish microphone permissions, speech quality or
 Pi hardware acceptance.
+
+## 2026-10-30 continuation — one-turn private console mode (Phases 4, 5)
+
+The Python console accepts `/private` to route the next typed or user-reviewed
+voice message through a fresh in-memory SQLite store. Only that one message is
+available to the reply engine; the saved database, memory extraction, camera
+observation, feedback and chat history are skipped. The mode clears before
+reply generation, and `/cancel-private` cancels it. Voice confirmation repeats
+that the saved-memory path is skipped and that a selected hosted provider may
+still receive the text. The user-selected local/cloud brain setting applies;
+private messages are never sent to a provider if local-only mode was selected.
+Focused store-isolation and transcript-boundary tests pass locally; full app
+tests and cross-platform CI are pending. This does not establish live-provider
+retention behavior or Raspberry Pi acceptance.

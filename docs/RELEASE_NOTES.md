@@ -17,6 +17,18 @@ and PR CI
 passed on macOS, Windows and Ubuntu, and both runs uploaded all three preview
 archives. This does not claim microphone, acoustic or Raspberry Pi acceptance.
 
+## One-turn private console mode (Phases 4 and 5)
+
+Use `/private` to make one typed or reviewed voice request without retrieving
+or changing saved memories, observations or chat history. The private reply
+uses a fresh in-memory SQLite database, skips camera observations and feedback,
+and is spoken only when voice output was separately enabled. The console uses
+the owner's already selected local/cloud brain setting; a hosted provider may
+receive the text and apply its own retention policy. `/cancel-private` cancels
+the armed turn. New store-isolation and transcript-disclosure regression tests
+are included; cross-platform CI is pending. No Pi or live-provider acceptance
+is claimed.
+
 ## Optional local push-to-talk speech on Pi and Linux (Phase 5)
 
 The Python companion console can use Vosk with a manually installed local model

@@ -7,6 +7,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from companion.memory_extractor import MemoryExtractor
 from companion.people_registry import PeopleRegistry
+from companion.private_session import generate_private_response
 from companion.reaction_engine import CompanionReactionEngine
 from config.env_loader import load_env_file
 from devices.event_bus import DeviceEventBus
@@ -29,12 +30,17 @@ def _listen_once_or_fallback(recognizer) -> str | None:
         return None
 
 
-def _confirm_transcript(recognizer, transcript: str) -> str | None:
+def _confirm_transcript(recognizer, transcript: str, *, private_turn: bool = False) -> str | None:
     while True:
         print(f"You said: {transcript}")
-        choice = input(
-            "Use this transcript in AURA's normal memory/provider flow? [Y/edit/retry/n]: "
-        ).strip().lower()
+        if private_turn:
+            prompt = (
+                "Use this transcript for the one-time private turn? It won't use or save AURA memory; "
+                "the selected provider may receive it. [Y/edit/retry/n]: "
+            )
+        else:
+            prompt = "Use this transcript in AURA's normal memory/provider flow? [Y/edit/retry/n]: "
+        choice = input(prompt).strip().lower()
 
         if choice in {"", "y", "yes"}:
             return transcript
@@ -59,7 +65,7 @@ def _confirm_transcript(recognizer, transcript: str) -> str | None:
             return typed if typed else None
 
 
-def get_user_message(recognizer, mic_enabled: bool) -> str:
+def get_user_message(recognizer, mic_enabled: bool, *, private_turn: bool = False) -> str:
     if not mic_enabled or recognizer is None:
         return _ask_typed_message()
 
@@ -81,7 +87,7 @@ def get_user_message(recognizer, mic_enabled: bool) -> str:
                 return typed
             continue
 
-        confirmed = _confirm_transcript(recognizer, text)
+        confirmed = _confirm_transcript(recognizer, text, private_turn=private_turn)
         if confirmed:
             return confirmed
 
@@ -298,12 +304,39 @@ def main(enable_microphone: bool | None = None) -> None:
 
     print("AURA_COMPANION_CONSOLE_READY")
     print("Type 'exit' to stop.")
-    print("Commands: /people, /introduce, /unknown-person")
+    print("Commands: /people, /introduce, /unknown-person, /private")
 
+    private_next_turn = False
     while True:
-        message = get_user_message(recognizer, mic_enabled)
+        message = get_user_message(recognizer, mic_enabled, private_turn=private_next_turn)
         if message.lower() == "exit":
             break
+
+        if not private_next_turn and message.strip().lower() == "/private":
+            private_next_turn = True
+            print(
+                "AURA_PRIVATE_TURN_ARMED: the next message will use no saved memories, "
+                "camera observation, chat history, or feedback. The selected brain provider "
+                "may receive the message under its own retention policy. Type /cancel-private "
+                "at the next prompt to cancel."
+            )
+            continue
+
+        if private_next_turn:
+            private_next_turn = False
+            if message.strip().lower() == "/cancel-private":
+                print("Private turn cancelled.")
+                continue
+            if not message.strip():
+                print("Private turn cancelled because no message was entered.")
+                continue
+            result = generate_private_response(message, use_llm=use_brain)
+            response = result["response"]
+            print("\nAURA (private turn; not saved):")
+            print(response)
+            if voice_enabled:
+                speaker.speak(response)
+            continue
 
         command = message.strip().lower()
         if command == "/people":

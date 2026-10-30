@@ -97,6 +97,20 @@ perception, or a network Pi-to-hub conversation. Automated tests use injected
 audio/model doubles and do not test microphone permissions, acoustic quality,
 or Raspberry Pi hardware.
 
+### One-turn private console conversation
+
+Enter `/private` at the message prompt to make the next typed or reviewed voice
+message a private turn. AURA uses a fresh in-memory SQLite store containing
+only that message; it skips the saved conversation, memory extractor, camera
+observation, routine/feedback writes, and persistent SQLite database. AURA
+clears the one-turn setting before generating the reply, and `/cancel-private`
+cancels it. If the owner selected a hosted brain at startup, the private text
+still goes to that provider and follows its retention policy; the confirmation
+repeats this boundary for voice input. AURA displays the reply in the console,
+never saves it, and speaks it only if voice output was separately enabled.
+This mode has automated
+store-isolation tests but no live-provider or Pi acceptance.
+
 ```sh
 sudo apt install libportaudio2 espeak-ng python3-venv
 python3 -m venv .venv

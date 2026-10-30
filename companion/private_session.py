@@ -5,7 +5,7 @@ from memory.sqlite_store import AuraMemoryStore
 from companion.reaction_engine import CompanionReactionEngine
 
 
-def generate_private_response(message: str) -> dict:
+def generate_private_response(message: str, *, use_llm: bool = True) -> dict:
     if not isinstance(message, str) or not message.strip() or len(message) > 8000:
         raise ValueError("Invalid private message")
 
@@ -14,7 +14,7 @@ def generate_private_response(message: str) -> dict:
         private_store.apply_schema()
         user = private_store.get_or_create_user("Private turn")
         private_store.add_conversation(user, "user", message.strip())
-        result = CompanionReactionEngine(private_store, use_llm=True).generate_reaction(user)
+        result = CompanionReactionEngine(private_store, use_llm=use_llm).generate_reaction(user)
         provider_used = "LLM provider generated response" in result["reasons"]
         return {
             "response": result["response"],

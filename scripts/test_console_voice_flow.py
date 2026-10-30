@@ -38,6 +38,18 @@ class ConsoleVoiceFlowTests(unittest.TestCase):
         with patch("builtins.input", side_effect=["retry", "typed fallback"]):
             self.assertEqual(_confirm_transcript(SilentRecognizer(), "first transcript"), "typed fallback")
 
+    def test_private_transcript_confirmation_explains_memory_and_provider_boundary(self):
+        with patch("builtins.input", return_value="yes") as prompt:
+            self.assertEqual(
+                _confirm_transcript(BrokenRecognizer(), "private request", private_turn=True),
+                "private request",
+            )
+
+        confirmation = prompt.call_args.args[0]
+        self.assertIn("one-time private turn", confirmation)
+        self.assertIn("won't use or save AURA memory", confirmation)
+        self.assertIn("selected provider may receive it", confirmation)
+
 
 if __name__ == "__main__":
     unittest.main()
