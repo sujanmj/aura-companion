@@ -240,6 +240,7 @@ function App() {
     [personMemoryRetentionDays, setPersonMemoryRetentionDays] = useState("0"),
     [conversationRetentionDays, setConversationRetentionDays] = useState("0"),
     [privateQuestion, setPrivateQuestion] = useState(""),
+    [privateLocalReplyOnly, setPrivateLocalReplyOnly] = useState(false),
     [localReplyOnly, setLocalReplyOnly] = useState(false),
     [privateConsent, setPrivateConsent] = useState(false),
     [privateBusy, setPrivateBusy] = useState(false),
@@ -689,24 +690,25 @@ function App() {
                 <OnlineLookup provider={status.provider} />
                 <details className="memory-review" name="conversation-extras">
                   <summary>Ask one private question without saved memories</summary>
-                  <p>This turn uses only this message and a temporary in-memory session. AURA will not read or write your saved conversations, facts, observations, routines, backups or cloud history. The message and reply stay in this browser view until you clear them or close/refresh the tab. The selected provider is {status.provider}; a non-local provider receives this message and may process or retain it under its own policy. No tools, microphone, camera or online lookup are started.</p>
+                  <p>This turn uses only this message and a temporary in-memory session. AURA will not read or write your saved conversations, facts, observations, routines, backups or cloud history. The message and reply stay in this browser view until you clear them or close/refresh the tab. If you use the configured provider ({status.provider}), a non-local provider receives this message and may process or retain it under its own policy. Choose the built-in local engine below to skip that provider for this turn. No tools, microphone, camera or online lookup are started.</p>
                   <form onSubmit={async event => {
                     event.preventDefault();
                     if (!privateConsent || privateBusy) return;
                     setPrivateBusy(true);
                     setPrivateReply(null);
                     try {
-                      const reply = await api<{ response: string; provider: string }>("private", { message: privateQuestion, consent: true });
+                      const reply = await api<{ response: string; provider: string }>("private", { message: privateQuestion, consent: true, local_only: privateLocalReplyOnly });
                       setPrivateReply(reply);
                     } catch (e) { setError(String(e)); }
-                    finally { setPrivateBusy(false); setPrivateConsent(false); }
+                    finally { setPrivateBusy(false); setPrivateConsent(false); setPrivateLocalReplyOnly(false); }
                   }}>
                     <label htmlFor="private-question">One reviewed message</label>
                     <textarea id="private-question" maxLength={8000} value={privateQuestion} onChange={event => { setPrivateQuestion(event.target.value); setPrivateConsent(false); }} disabled={privateBusy} required />
+                    <label><input type="checkbox" checked={privateLocalReplyOnly} onChange={event => setPrivateLocalReplyOnly(event.target.checked)} disabled={privateBusy} />Use AURA’s built-in local reply engine for this private turn; skip the configured model.</label>
                     <label><input type="checkbox" checked={privateConsent} onChange={event => setPrivateConsent(event.target.checked)} disabled={privateBusy} />I reviewed this message and want a private, unsaved reply.</label>
                     <button disabled={!privateConsent || privateBusy || !privateQuestion.trim()}>{privateBusy ? "Preparing private reply…" : "Send one private message"}</button>
                   </form>
-                  {privateReply && <article><small>{privateReply.provider} · not saved · no saved memories used</small><p>{privateReply.response}</p><button onClick={() => { setPrivateReply(null); setPrivateQuestion(""); setPrivateConsent(false); }}>Clear private message and reply</button></article>}
+                  {privateReply && <article><small>{privateReply.provider} · not saved · no saved memories used</small><p>{privateReply.response}</p><button onClick={() => { setPrivateReply(null); setPrivateQuestion(""); setPrivateConsent(false); setPrivateLocalReplyOnly(false); }}>Clear private message and reply</button></article>}
                 </details>
                 <details className="memory-review" name="conversation-extras">
                   <summary>Invite AURA to answer a shared question</summary>

@@ -779,17 +779,27 @@ test("a private turn skips saved memory and stays out of conversation history", 
   const message = "this stays in the private turn only";
   await page.getByText("Ask one private question without saved memories", { exact: true }).click();
   const input = page.getByLabel("One reviewed message");
+  const localEngine = page.getByLabel("Use AURA’s built-in local reply engine for this private turn; skip the configured model.");
   const consent = page.getByLabel("I reviewed this message and want a private, unsaved reply.");
   const submit = page.getByRole("button", { name: "Send one private message" });
+  const privateRequests = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/private")) privateRequests.push(request);
+  });
+  await expect(localEngine).not.toBeChecked();
   await input.fill(message);
   await expect(submit).toBeDisabled();
   await consent.check();
   await input.fill(message + " please");
   await expect(consent).not.toBeChecked();
   await consent.check();
+  await localEngine.check();
   const before = await page.evaluate(async () => (await (await fetch("/api/status")).json()).conversations);
   await submit.click();
+  await expect.poll(() => privateRequests.length).toBe(1);
+  expect(privateRequests[0].postDataJSON().local_only).toBe(true);
   await expect(page.getByText("local · not saved · no saved memories used")).toBeVisible();
+  await expect(localEngine).not.toBeChecked();
   await expect(page.getByText(message + " please")).toBeVisible();
   const saved = await page.evaluate(async () => (await (await fetch("/api/status")).json()).conversations);
   expect(saved).toEqual(before);
