@@ -340,6 +340,20 @@ test("people are added only with recorded consent and can be forgotten", async (
   const person = page.locator(".fact").filter({ hasText: "Maya" });
   await expect(person).toBeVisible();
   await expect(person).toContainText("friend");
+  const note = person.getByLabel("Add a user-entered note");
+  await note.fill("We visited the science museum together.");
+  const saveNote = person.getByRole("button", { name: "Save memory note" });
+  await expect(saveNote).toBeDisabled();
+  await person.getByLabel("I have permission to save this note about them.").check();
+  await saveNote.click();
+  await expect(page.getByRole("status")).toContainText("Consent-gated memory note saved locally.");
+  await expect(person).toContainText("We visited the science museum together.");
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("Delete this saved memory note");
+    void dialog.accept();
+  });
+  await person.getByRole("button", { name: "Delete note" }).click();
+  await expect(person).not.toContainText("We visited the science museum together.");
   page.once("dialog", (dialog) => {
     expect(dialog.message()).toContain("associated timeline");
     void dialog.accept();
