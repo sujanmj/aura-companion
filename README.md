@@ -149,6 +149,8 @@ Sensor API v0.4 requires a strong hub token, supports individually enrolled sens
 
 Use `python scripts/list_sensor_nodes.py` to inspect enrolled-node heartbeats and `python scripts/revoke_sensor_node.py <node_id>` to revoke one after typing its confirmation phrase. The Command Center offers the same revocation control. Online heartbeat status does not prove that a sensor or speaker works.
 
+The Command Center also shows each enrolled node's room, last-seen time, and 90-second heartbeat/event status. Its refresh action updates both the node list and room invitation state.
+
 Sensor API test clients allow HTTP only for loopback development hubs. Remote
 hubs must use HTTPS; the authenticated probes bypass system proxies and refuse
 redirects before sending credentials.

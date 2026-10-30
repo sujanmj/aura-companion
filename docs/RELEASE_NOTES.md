@@ -22,12 +22,16 @@ follow-up now resets that preference and awaits the expiry confirmation. All
 18 browser tests pass locally after that change. The follow-up commit
 `0bfb4be` passed all three push-CI platforms in
 [41019957264](https://github.com/sujanmj/aura-companion/actions/runs/41019957264),
-with all preview archives uploaded; its PR run is completing Windows. A new
+with all preview archives uploaded; its PR run
+[41019964090](https://github.com/sujanmj/aura-companion/actions/runs/41019964090)
+passed all three platforms and uploaded the same preview archives. A new
 read-only `python scripts/list_sensor_nodes.py` command now reports last-seen
 and heartbeat freshness without printing credentials. Its 19 focused sensor
-admin tests and the full Python suite pass locally; its cross-platform CI is
-pending. These results verify software only; Pi installation and physical node
-shutdown are untested.
+admin tests and the full Python suite pass locally. The three-platform PR run
+[41020624724](https://github.com/sujanmj/aura-companion/actions/runs/41020624724)
+passed and uploaded all preview archives. The Command Center now includes an
+enrolled-node heartbeat table; its cross-platform CI is pending. These results
+verify software only; Pi installation and physical node shutdown are untested.
 
 ## Observation expiry
 

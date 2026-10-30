@@ -85,6 +85,8 @@ python scripts/revoke_sensor_node.py pi_bedroom_node
 The read-only list shows each enrolled node's ID, display name, room, last-seen
 time and whether the hub received a heartbeat or event in the last 90 seconds.
 Online status does not verify that a sensor or speaker is operating.
+The Command Center shows the same heartbeat window alongside each room and
+refreshes it with the current invitation status.
 
 The CLI requires the exact confirmation `REVOKE pi_bedroom_node`, then calls
 the authenticated hub through the direct no-proxy transport. Remote hubs must

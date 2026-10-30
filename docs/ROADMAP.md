@@ -1323,7 +1323,8 @@ all three push-CI platforms in
 [41019957264](https://github.com/sujanmj/aura-companion/actions/runs/41019957264),
 which uploaded all preview archives; its PR run
 [41019964090](https://github.com/sujanmj/aura-companion/actions/runs/41019964090)
-is still finishing Windows. No physical device shutdown is claimed.
+passed on all three platforms and uploaded all preview archives. No physical
+device shutdown is claimed.
 
 ## 2026-10-30 continuation — owner-visible enrolled-node status (Phase 5)
 
@@ -1333,6 +1334,20 @@ and last-seen time, but ignores credential fields and explicitly says online
 does not verify sensor or playback operation. It uses the authenticated direct
 transport, rejects remote HTTP before sending the admin credential, and refuses
 malformed or terminal-control-character output. Nineteen sensor-admin tests,
-all 95 app Python tests and 12 room-client tests pass locally. Cross-platform
-CI for this status command is pending. No physical node or sensor behavior is
-claimed.
+all 95 app Python tests and 12 room-client tests pass locally. The three-platform
+PR run
+[41020624724](https://github.com/sujanmj/aura-companion/actions/runs/41020624724)
+passed and uploaded all preview archives. No physical node or sensor behavior
+is claimed.
+
+## 2026-10-30 continuation — Command Center node heartbeat table (Phase 5)
+
+The room invitation panel now displays enrolled node, room, heartbeat freshness
+and last-seen time from the authenticated hub status endpoint. It states that
+an observed heartbeat/event is not proof of sensor, microphone, speaker, or
+room coverage. Refresh updates node and invitation state together; removing the
+admin token or a failed refresh clears the displayed node data. Values are
+rendered as text, malformed labels are excluded, and credentials are not shown.
+The 30 Node interaction tests, 95 app Python tests, 19 sensor-admin tests,
+lint, build and 18 browser E2E tests pass locally. Cross-platform CI for this
+dashboard addition is pending. No target hardware is claimed.

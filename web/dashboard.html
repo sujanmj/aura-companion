@@ -57,8 +57,20 @@
       </select>
       <button type="button" id="room-revoke-btn" class="btn-danger" disabled>Revoke credentials</button>
     </div>
+    <section class="room-node-status" aria-labelledby="room-node-status-heading">
+      <h3 id="room-node-status-heading">Enrolled node heartbeats</h3>
+      <p class="panel-hint">Online means the hub received a heartbeat or event in the last 90 seconds. It does not verify a sensor, microphone, speaker, or room coverage.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">Node</th><th scope="col">Room</th><th scope="col">Heartbeat</th><th scope="col">Hub last seen (UTC)</th></tr>
+          </thead>
+          <tbody id="room-node-health"></tbody>
+        </table>
+      </div>
+    </section>
     <div class="room-invitation-actions">
-      <button type="button" id="room-refresh-btn" class="btn-secondary">Refresh invitation status</button>
+      <button type="button" id="room-refresh-btn" class="btn-secondary">Refresh node and invitation status</button>
       <button type="button" id="room-stop-btn" class="btn-danger" disabled>End invitation</button>
     </div>
   </section>

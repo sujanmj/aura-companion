@@ -4,6 +4,7 @@
   var TOKEN_KEY = "AURA_SENSOR_API_TOKEN";
   var status = document.getElementById("room-invitation-status");
   var details = document.getElementById("room-invitation-details");
+  var nodeHealth = document.getElementById("room-node-health");
   var inviteNode = document.getElementById("room-invite-node");
   var transferNode = document.getElementById("room-transfer-node");
   var revokeNode = document.getElementById("room-revoke-node");
@@ -54,8 +55,49 @@
   function validNode(node) {
     return node && typeof node.node_id === "string" &&
       /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(node.node_id) &&
-      typeof node.display_name === "string" && typeof node.room === "string" &&
+      validLabel(node.display_name) && validLabel(node.room) &&
       node.disabled !== 1 && node.disabled !== true;
+  }
+
+  function validLabel(value) {
+    return typeof value === "string" && value.trim() !== "" && value.length <= 80 &&
+      !/[\u0000-\u001f\u007f]/.test(value);
+  }
+
+  function appendCell(row, value, header) {
+    var cell = document.createElement(header ? "th" : "td");
+    if (header) cell.setAttribute("scope", "row");
+    cell.textContent = value;
+    row.appendChild(cell);
+  }
+
+  function renderNodeHealth(nodes) {
+    nodeHealth.replaceChildren();
+    var safeNodes = nodes.filter(validNode);
+    if (safeNodes.length === 0) {
+      var emptyRow = document.createElement("tr");
+      var emptyCell = document.createElement("td");
+      emptyCell.setAttribute("colspan", "4");
+      emptyCell.textContent = "No enrolled nodes.";
+      emptyRow.appendChild(emptyCell);
+      nodeHealth.appendChild(emptyRow);
+      return;
+    }
+
+    safeNodes.forEach(function (node) {
+      var row = document.createElement("tr");
+      var online = node.online === 1 || node.online === true;
+      var heartbeat = node.online === 0 || node.online === false
+        ? "No heartbeat or event in last 90 seconds"
+        : online ? "Heartbeat or event in last 90 seconds" : "Status unavailable";
+      var lastSeen = node.last_seen_at == null ? "Never" :
+        validLabel(node.last_seen_at) ? node.last_seen_at : "Unavailable";
+      appendCell(row, node.display_name, true);
+      appendCell(row, node.room, false);
+      appendCell(row, heartbeat, false);
+      appendCell(row, lastSeen, false);
+      nodeHealth.appendChild(row);
+    });
   }
 
   function renderNodes(nodes) {
@@ -127,6 +169,7 @@
       currentSession = null;
       details.textContent = "";
       renderNodes([]);
+      renderNodeHealth([]);
       setStatus("Connect with the API token above to manage room invitations.");
       setBusy(false);
       return Promise.resolve();
@@ -142,7 +185,9 @@
         throw new Error("The hub returned invalid invitation data.");
       }
       renderSession(session);
-      renderNodes(Array.isArray(results[1].nodes) ? results[1].nodes : []);
+      var nodes = Array.isArray(results[1].nodes) ? results[1].nodes : [];
+      renderNodes(nodes);
+      renderNodeHealth(nodes);
       needsRefresh = false;
       setStatus(currentSession ? "One room is invited. No sensor or audio action is active." : "No active room invitation.");
       setBusy(false);
@@ -151,6 +196,7 @@
       needsRefresh = true;
       details.textContent = "";
       renderNodes([]);
+      renderNodeHealth([]);
       setStatus(errorMessage(error));
       setBusy(false);
     });

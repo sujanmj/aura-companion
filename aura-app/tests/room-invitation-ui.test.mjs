@@ -10,6 +10,8 @@ const node = {
   display_name: "Bedroom Pi",
   room: "bedroom",
   disabled: 0,
+  online: 1,
+  last_seen_at: "2026-10-30 07:00:00",
   token: "must-not-render",
 };
 const kitchenNode = {
@@ -17,6 +19,8 @@ const kitchenNode = {
   display_name: "Kitchen Pi",
   room: "kitchen",
   disabled: 0,
+  online: 0,
+  last_seen_at: null,
 };
 
 class Element {
@@ -28,6 +32,7 @@ class Element {
     this.disabled = false;
   }
   addEventListener(name, callback) { this.handlers[name] = callback; }
+  setAttribute(name, value) { this[name] = value; }
   appendChild(option) {
     this.options.push(option);
     if (this.options.length === 1) this.value = option.value;
@@ -43,6 +48,7 @@ async function dashboardHarness(initialToken = token) {
     "room-invitation-status", "room-invitation-details", "room-invite-node",
     "room-transfer-node", "room-invite-btn", "room-transfer-btn",
     "room-revoke-node", "room-revoke-btn", "room-refresh-btn", "room-stop-btn",
+    "room-node-health",
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new Element()]));
   const requests = [];
@@ -160,11 +166,18 @@ test("saving or clearing the dashboard token reloads room status", async () => {
   await ui.settle();
   assert.equal(ui.requests.filter((request) => request.url === "/rooms/status").length, 1);
   assert.equal(controls["room-invite-node"].options.length, 3);
+  const nodeRows = controls["room-node-health"].options;
+  assert.equal(nodeRows.length, 2);
+  const renderedNodes = nodeRows.map((row) => row.options.map((cell) => cell.textContent).join(" | "));
+  assert.match(renderedNodes[0], /Bedroom Pi \| bedroom \| Heartbeat or event in last 90 seconds \| 2026-10-30 07:00:00/);
+  assert.match(renderedNodes[1], /Kitchen Pi \| kitchen \| No heartbeat or event in last 90 seconds \| Never/);
+  assert.doesNotMatch(renderedNodes.join(" "), /must-not-render|token/i);
 
   ui.setToken("");
   ui.tokenChanged();
   await ui.settle();
   assert.equal(controls["room-invite-node"].disabled, true);
+  assert.equal(controls["room-node-health"].options[0].options[0].textContent, "No enrolled nodes.");
   assert.match(controls["room-invitation-status"].textContent, /API token above/);
 });
 
