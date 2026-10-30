@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts import (
     enroll_sensor_node,
+    revoke_sensor_node,
     show_dashboard_status,
     test_confirmation_api,
     test_dashboard_api,
@@ -36,6 +37,78 @@ def response(status: int, body: dict) -> MagicMock:
 
 
 class SensorAdminClientTests(unittest.TestCase):
+    def test_node_revocation_requires_typed_confirmation_and_uses_safe_admin_transport(self) -> None:
+        with (
+            patch.object(revoke_sensor_node, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch("builtins.input", return_value="REVOKE bedroom"),
+            patch.object(
+                revoke_sensor_node,
+                "open_sensor_api_request",
+                return_value=response(200, {"ok": True, "revoked": True}),
+            ) as open_request,
+            patch.object(sys, "argv", ["revoke_sensor_node.py", "bedroom"]),
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(revoke_sensor_node.main(), 0)
+
+        request = open_request.call_args.args[0]
+        self.assertEqual(request.full_url, "http://127.0.0.1:8787/nodes/revoke")
+        self.assertEqual(json.loads(request.data), {"node_id": "bedroom"})
+        self.assertEqual(request.get_header("X-aura-api-token"), ADMIN_TOKEN)
+        self.assertEqual(open_request.call_args.kwargs, {"timeout": 10})
+
+    def test_node_revocation_cancellation_and_invalid_ids_do_not_send_requests(self) -> None:
+        with (
+            patch.object(revoke_sensor_node, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch("builtins.input", return_value=""),
+            patch.object(revoke_sensor_node, "open_sensor_api_request") as open_request,
+            patch.object(sys, "argv", ["revoke_sensor_node.py", "bedroom"]),
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(revoke_sensor_node.main(), 1)
+        open_request.assert_not_called()
+
+        with (
+            patch("builtins.input") as input_prompt,
+            patch.object(revoke_sensor_node, "open_sensor_api_request") as open_request,
+            patch.object(sys, "argv", ["revoke_sensor_node.py", "bad node"]),
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(revoke_sensor_node.main(), 1)
+        input_prompt.assert_not_called()
+        open_request.assert_not_called()
+
+    def test_node_revocation_refuses_remote_http_before_sending_admin_token(self) -> None:
+        with (
+            patch.object(revoke_sensor_node, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch("builtins.input", return_value="REVOKE bedroom"),
+            patch.object(revoke_sensor_node, "open_sensor_api_request") as open_request,
+            patch.object(sys, "argv", [
+                "revoke_sensor_node.py", "bedroom", "--hub-url", "http://192.168.1.20:8787",
+            ]),
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(revoke_sensor_node.main(), 1)
+        open_request.assert_not_called()
+
+    def test_node_revocation_requires_explicit_success_response(self) -> None:
+        with (
+            patch.object(revoke_sensor_node, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch("builtins.input", return_value="REVOKE bedroom"),
+            patch.object(
+                revoke_sensor_node,
+                "open_sensor_api_request",
+                return_value=response(200, {"ok": True, "revoked": False}),
+            ),
+            patch.object(sys, "argv", ["revoke_sensor_node.py", "bedroom"]),
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(revoke_sensor_node.main(), 1)
+
     def test_enrollment_uses_authenticated_safe_hub_request(self) -> None:
         with (
             patch.object(enroll_sensor_node, "load_env_file"),

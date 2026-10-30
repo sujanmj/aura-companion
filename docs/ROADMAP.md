@@ -1236,7 +1236,13 @@ The Pi simulator now exposes the existing point-in-time claim check as
 `--validate-session SESSION_ID --generation N --turn-id TURN_UUID`; it rejects
 combining validation with a new claim. The command never starts playback. Local
 evidence passes: 12 client tests, 8 loopback handoff tests and all 95 app Python
-tests. New push/PR CI is pending; no hardware acceptance is claimed.
+tests. Commit `912d162` passed all-platform push CI
+[41016809978](https://github.com/sujanmj/aura-companion/actions/runs/41016809978)
+and PR CI
+[41016817404](https://github.com/sujanmj/aura-companion/actions/runs/41016817404);
+both uploaded macOS, Windows and Ubuntu preview artifacts. This is a point-in-
+time software check only; it does not establish live playback fencing or Pi
+hardware acceptance.
 
 ## 2026-10-30 continuation — bound Pi heartbeat service resources (Phase 5)
 
@@ -1277,3 +1283,18 @@ and PR CI in
 [41015196752](https://github.com/sujanmj/aura-companion/actions/runs/41015196752),
 with all three preview archives uploaded. No acoustic mute or live-speaker
 acceptance is claimed.
+
+## 2026-10-30 continuation — confirmed sensor-node revocation CLI (Phase 5)
+
+Added `scripts/revoke_sensor_node.py` so the owner can revoke an enrolled
+sensor node from the command line using the existing authenticated hub API. It
+requires an exact `REVOKE <node_id>` confirmation, validates the node ID before
+prompting, rejects non-HTTPS remote hub URLs before sending credentials, uses
+the project's direct no-proxy transport, and reports only success or a generic
+failure. An ambiguous network result tells the owner to verify node status
+before retrying. Tests cover success, cancellation, invalid IDs, unsafe remote
+HTTP, and a hub response that does not confirm revocation. Focused local checks
+pass: 16 sensor-admin tests, 12 room-client tests, and all 95 application
+Python tests. Cross-platform CI is pending. The CLI does not enroll devices,
+retrieve tokens, or claim physical node shutdown; revoked credentials are
+rejected by the existing hub.

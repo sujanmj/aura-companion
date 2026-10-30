@@ -10,6 +10,36 @@ missing prerequisite is available.
 
 These checks establish only the behavior covered by their tests:
 
+- Current software continuation on branch `aura-holographic-companion`:
+  session-only private replies and reply-speech control are covered by native
+  tests; room claim revalidation and its simulator CLI are covered by 12 client
+  tests, 8 temporary-database/loopback handoff tests and all 95 app Python
+  tests. The heartbeat service has explicit systemd CPU, memory and task caps.
+  Push/PR CI passed on all three desktop platforms in
+  [41016809978](https://github.com/sujanmj/aura-companion/actions/runs/41016809978)
+  and [41016817404](https://github.com/sujanmj/aura-companion/actions/runs/41016817404),
+  with all three preview artifacts uploaded. These are software-only checks;
+  no Pi, room playback, live provider-retention or acoustic result is implied.
+- Commit `e401909` prevents an older asynchronous Memory refresh from
+  overwriting newer saved state. Its Windows regression test delays the stale
+  response until after a reminder save. All 18 browser tests, lint and the
+  production build pass locally; all-platform push/PR CI passed in
+  [41014353029](https://github.com/sujanmj/aura-companion/actions/runs/41014353029)
+  and [41014366925](https://github.com/sujanmj/aura-companion/actions/runs/41014366925).
+- Commit `abda9b0` adds a session-only Mac control for keeping ambient replies
+  visible but unspoken. Native tests cover its paused guard and reset; default
+  speech behavior and separate reminder speech remain unchanged. All-platform
+  push/PR CI passed in
+  [41015190985](https://github.com/sujanmj/aura-companion/actions/runs/41015190985)
+  and [41015196752](https://github.com/sujanmj/aura-companion/actions/runs/41015196752).
+- Current local continuation adds an owner-confirmed sensor-node revoke CLI.
+  It requires the exact node ID phrase, validates IDs before prompting, uses
+  the authenticated direct hub transport, and rejects remote HTTP before
+  sending the admin credential. Sixteen sensor-admin tests, 12 room-client
+  tests and all 95 app Python tests pass locally. Cross-platform CI is pending;
+  revocation here establishes only hub credential rejection, not physical
+  device shutdown.
+
 - Commit `fab9f3b`: all three platforms passed push and pull-request CI; the
   shared-conversation browser tests require fresh approval per turn and verify
   no saved conversation or memory change.
