@@ -780,3 +780,15 @@ passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
 Windows installed the pinned timezone data and ran all 112 Python tests; its
 three skips were the POSIX-only symlink checks, so the IANA timezone case ran.
 No physical reminder delivery is claimed.
+
+## 2026-10-30 continuation — fail-closed invited-room reply gate (Phase 5)
+
+Added a hardware-free delivery gate that calls an injected playback callback
+only after an exact successful one-shot claim and a fresh successful claim
+validation. Empty replies, rejected or ambiguous claim results, and stale
+validation results fail closed. The gate does not connect audio, generate
+replies, access memory or providers, or retry playback. Six focused tests and
+all 112 application Python tests pass locally. Cross-platform CI is pending.
+Validation is still only a point-in-time fence; cancellation and fencing at a
+real playback boundary remain required. Raspberry Pi installation, physical
+speaker playback, and room-to-room acceptance are not claimed.

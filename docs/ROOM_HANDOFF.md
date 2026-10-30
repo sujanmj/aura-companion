@@ -28,6 +28,18 @@ python scripts/pi_node_simulator.py --validate-session SESSION_ID --generation 1
 
 This is one point-in-time check only; it does not start or control playback.
 
+The hardware-free `devices.room_reply_delivery.deliver_invited_reply` helper
+provides a software gate for a future reply callback. A caller supplies the
+existing one-shot claim and validation clients plus a playback callback. The
+helper invokes them in order and calls playback only when both authorization
+checks succeed; rejected or unknown results never play, and no operation is
+automatically retried. It rejects blank replies before making a claim. The
+helper does not create replies, connect to an audio device, or invoke providers
+or memory. Its tests use a fake playback callback. Validation remains a
+point-in-time fence: a transfer can still race after validation, and a real
+speaker pipeline still needs cancellation and fencing at the playback
+boundary.
+
 The owner can manage invitations with the admin-only command line controller:
 
 ```sh
@@ -129,6 +141,12 @@ The node claim and point-in-time validation clients are covered separately with
 credentials and stable turn payloads, CLI dispatch, strict input validation,
 rejection handling, and fail-closed behavior after an ambiguous network result.
 These tests do not connect a client to hardware or exercise speaker playback.
+
+The reply gate is covered with `python scripts/test_room_reply_delivery.py`.
+These tests verify claim/validate/play ordering, rejection and stale-claim
+behavior, blank-reply handling, and no retry after a playback error. They use
+injected fakes and do not establish physical playback or eliminate the
+post-validation race.
 
 The owner controller is covered with `python3 scripts/test_room_invitation.py`
 and the loopback API integration test above. It checks typed consent, admin

@@ -11,7 +11,7 @@ For sensor experiments, plan on a separate ADC board such as an ADS1115 or MCP30
 - `aura-app` has a full-screen face at `http://127.0.0.1:8790/?kiosk=1` after session login.
 - The existing Python companion brain can call the configured Claude provider or the new server-side OpenAI Responses provider.
 - Personal memory continues to work in local SQLite. Optional Supabase sync copies user/assistant conversation rows and sensor events to cloud tables; profile facts, routines, and complete incident/action history are not synced. Failed uploads are retained in a durable SQLite outbox as source-row references and retried with capped backoff. Message text and event summaries are read from their source rows only when sending; they are not duplicated in the outbox. Clearing local conversation history removes pending uploads and queues a remote delete for previously synced rows while the device ID and cloud credentials remain configured.
-- The current continuous camera and microphone service uses Apple frameworks and only runs on macOS. The Pi ambient capture daemon, local wake-word/STT, camera scene context, GPIO sensor drivers, and room-to-room conversation handoff are not implemented yet.
+- The current continuous camera and microphone service uses Apple frameworks and only runs on macOS. The Pi ambient capture daemon, local wake-word/STT, camera scene context, and GPIO sensor drivers are not implemented yet. Software for the TLS sensor hub, enrolled-node heartbeats, owner-managed room invitations, one-shot reply claims, and immediate claim validation is present and tested. A hardware-free reply gate can call an injected playback callback only after those checks pass, but no real speaker pipeline uses it; this is not room-to-room conversation acceptance.
 - The existing sensor API and tests model gas, fire, water, and other events, but that is event-processing logic, not Raspberry Pi GPIO driver code.
 
 ## Optional cloud setup
@@ -33,7 +33,7 @@ The sync sends each new user and assistant conversation entry and each sensor ev
 
 `deploy/systemd/aura-sensor-api.service` is a hardened system service template
 for the sensor API hub. It is not the ambient voice/camera companion and does
-not provide GPIO drivers or room-to-room conversation handoff. Install the
+not provide GPIO drivers or physical room-to-room playback. Install the
 checkout at `/opt/aura-companion`, create a dedicated `aura` system user, and
 install the unit file into `/etc/systemd/system/`. Create `/etc/aura/aura.env`
 with a unique `AURA_SENSOR_API_TOKEN` of at least 32 characters; keep that file

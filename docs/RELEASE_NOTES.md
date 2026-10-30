@@ -630,3 +630,9 @@ Commit `dfd56d9` passed macOS, Windows and Ubuntu push CI
 and PR CI
 [40972155147](https://github.com/sujanmj/aura-companion/actions/runs/40972155147);
 both runs uploaded all three preview archives.
+
+The room reply prototype now exposes a fail-closed software gate for a future
+speaker callback. It requires a successful one-shot claim followed by fresh
+validation, and its hardware-free tests cover denied, stale, blank and
+playback-error cases. It does not implement audio output or establish Pi
+hardware acceptance; cross-platform CI is pending.
