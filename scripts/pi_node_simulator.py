@@ -503,8 +503,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--summary", default=None, help="Override event summary")
     parser.add_argument("--heartbeat", default=None, help="Send node heartbeat with its enrolled token")
     parser.add_argument("--claim-session", default=None, help="Claim one turn in an existing room invitation")
-    parser.add_argument("--generation", type=int, default=None, help="Current invitation generation for --claim-session")
-    parser.add_argument("--turn-id", default=None, help="Stable canonical UUID for the logical reply being claimed")
+    parser.add_argument(
+        "--validate-session", default=None,
+        help="Revalidate a prior claim; this does not play audio",
+    )
+    parser.add_argument(
+        "--generation", type=int, default=None,
+        help="Current invitation generation for a room claim",
+    )
+    parser.add_argument(
+        "--turn-id", default=None,
+        help="Stable canonical UUID for the logical reply",
+    )
     parser.add_argument("--loop", type=int, default=1, help="Send event N times")
     parser.add_argument("--delay", type=float, default=3.0, help="Delay between loop sends")
     parser.add_argument(
@@ -524,6 +534,21 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.heartbeat:
         return send_node_heartbeat(args.heartbeat, hub_url=args.hub_url)
+
+    if args.claim_session is not None and args.validate_session is not None:
+        print("Choose either --claim-session or --validate-session")
+        return 1
+
+    if args.validate_session is not None:
+        if args.generation is None or args.turn_id is None:
+            print(
+                "Usage: python scripts/pi_node_simulator.py "
+                "--validate-session ID --generation N --turn-id UUID"
+            )
+            return 1
+        return validate_invited_room_turn(
+            args.validate_session, args.generation, args.turn_id, hub_url=args.hub_url
+        )
 
     if args.claim_session is not None:
         if args.generation is None or args.turn_id is None:

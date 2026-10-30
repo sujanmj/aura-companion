@@ -1230,6 +1230,14 @@ and pull-request CI in [41012390947](https://github.com/sujanmj/aura-companion/a
 All three preview artifacts were uploaded. No Pi, network deployment, acoustic
 or physical handoff acceptance is claimed.
 
+## 2026-10-30 continuation — expose room-claim revalidation CLI (Phase 5)
+
+The Pi simulator now exposes the existing point-in-time claim check as
+`--validate-session SESSION_ID --generation N --turn-id TURN_UUID`; it rejects
+combining validation with a new claim. The command never starts playback. Local
+evidence passes: 12 client tests, 8 loopback handoff tests and all 95 app Python
+tests. New push/PR CI is pending; no hardware acceptance is claimed.
+
 ## 2026-10-30 continuation — bound Pi heartbeat service resources (Phase 5)
 
 The hardened systemd heartbeat-only service now declares 10% CPU, 128 MiB

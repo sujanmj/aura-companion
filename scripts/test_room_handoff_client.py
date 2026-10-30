@@ -243,6 +243,34 @@ class RoomHandoffClientTests(unittest.TestCase):
             self.assertIn("do not play this reply", output.getvalue())
             urlopen.assert_called_once()
 
+    def test_cli_exposes_validation_without_claiming_or_playing(self) -> None:
+        with patch.object(pi_node_simulator, "validate_invited_room_turn", return_value=0) as validate:
+            result = pi_node_simulator.main([
+                "--validate-session", SESSION,
+                "--generation", "2",
+                "--turn-id", TURN,
+                "--hub-url", "http://127.0.0.1:8787",
+            ])
+        self.assertEqual(result, 0)
+        validate.assert_called_once_with(
+            SESSION, 2, TURN, hub_url="http://127.0.0.1:8787"
+        )
+
+    def test_cli_rejects_claim_and_validation_combined(self) -> None:
+        from contextlib import redirect_stdout
+        from io import StringIO
+
+        output = StringIO()
+        with redirect_stdout(output):
+            result = pi_node_simulator.main([
+                "--claim-session", SESSION,
+                "--validate-session", SESSION,
+                "--generation", "2",
+                "--turn-id", TURN,
+            ])
+        self.assertEqual(result, 1)
+        self.assertIn("Choose either", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

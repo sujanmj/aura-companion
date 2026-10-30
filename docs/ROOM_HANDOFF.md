@@ -19,6 +19,15 @@ reply. A successful reservation still does not activate capture, generate a
 reply, or play audio. This command is a software integration point, not physical
 room handoff acceptance.
 
+The same simulator can recheck an existing reservation just before a future
+playback attempt:
+
+```sh
+python scripts/pi_node_simulator.py --validate-session SESSION_ID --generation 1 --turn-id TURN_UUID
+```
+
+This is one point-in-time check only; it does not start or control playback.
+
 The owner can manage invitations with the admin-only command line controller:
 
 ```sh
@@ -117,9 +126,9 @@ memory database or external service is used.
 
 The node claim and point-in-time validation clients are covered separately with
 `python3 scripts/test_room_handoff_client.py`. Its tests verify exact
-credentials and stable turn payloads, strict input validation, rejection
-handling, and fail-closed behavior after an ambiguous network result. These
-tests do not connect a client to hardware or exercise speaker playback.
+credentials and stable turn payloads, CLI dispatch, strict input validation,
+rejection handling, and fail-closed behavior after an ambiguous network result.
+These tests do not connect a client to hardware or exercise speaker playback.
 
 The owner controller is covered with `python3 scripts/test_room_invitation.py`
 and the loopback API integration test above. It checks typed consent, admin
