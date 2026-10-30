@@ -23,6 +23,18 @@ locally. GitHub only activates Dependabot from the default branch, so this
 configuration will take effect after the development branch is merged; no
 scheduled update run is claimed yet.
 
+## Reminder daylight-saving fallback test (Phase 11)
+
+Added a regression test ensuring a selected local reminder does not repeat when
+the clock's 01:30 occurs twice during a UTC-4 to UTC-5 fallback. All 110 Python
+app tests pass locally. Commit `f2625d5` passed push CI
+[41052472784](https://github.com/sujanmj/aura-companion/actions/runs/41052472784)
+and PR CI
+[41052482168](https://github.com/sujanmj/aura-companion/actions/runs/41052482168)
+on macOS, Windows and Ubuntu with all preview artifacts uploaded. The test
+simulates the two offsets; it does not establish platform timezone, live timer,
+or acoustic acceptance.
+
 ## Existing-memory upgrade smoke (Phases 6 and 12)
 
 The extracted preview is now tested against a synthetic database created from

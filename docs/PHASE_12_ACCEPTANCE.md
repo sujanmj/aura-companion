@@ -29,6 +29,16 @@ These checks establish only the behavior covered by their tests:
   the repository default branch, so scheduled operation remains pending merge
   and no Dependabot service run or update PR is claimed.
 
+- Commit `f2625d5` adds Phase 11 regression coverage for the repeated local
+  01:30 during a UTC-4 to UTC-5 clock fallback. The same-date reminder is
+  delivered once across the two simulated instants. The 19-test memory-controls
+  suite and all 110 Python app tests pass locally. Push CI
+  [41052472784](https://github.com/sujanmj/aura-companion/actions/runs/41052472784)
+  and PR CI
+  [41052482168](https://github.com/sujanmj/aura-companion/actions/runs/41052482168)
+  passed on all three platforms and uploaded all preview archives. Fixed-offset
+  simulation does not prove DST behavior on a specific OS, live scheduling, or
+  spoken reminders.
 - Commit `75ab2e2` tests a packaged preview startup against disposable memory
   from AURA's schema before weekday reminders. The test checks that a
   pre-migration startup backup contains the original fact and reminder, then

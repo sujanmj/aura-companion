@@ -736,3 +736,17 @@ reads configuration from the repository's default branch, this policy will
 become active after the branch is merged; it is not yet operating on the open
 development branch. Preview CI verifies the tree and docs but cannot verify
 Dependabot's scheduled service.
+
+## 2026-10-30 continuation — reminder DST fallback coverage (Phase 11)
+
+The reminder store now has a regression test for the repeated local 01:30
+across a UTC-4 to UTC-5 fallback. The test confirms a reminder is delivered
+only once for that local date even though the two instants are one hour apart.
+It uses explicit fixed offsets to simulate the repeated wall-clock hour; it
+does not validate a platform timezone database, scheduler wake-up, or spoken
+reminder on a real device. All 110 Python app tests passed locally. Commit
+`f2625d5` passed push CI
+[41052472784](https://github.com/sujanmj/aura-companion/actions/runs/41052472784)
+and PR CI
+[41052482168](https://github.com/sujanmj/aura-companion/actions/runs/41052482168)
+on macOS, Windows and Ubuntu, each with all three preview artifacts.
