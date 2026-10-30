@@ -48,6 +48,13 @@ type Status = {
     face_profile_status: string;
     last_seen_at: string | null;
   }[];
+  person_events: {
+    id: number;
+    person_id: number;
+    display_name: string;
+    event_summary: string;
+    created_at: string;
+  }[];
   reminders: {
     id: number;
     label: string;
@@ -241,6 +248,8 @@ function App() {
     [personName, setPersonName] = useState(""),
     [personRelation, setPersonRelation] = useState(""),
     [personConsent, setPersonConsent] = useState(false),
+    [personNoteDrafts, setPersonNoteDrafts] = useState<Record<number, string>>({}),
+    [personNoteConsent, setPersonNoteConsent] = useState<Record<number, boolean>>({}),
     [reminderLabel, setReminderLabel] = useState(""),
     [reminderTime, setReminderTime] = useState("20:00"),
     [reminderDays, setReminderDays] = useState([1, 2, 3, 4, 5, 6, 7]),
@@ -1655,6 +1664,75 @@ function App() {
                             ? `Last noted ${person.last_seen_at}`
                             : "Not yet seen"}
                         </time>
+                        <div className="person-memory-notes">
+                          <h4>Person memory notes</h4>
+                          <p>
+                            Stored on this device as user-entered and unverified. AURA recalls these only when you mention this person. Avoid sensitive details; you can delete notes here.
+                          </p>
+                          {status.person_events
+                            .filter((note) => note.person_id === person.id)
+                            .map((note) => (
+                              <article className="fact" key={note.id}>
+                                <small>User-entered · {new Date(note.created_at).toLocaleString()}</small>
+                                <p>{note.event_summary}</p>
+                                <button
+                                  onClick={async () => {
+                                    if (!window.confirm("Delete this saved memory note? This cannot be undone.")) return;
+                                    try {
+                                      await api("person/event/delete", { event_id: note.id });
+                                      await refresh();
+                                      setError("Memory note deleted.");
+                                    } catch (e) {
+                                      setError(String(e));
+                                    }
+                                  }}
+                                >
+                                  Delete note
+                                </button>
+                              </article>
+                            ))}
+                          <form
+                            className="person-form"
+                            onSubmit={async (event) => {
+                              event.preventDefault();
+                              try {
+                                await api("person/event/create", {
+                                  person_id: person.id,
+                                  note: personNoteDrafts[person.id] || "",
+                                  consent_confirmed: personNoteConsent[person.id] === true,
+                                });
+                                await refresh();
+                                setPersonNoteDrafts((previous) => ({ ...previous, [person.id]: "" }));
+                                setPersonNoteConsent((previous) => ({ ...previous, [person.id]: false }));
+                                setError("Consent-gated memory note saved locally.");
+                              } catch (e) {
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            <label htmlFor={`person-note-${person.id}`}>Add a user-entered note</label>
+                            <textarea
+                              id={`person-note-${person.id}`}
+                              value={personNoteDrafts[person.id] || ""}
+                              maxLength={500}
+                              rows={2}
+                              onChange={(event) => setPersonNoteDrafts((previous) => ({ ...previous, [person.id]: event.target.value }))}
+                              placeholder="A short event you want AURA to remember"
+                              required
+                            />
+                            <label className="person-consent">
+                              <input
+                                type="checkbox"
+                                checked={personNoteConsent[person.id] === true}
+                                onChange={(event) => setPersonNoteConsent((previous) => ({ ...previous, [person.id]: event.target.checked }))}
+                              />
+                              I have permission to save this note about them.
+                            </label>
+                            <button className="primary" disabled={!personNoteDrafts[person.id]?.trim() || personNoteConsent[person.id] !== true}>
+                              Save memory note
+                            </button>
+                          </form>
+                        </div>
                         <div className="fact-actions">
                           <button
                             onClick={async () => {
