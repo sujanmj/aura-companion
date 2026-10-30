@@ -13,8 +13,14 @@ a language model. A hosted provider may retain approved content under its own
 policy.
 
 Local checks pass: 131 app Python tests, 30 Node tests, 19 browser tests,
-TypeScript checking, lint and production build. CI is pending. No live provider,
-multi-source, news or Raspberry Pi acceptance is claimed.
+TypeScript checking, lint and production build. Push CI for exact source commit
+`581fc8d` passed macOS, Windows and Ubuntu in
+[41109385300](https://github.com/sujanmj/aura-companion/actions/runs/41109385300)
+and uploaded all three preview archives (digest prefixes: macOS `ba89e9be`,
+Windows `918bda15`, Ubuntu `3d207c36`). The matching PR run
+[41109396159](https://github.com/sujanmj/aura-companion/actions/runs/41109396159)
+passed macOS and Ubuntu; its Windows job was still running when recorded. No
+live provider, multi-source, news or Raspberry Pi acceptance is claimed.
 
 ## Local voice retry recovery (Phase 5)
 

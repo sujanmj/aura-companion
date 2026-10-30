@@ -684,10 +684,16 @@ Automated verification: 131 app Python tests, 30 Node tests, all 19 browser
 tests, TypeScript checking, lint, and production build pass locally. The
 loopback integration test verifies approval, expiry/clear behavior and no
 change to persistent memory export; provider output is injected in unit tests
-and was not live-tested. CI for this continuation is pending. Wikipedia remains
-the only source adapter, so this is not multi-source verification, live-news
-coverage, or automatic fact-checking. Hosted providers may retain an approved
-question and excerpts under their own policy.
+and was not live-tested. Exact source commit `581fc8d` passed push CI on macOS,
+Windows, and Ubuntu in
+[41109385300](https://github.com/sujanmj/aura-companion/actions/runs/41109385300),
+which uploaded all three preview archives. Artifact digest prefixes: macOS
+`ba89e9be`, Windows `918bda15`, Ubuntu `3d207c36`. The matching PR run
+[41109396159](https://github.com/sujanmj/aura-companion/actions/runs/41109396159)
+passed macOS and Ubuntu; its Windows job was still running when this note was
+recorded. Wikipedia remains the only source adapter, so this is not multi-source
+verification, live-news coverage, or automatic fact-checking. Hosted providers
+may retain an approved question and excerpts under their own policy.
 
 ### Phase 11 — Opt-in routine and wellness support
 
