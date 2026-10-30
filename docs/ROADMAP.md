@@ -1224,5 +1224,8 @@ Pi simulator includes a one-shot client check that explicitly reports only
 validity at that instant; it does not play audio and cannot stop sound already
 playing or remove a transfer race after validation. Local evidence passes:
 10 node-client tests, 8 temporary-database/loopback handoff tests, and all 95
-application Python tests. Push and pull-request CI remain pending. No Pi,
-network deployment, acoustic or physical handoff acceptance is claimed.
+application Python tests. Commit `f0648ed` passed macOS, Windows and Ubuntu
+push CI in [41012385491](https://github.com/sujanmj/aura-companion/actions/runs/41012385491)
+and pull-request CI in [41012390947](https://github.com/sujanmj/aura-companion/actions/runs/41012390947).
+All three preview artifacts were uploaded. No Pi, network deployment, acoustic
+or physical handoff acceptance is claimed.
