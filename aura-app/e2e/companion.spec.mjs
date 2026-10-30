@@ -472,8 +472,12 @@ test("scheduled reminders require opt-in, support selected weekdays, and can be 
   await page.getByRole("button", { name: "Memory 02" }).click();
   const delivered = page.locator(".fact").filter({ hasText: "Acknowledge test" });
   await expect(delivered.getByRole("button", { name: "Acknowledge reminder" })).toBeVisible();
+  await page.evaluate(() => {
+    window.heldStatusResponse = false;
+    window.holdNextStatusResponse = true;
+  });
   await delivered.getByRole("button", { name: "Acknowledge reminder" }).click();
-  await expect(delivered).toContainText("Acknowledged today — completion not confirmed");
+  await expect.poll(() => page.evaluate(() => window.heldStatusResponse)).toBe(true);
   page.once("dialog", (dialog) => {
     expect(dialog.message()).toContain("Delete the scheduled reminder");
     void dialog.accept();
@@ -481,6 +485,9 @@ test("scheduled reminders require opt-in, support selected weekdays, and can be 
   await reminder.getByRole("button", { name: "Delete reminder" }).click();
   await expect(page.getByRole("status")).toContainText("Daily reminder deleted");
   await expect(reminder).toHaveCount(0);
+  await page.evaluate(() => window.releaseStatusResponse?.());
+  await expect(delivered).toContainText("Acknowledged today — completion not confirmed");
+  await expect(page.getByRole("status")).toContainText("Daily reminder deleted");
 });
 
 test("camera context observations can be deleted from saved memory", async ({

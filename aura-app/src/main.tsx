@@ -265,6 +265,7 @@ function App() {
     [reminderDraftDays, setReminderDraftDays] = useState<number[]>([]);
   const stopListen = useRef<(() => void) | null>(null),
     refreshGeneration = useRef(0),
+    noticeGeneration = useRef(0),
     bottom = useRef<HTMLDivElement>(null),
     micStarting = useRef(false),
     sending = useRef(false),
@@ -1579,12 +1580,14 @@ function App() {
                               <>
                                 <button
                                   onClick={async () => {
+                                    const notice = ++noticeGeneration.current;
                                     try {
                                       await api("reminder/acknowledge", {
                                         reminder_id: reminder.id,
                                       });
                                       await refresh();
-                                      setError("Reminder seen; completion was not confirmed.");
+                                      if (notice === noticeGeneration.current)
+                                        setError("Reminder seen; completion was not confirmed.");
                                     } catch (e) {
                                       setError(String(e));
                                     }
@@ -1618,12 +1621,14 @@ function App() {
                                   `Delete the scheduled reminder “${reminder.label}”? This cannot be undone.`,
                                 )
                               ) return;
+                              const notice = ++noticeGeneration.current;
                               try {
                                 await api("reminder/delete", {
                                   reminder_id: reminder.id,
                                 });
                                 await refresh();
-                                setError("Daily reminder deleted.");
+                                if (notice === noticeGeneration.current)
+                                  setError("Daily reminder deleted.");
                               } catch (e) {
                                 setError(String(e));
                               }
