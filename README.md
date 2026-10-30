@@ -147,6 +147,8 @@ Sensor Node API v0.1 exposes a local HTTP API so Raspberry Pi, camera, and senso
 
 Sensor API v0.4 requires a strong hub token, supports individually enrolled sensor-node credentials, and deduplicates retried events. The hub stores only node-token hashes; node credentials can be revoked independently. Missing or weak hub-token configuration denies protected access; `GET /health` and static dashboard files remain public. Keep the API on a trusted local network only. See [docs/sensor_node_api.md](docs/sensor_node_api.md).
 
+Use `python scripts/list_sensor_nodes.py` to inspect enrolled-node heartbeats and `python scripts/revoke_sensor_node.py <node_id>` to revoke one after typing its confirmation phrase. The Command Center offers the same revocation control. Online heartbeat status does not prove that a sensor or speaker works.
+
 Sensor API test clients allow HTTP only for loopback development hubs. Remote
 hubs must use HTTPS; the authenticated probes bypass system proxies and refuse
 redirects before sending credentials.

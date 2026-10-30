@@ -33,11 +33,14 @@ These checks establish only the behavior covered by their tests:
   [41015190985](https://github.com/sujanmj/aura-companion/actions/runs/41015190985)
   and [41015196752](https://github.com/sujanmj/aura-companion/actions/runs/41015196752).
 - Current continuation adds owner-confirmed sensor-node revocation by CLI and
-  Command Center. Both require the exact node ID phrase; the CLI validates IDs
-  before prompting and uses authenticated direct hub transport, rejecting
-  remote HTTP before sending the admin credential. Six dashboard interaction
-  tests, 30 Node tests, lint, the production build, 16 sensor-admin tests, 12
-  room-client tests and all 95 app Python tests pass locally. CLI commit
+  Command Center, plus a read-only node-status CLI. Both revoke paths require
+  the exact node ID phrase; the revoke CLI validates IDs before prompting and
+  uses authenticated direct hub transport, rejecting remote HTTP before
+  sending the admin credential. The status command prints no credentials and
+  distinguishes heartbeat freshness from actual sensor/playback operation.
+  Six dashboard interaction tests, 30 Node tests, lint, the production build,
+  19 sensor-admin tests, 12 room-client tests and all 95 app Python tests pass
+  locally. CLI commit
   `89ee2f7` passed all three push-CI platforms in
   [41017738378](https://github.com/sujanmj/aura-companion/actions/runs/41017738378),
   uploading each preview artifact; PR run
@@ -48,10 +51,13 @@ These checks establish only the behavior covered by their tests:
   with each preview artifact uploaded. Their push run
   [41018590170](https://github.com/sujanmj/aura-companion/actions/runs/41018590170)
   passed macOS and Ubuntu but failed Windows E2E on two Memory-state timeouts
-  after 16 cases passed. The Setup E2E case had left proactive check-ins enabled
-  in the shared temporary database; a follow-up cleanup disables that opt-in
-  and awaits the expiry dialog. All 18 browser tests pass locally afterward;
-  cross-platform CI for the cleanup is pending.
+  after 16 cases passed. A follow-up cleanup disables the Setup test's proactive
+  check-in opt-in and awaits the expiry dialog. The 18-test browser suite passes
+  locally; commit `0bfb4be` passed all three push platforms in
+  [41019957264](https://github.com/sujanmj/aura-companion/actions/runs/41019957264)
+  with all preview artifacts uploaded. Its PR run
+  [41019964090](https://github.com/sujanmj/aura-companion/actions/runs/41019964090)
+  is finishing Windows. The node-status command is newly added and awaits CI.
   Revocation establishes hub credential rejection, not physical device
   shutdown.
 

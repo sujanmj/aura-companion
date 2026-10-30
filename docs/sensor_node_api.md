@@ -78,8 +78,13 @@ rotates its credential. Revoke a node with an authenticated `POST /nodes/revoke`
 request containing `{"node_id":"pi_bedroom_node"}`, or run the owner CLI:
 
 ```powershell
+python scripts/list_sensor_nodes.py
 python scripts/revoke_sensor_node.py pi_bedroom_node
 ```
+
+The read-only list shows each enrolled node's ID, display name, room, last-seen
+time and whether the hub received a heartbeat or event in the last 90 seconds.
+Online status does not verify that a sensor or speaker is operating.
 
 The CLI requires the exact confirmation `REVOKE pi_bedroom_node`, then calls
 the authenticated hub through the direct no-proxy transport. Remote hubs must

@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts import (
     enroll_sensor_node,
+    list_sensor_nodes,
     revoke_sensor_node,
     show_dashboard_status,
     test_confirmation_api,
@@ -37,7 +38,79 @@ def response(status: int, body: dict) -> MagicMock:
 
 
 class SensorAdminClientTests(unittest.TestCase):
-    def test_node_revocation_requires_typed_confirmation_and_uses_safe_admin_transport(self) -> None:
+    def test_node_status_lists_only_safe_fields_over_authenticated_transport(self) -> None:
+        with (
+            patch.object(list_sensor_nodes, "load_env_file"),
+            patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+            patch.object(
+                list_sensor_nodes,
+                "open_sensor_api_request",
+                return_value=response(200, {
+                    "ok": True,
+                    "nodes": [{
+                        "node_id": "bedroom",
+                        "display_name": "Bedroom Pi",
+                        "room": "bedroom",
+                        "online": 1,
+                        "last_seen_at": "2026-10-30 07:00:00",
+                        "token": "must-not-be-printed",
+                    }],
+                }),
+            ) as open_request,
+            redirect_stdout(io.StringIO()) as output,
+        ):
+            self.assertEqual(list_sensor_nodes.main(), 0)
+
+        request = open_request.call_args.args[0]
+        self.assertEqual(request.full_url, "http://127.0.0.1:8787/nodes/status")
+        self.assertEqual(request.get_header("X-aura-api-token"), ADMIN_TOKEN)
+        self.assertEqual(open_request.call_args.kwargs, {"timeout": 10})
+        self.assertIn("bedroom | Bedroom Pi | room=bedroom | online", output.getvalue())
+        self.assertIn("does not confirm sensor or playback operation", output.getvalue())
+        self.assertNotIn("must-not-be-printed", output.getvalue())
+
+    def test_node_status_rejects_unsafe_remote_http_before_sending_credentials(self) -> None:
+        with (
+            patch.object(list_sensor_nodes, "load_env_file"),
+            patch.dict(os.environ, {
+                "AURA_SENSOR_API_TOKEN": ADMIN_TOKEN,
+                "AURA_SENSOR_API_URL": "http://192.168.1.20:8787",
+            }, clear=True),
+            patch.object(list_sensor_nodes, "open_sensor_api_request") as open_request,
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(list_sensor_nodes.main(), 1)
+        open_request.assert_not_called()
+
+    def test_node_status_rejects_terminal_control_characters_and_bad_records(self) -> None:
+        invalid_nodes = [
+            [{
+                "node_id": "bedroom",
+                "display_name": "Bedroom" + chr(10) + "FORGED",
+                "room": "bedroom",
+                "online": 1,
+            }],
+            [{"node_id": "bad node", "display_name": "Bedroom", "room": "bedroom", "online": 1}],
+            [{"node_id": "bedroom", "display_name": "Bedroom", "room": "bedroom", "online": 2}],
+        ]
+        for nodes in invalid_nodes:
+            with (
+                self.subTest(nodes=nodes),
+                patch.object(list_sensor_nodes, "load_env_file"),
+                patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),
+                patch.object(
+                    list_sensor_nodes,
+                    "open_sensor_api_request",
+                    return_value=response(200, {"ok": True, "nodes": nodes}),
+                ),
+                redirect_stdout(io.StringIO()) as output,
+            ):
+                self.assertEqual(list_sensor_nodes.main(), 1)
+                self.assertNotIn("Bedroom" + chr(10) + "FORGED", output.getvalue())
+
+    def test_node_revocation_requires_typed_confirmation_and_uses_safe_admin_transport(
+        self,
+    ) -> None:
         with (
             patch.object(revoke_sensor_node, "load_env_file"),
             patch.dict(os.environ, {"AURA_SENSOR_API_TOKEN": ADMIN_TOKEN}, clear=True),

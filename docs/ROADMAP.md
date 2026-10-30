@@ -1318,5 +1318,21 @@ passed macOS and Ubuntu but failed the Windows browser suite: 16 tests passed,
 and two Memory assertions timed out. The Setup E2E test had left proactive
 check-ins enabled in the suite's shared temporary database. A follow-up now
 turns that opt-in back off and awaits the expiry confirmation dialog. The full
-18-test browser suite passes locally after the cleanup; its cross-platform CI
-is pending. No physical device shutdown is claimed.
+18-test browser suite passes locally after the cleanup. Commit `0bfb4be` passed
+all three push-CI platforms in
+[41019957264](https://github.com/sujanmj/aura-companion/actions/runs/41019957264),
+which uploaded all preview archives; its PR run
+[41019964090](https://github.com/sujanmj/aura-companion/actions/runs/41019964090)
+is still finishing Windows. No physical device shutdown is claimed.
+
+## 2026-10-30 continuation — owner-visible enrolled-node status (Phase 5)
+
+Added `scripts/list_sensor_nodes.py` as a read-only follow-up to the revoke
+command. It lists node ID, display name, room, 90-second heartbeat/event status
+and last-seen time, but ignores credential fields and explicitly says online
+does not verify sensor or playback operation. It uses the authenticated direct
+transport, rejects remote HTTP before sending the admin credential, and refuses
+malformed or terminal-control-character output. Nineteen sensor-admin tests,
+all 95 app Python tests and 12 room-client tests pass locally. Cross-platform
+CI for this status command is pending. No physical node or sensor behavior is
+claimed.

@@ -10,7 +10,7 @@ credential and ends its active room invitation; it does not power down the node.
 If a request response is lost, the Command Center blocks retries until status
 is refreshed, while the CLI advises checking node status before retrying.
 
-Six dashboard interaction tests, 30 Node tests, 16 sensor-admin tests, 12 room
+Six dashboard interaction tests, 30 Node tests, 19 sensor-admin tests, 12 room
 client tests, all 95 app Python tests, 18 browser E2E tests, lint, production
 build and a local preview bundle pass. The latest exact-tree PR workflow
 [41018596692](https://github.com/sujanmj/aura-companion/actions/runs/41018596692)
@@ -19,9 +19,15 @@ matching push workflow [41018590170](https://github.com/sujanmj/aura-companion/a
 passed macOS and Ubuntu but failed two Windows Memory E2E assertions. The
 browser suite shared the check-in opt-in saved by an earlier setup test; a
 follow-up now resets that preference and awaits the expiry confirmation. All
-18 browser tests pass locally after that change, and cross-platform CI is
-pending. These results verify software only; Pi installation and physical
-node shutdown are untested.
+18 browser tests pass locally after that change. The follow-up commit
+`0bfb4be` passed all three push-CI platforms in
+[41019957264](https://github.com/sujanmj/aura-companion/actions/runs/41019957264),
+with all preview archives uploaded; its PR run is completing Windows. A new
+read-only `python scripts/list_sensor_nodes.py` command now reports last-seen
+and heartbeat freshness without printing credentials. Its 19 focused sensor
+admin tests and the full Python suite pass locally; its cross-platform CI is
+pending. These results verify software only; Pi installation and physical node
+shutdown are untested.
 
 ## Observation expiry
 
