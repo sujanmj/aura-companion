@@ -929,7 +929,7 @@ test("people memory is private and forget removes its associated timeline", asyn
     assert.equal(counts, "1 1");
   } finally {
     await stop();
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
 
