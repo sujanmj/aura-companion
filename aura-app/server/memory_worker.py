@@ -79,6 +79,12 @@ def main():
                                   )}
                                   for person in store.get_known_people(user)
                               ],
+                              'person_events': [
+                                  event for event in store.get_recent_person_events(user, limit=100)
+                                  if event.get('event_type') == 'user_memory_note'
+                                  and event.get('source') == 'user_explicit'
+                                  and event.get('consent_to_remember')
+                              ][:50],
                               'observation_retention': store.observation_retention(user),
                               'preferences': store.get_companion_preferences(user),
                               'backups': list_database_backups(path)}
@@ -259,6 +265,24 @@ def main():
                             'person_id': person_id,
                             'display_name': name,
                         }
+                elif op == 'create_person_memory_note':
+                    person_id = req.get('person_id')
+                    if not isinstance(person_id, int) or isinstance(person_id, bool) or person_id <= 0:
+                        raise ValueError('Invalid person')
+                    event_id = store.add_person_memory_note(
+                        user,
+                        person_id,
+                        req.get('note'),
+                        req.get('consent_confirmed'),
+                    )
+                    result = {'created': True, 'event_id': event_id}
+                elif op == 'delete_person_memory_note':
+                    event_id = req.get('event_id')
+                    if not isinstance(event_id, int) or isinstance(event_id, bool) or event_id <= 0:
+                        raise ValueError('Invalid person memory note')
+                    if not store.delete_person_memory_note(user, event_id):
+                        raise ValueError('Person memory note not found')
+                    result = {'ok': True}
                 elif op == 'forget_person':
                     person_id = req.get('person_id')
                     if not isinstance(person_id, int) or isinstance(person_id, bool) or person_id <= 0:
