@@ -1,5 +1,6 @@
 """Local SQLite backups are verifiable, private files with explicit deletion."""
 from pathlib import Path
+from contextlib import contextmanager
 import os
 import sqlite3
 import stat
@@ -16,12 +17,22 @@ from backup_manager import (
 )
 
 
+@contextmanager
+def _connect(path):
+    connection = sqlite3.connect(path)
+    try:
+        with connection:
+            yield connection
+    finally:
+        connection.close()
+
+
 class BackupManagerTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.database = self.root / "memory.db"
-        with sqlite3.connect(self.database) as store:
+        with _connect(self.database) as store:
             store.execute("CREATE TABLE memory (note TEXT NOT NULL)")
             store.execute("INSERT INTO memory VALUES (?)", ("private saved note",))
 
@@ -33,13 +44,13 @@ class BackupManagerTest(unittest.TestCase):
         self.assertRegex(backup["name"], r"^aura-\d{8}T\d{12}\.db$")
         backup_path = self.root / "backups" / backup["name"]
         self.assertEqual(backup_path.stat().st_size, backup["size_bytes"])
-        with sqlite3.connect(backup_path) as restored:
+        with _connect(backup_path) as restored:
             self.assertEqual(restored.execute("PRAGMA quick_check").fetchone()[0], "ok")
             self.assertEqual(
                 restored.execute("SELECT note FROM memory").fetchone()[0],
                 "private saved note",
             )
-        with sqlite3.connect(self.database) as active:
+        with _connect(self.database) as active:
             self.assertEqual(active.execute("SELECT count(*) FROM memory").fetchone()[0], 1)
         if os.name == "posix":
             self.assertEqual(stat.S_IMODE(backup_path.stat().st_mode), 0o600)
@@ -51,7 +62,7 @@ class BackupManagerTest(unittest.TestCase):
             active.execute("INSERT INTO memory VALUES (?)", ("committed wal note",))
             active.commit()
             backup = create_database_backup(self.database)
-            with sqlite3.connect(self.root / "backups" / backup["name"]) as snapshot:
+            with _connect(self.root / "backups" / backup["name"]) as snapshot:
                 self.assertEqual(
                     snapshot.execute("SELECT count(*) FROM memory WHERE note=?", ("committed wal note",)).fetchone()[0],
                     1,
@@ -74,7 +85,7 @@ class BackupManagerTest(unittest.TestCase):
         self.assertFalse(delete_database_backup(self.database, first["name"]))
         self.assertEqual([item["name"] for item in list_database_backups(self.database)], [second["name"]])
         self.assertTrue((backup_dir / "notes.txt").exists())
-        with sqlite3.connect(self.database) as active:
+        with _connect(self.database) as active:
             self.assertEqual(active.execute("SELECT note FROM memory").fetchone()[0], "private saved note")
 
     def test_delete_rejects_untrusted_names_before_touching_the_backup_directory(self):
