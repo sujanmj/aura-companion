@@ -486,6 +486,35 @@ const server = http.createServer(async (req, res) => {
           return json(res, 503, { error: "AURA could not save this person right now." });
         }
       }
+      if (url.pathname === "/api/person/event/create") {
+        if (
+          !Number.isSafeInteger(data.person_id) || data.person_id <= 0 ||
+          typeof data.note !== "string" || !data.note.trim() || data.note.trim().length > 500
+        )
+          return json(res, 400, { error: "Choose a person and enter a note of 1–500 characters." });
+        if (data.consent_confirmed !== true)
+          return json(res, 400, { error: "Confirm you have permission to save this person's event note." });
+        try {
+          return json(res, 201, await memory("create_person_memory_note", {
+            person_id: data.person_id,
+            note: data.note,
+            consent_confirmed: true,
+          }));
+        } catch {
+          return json(res, 404, { error: "That consented person could not be found." });
+        }
+      }
+      if (url.pathname === "/api/person/event/delete") {
+        if (!Number.isSafeInteger(data.event_id) || data.event_id <= 0)
+          return json(res, 400, { error: "Choose a valid person memory note." });
+        try {
+          return json(res, 200, await memory("delete_person_memory_note", {
+            event_id: data.event_id,
+          }));
+        } catch {
+          return json(res, 404, { error: "That person memory note could not be found." });
+        }
+      }
       if (
         url.pathname === "/api/fact/update" ||
         url.pathname === "/api/fact/delete" ||
