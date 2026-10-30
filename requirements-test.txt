@@ -1,0 +1,5 @@
+# Test-only dependencies for AURA app Python checks.
+# Not required for AURA runtime. Kept separate from requirements.txt so
+# Windows CI can load IANA zones (America/New_York) via zoneinfo without
+# changing production installs.
+tzdata==2026.6
