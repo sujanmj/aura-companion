@@ -27,6 +27,12 @@ the feature does not generate saved audio. Mocked process tests cover failure
 handling. No Pi speaker, voice-quality or acoustic check has been run; CI
 verification for this follow-up is pending.
 
+The Python console now saves only the derived one-shot camera summary to
+SQLite. It disables the camera observer's optional JPEG snapshot for this flow;
+camera failure still falls back to typed context. Injected tests cover this
+storage boundary. No camera permission or hardware acceptance is claimed, and
+CI verification for this change is pending.
+
 ## Continuous dependency advisories (Phase 12)
 
 Ubuntu CI checks the locked npm dependency tree for high-severity or greater

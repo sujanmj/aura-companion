@@ -589,6 +589,11 @@ not close the unresolved Phase 2 hardware acceptance gates.
 
 ### Phase 7 — Continuous, private perception
 
+- Implemented for the Python companion console: a requested single-frame camera
+  observation saves a derived summary to SQLite but does not save the source
+  JPEG. Mocked tests assert the camera is called with snapshot saving disabled
+  and typed fallback still works. This does not test camera permissions or
+  physical hardware.
 - Implemented for Mac preview: an optional, off-by-default spoken person-in-view
   notice uses local human-presence detection, waits for stable absence and
   re-entry, and says it cannot identify who is present. It does not claim a

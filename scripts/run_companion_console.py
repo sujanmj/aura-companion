@@ -101,7 +101,7 @@ def get_observation(
         )
         return raw
 
-    result = camera_observer.capture_observation()
+    result = camera_observer.capture_observation(save_snapshot=False)
     if result.get("ok"):
         store.add_observation(
             user_id,

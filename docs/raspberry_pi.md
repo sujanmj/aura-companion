@@ -72,6 +72,9 @@ it does not establish a Raspberry Pi installation or live heartbeat.
 
 The Pi integration should keep capture and sensor sampling on the device. A local companion service will read the camera through Picamera2, use local wake-word and speech recognition, synthesize speech locally, and sample individually configured sensor drivers. It should send only a wake-triggered transcript, a short camera-derived description, or a sensor event to the AURA server. AURA should then store conversations and telemetry through a cloud database adapter and call the chosen hosted AI provider from the server process. Provider keys must never be exposed to the kiosk browser. Raw ambient audio and video should not be retained or uploaded by default.
 
+The Python console's one-shot camera observation stores only its derived
+summary in SQLite; it does not keep a JPEG snapshot.
+
 ### Local push-to-talk speech prototype
 
 The Python companion console can use optional on-device Vosk speech recognition
