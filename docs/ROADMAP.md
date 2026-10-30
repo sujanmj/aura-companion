@@ -812,3 +812,12 @@ Node tests, all 19 browser E2E tests, lint, and production build. Commit
 on macOS, Windows and Ubuntu, uploading preview archives for all three
 platforms. This does not establish third-party consent beyond the user's
 confirmation, camera identification, or hardware behavior.
+
+## 2026-10-30 continuation — expand preview credential marker checks (Phase 12)
+
+The preview packager now rejects additional common credential formats for
+GitHub OAuth, AWS access keys, Google API keys, npm, Slack, and legacy OpenAI
+keys. Disposable-repository tests verify each marker is refused, and all 117
+application Python tests pass locally. Cross-platform CI is pending. The scan
+is a narrow accidental-leak guard, not a comprehensive secret audit or proof
+that credentials are absent from the repository.

@@ -102,6 +102,22 @@ class PackagingTests(unittest.TestCase):
         self.commit()
         with self.assertRaisesRegex(ValueError, 'Private data marker'):
             package(self.root)
+
+    def test_additional_common_credential_families_are_refused(self):
+        secrets = (
+            'gho_' + 'x' * 40,
+            'AKIA' + 'A' * 16,
+            'AIza' + 'a' * 35,
+            'npm_' + 'n' * 32,
+            'xoxb-' + 's' * 30,
+            'sk-' + 'k' * 48,
+        )
+        for index, secret in enumerate(secrets):
+            with self.subTest(index=index):
+                self.write('notes.txt', secret)
+                self.commit()
+                with self.assertRaisesRegex(ValueError, 'Private data marker'):
+                    package(self.root)
         self.write('notes.txt', 'gh' + 'p_' + 'x' * 40)
         self.commit()
         with self.assertRaisesRegex(ValueError, 'Private data marker'):

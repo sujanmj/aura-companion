@@ -650,3 +650,8 @@ images. Local verification passed all 116 Python tests, 30 Node tests, 19
 browser E2E tests, lint, and production build. Commit `0bbd889` passed PR CI
 [41071898837](https://github.com/sujanmj/aura-companion/actions/runs/41071898837)
 on macOS, Windows and Ubuntu and uploaded all three preview archives.
+
+The preview package check now also blocks common GitHub OAuth, AWS, Google,
+npm, Slack, and legacy OpenAI key patterns. All 117 Python tests pass locally.
+This is a narrow secret-marker check, not a comprehensive repository secret
+audit; cross-platform CI is pending.

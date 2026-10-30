@@ -16,7 +16,14 @@ PRIVATE_PARTS = {'node_modules', '.venv', '__pycache__', 'backups', 'media', 'lo
 PRIVATE_SUFFIXES = {'.db', '.sqlite', '.sqlite3', '.pem', '.key', '.p12', '.pfx', '.env'}
 SECRET_MARKERS = [
     rb'-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----',
-    rb'\b(?:sk-ant-api03-|sk-proj-|ghp_|github_pat_)[A-Za-z0-9_-]{30,}',
+    rb'\b(?:sk-ant-api03-|sk-proj-)[A-Za-z0-9_-]{30,}',
+    rb'\bsk-[A-Za-z0-9]{40,}',
+    rb'\b(?:gh[pousr]_)[A-Za-z0-9_-]{30,}',
+    rb'\bgithub_pat_[A-Za-z0-9_-]{30,}',
+    rb'\bAKIA[0-9A-Z]{16}\b',
+    rb'\bAIza[0-9A-Za-z_-]{35}\b',
+    rb'\bnpm_[A-Za-z0-9]{20,}',
+    rb'\bxox[baprs]-[A-Za-z0-9-]{20,}',
 ]
 
 
