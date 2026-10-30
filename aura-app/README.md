@@ -58,6 +58,8 @@ Use **Save periodic scene summaries to Memory** to control whether changed scene
 
 Use **Include camera context in replies** to exclude the latest scene labels and person-presence signal from new ambient requests while leaving on-device camera processing and the separate Memory preference unchanged. Turn off room perception to prevent all camera context. This preference is also saved on the Mac and applies to a new session after Pause.
 
+During an active session, **Use private replies for this session** routes new addressed phrases through AURA's existing unsaved private-turn path. It does not use saved memories, camera context or saved chat history. Requests still go to the configured provider, which may retain them under its own policy. Pause, window close or sleep clears this session-only choice; a request already sent cannot be recalled.
+
 The native menu bar helper can stay running while your Mac is awake, even when you close the web browser. Build it on Apple Silicon with `npm run macos:app`; it appears in the ZIP as `release/AURA Companion.app`. Start the AURA web server first with `npm start`, then open the menu bar app and pair once per server session using the session code printed in Terminal. The helper stores only its session cookie in the macOS Keychain.
 
 The build enables Apple's Hardened Runtime and includes only the audio-input and camera entitlements needed for ambient mode. For a stable signed build, set `AURA_MACOS_SIGN_IDENTITY` to an installed Developer ID Application identity before building. Without one, the build uses an ad-hoc signature for development; macOS can treat each rebuilt ad-hoc binary as a different permission requester, and the app cannot be notarized.

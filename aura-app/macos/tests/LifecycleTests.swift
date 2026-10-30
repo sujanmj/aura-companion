@@ -49,6 +49,21 @@ struct LifecycleTests {
             AmbientReplyContext.observation(labels: [], personPresent: true, enabled: true).isEmpty,
             "Presence alone remains excluded when there is no scene label"
         )
+        precondition(AmbientReplyRequest.endpoint(privateMode: true) == "/api/private")
+        precondition(AmbientReplyRequest.endpoint(privateMode: false) == "/api/ambient")
+        let privatePayload = AmbientReplyRequest.payload(
+            message: "Where did I leave my keys?",
+            observation: "Local camera context: table. Person present: no.",
+            privateMode: true
+        )
+        precondition(Set(privatePayload.keys) == Set(["message", "consent"]))
+        precondition(privatePayload["consent"] as? Bool == true)
+        let ambientPayload = AmbientReplyRequest.payload(
+            message: "Hey AURA, what is this?",
+            observation: "Local camera context: cup. Person present: yes.",
+            privateMode: false
+        )
+        precondition(ambientPayload["observation"] as? String == "Local camera context: cup. Person present: yes.")
 
         var turns = ConversationTurnGate()
         for phrase in ["I need help", "what do you think", "I talked to Aura yesterday", "aural music", ""] {

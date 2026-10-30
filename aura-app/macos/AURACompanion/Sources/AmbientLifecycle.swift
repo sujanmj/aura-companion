@@ -31,6 +31,19 @@ enum AmbientReplyContext {
     }
 }
 
+enum AmbientReplyRequest {
+    static func endpoint(privateMode: Bool) -> String {
+        privateMode ? "/api/private" : "/api/ambient"
+    }
+
+    static func payload(message: String, observation: String, privateMode: Bool) -> [String: Any] {
+        if privateMode {
+            return ["message": message, "consent": true]
+        }
+        return ["message": message, "observation": observation]
+    }
+}
+
 enum StartupWatchdog {
     static func timeoutMessage(for stage: String) -> String {
         switch stage {
