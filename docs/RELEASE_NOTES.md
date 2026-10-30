@@ -45,8 +45,11 @@ lint and production build pass locally. Push CI
 [41024839694](https://github.com/sujanmj/aura-companion/actions/runs/41024839694)
 passed on all three platforms and uploaded preview artifacts. The matching PR
 run [41024846598](https://github.com/sujanmj/aura-companion/actions/runs/41024846598)
-has passed on Mac and Ubuntu; its Windows rerun is still in progress. These
-checks do not establish a physical Pi or room-playback behavior.
+passed on all three platforms after retrying the slow Mac E2E case and a
+cancelled Windows job; both retries passed. The documentation snapshot also
+passed its three-platform PR workflow and uploaded previews in
+[41026034065](https://github.com/sujanmj/aura-companion/actions/runs/41026034065).
+These checks do not establish a physical Pi or room-playback behavior.
 
 The sensor API now tells HTTP caches not to store any JSON response, including
 unauthorized errors. Header regression tests cover both success and auth-failure

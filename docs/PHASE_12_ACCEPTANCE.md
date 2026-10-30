@@ -90,9 +90,11 @@ These checks establish only the behavior covered by their tests:
   [41024839694](https://github.com/sujanmj/aura-companion/actions/runs/41024839694)
   passed on all three platforms and uploaded every preview artifact. PR run
   [41024846598](https://github.com/sujanmj/aura-companion/actions/runs/41024846598)
-  passed on Mac and Ubuntu; a Windows rerun is in progress after its first job
-  was cancelled. A first Mac run exceeded the whole-test timeout under runner
-  load; its retry passed. No physical node or room playback is claimed.
+  passed on all three platforms after retrying a cancelled Windows job and a
+  slow Mac E2E attempt; both retries passed. The documentation snapshot also
+  passed all three platforms and uploaded preview artifacts in
+  [41026034065](https://github.com/sujanmj/aura-companion/actions/runs/41026034065).
+  No physical node or room playback is claimed.
   Revocation establishes hub credential rejection, not physical device
   shutdown.
 

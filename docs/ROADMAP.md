@@ -1391,5 +1391,8 @@ passes all 96 app Python tests, 30 Node tests, 18 browser E2E tests, lint and
 build locally. Push CI
 [41024839694](https://github.com/sujanmj/aura-companion/actions/runs/41024839694)
 passed on all three platforms and uploaded all previews. Its PR Mac and Ubuntu
-jobs passed; the Windows retry is running after cancellation, and a slow Mac
-browser attempt passed on retry. This is software-only evidence.
+jobs also passed after retrying a cancelled Windows job and one slow Mac E2E
+attempt; both retries passed. The documentation snapshot then passed all three
+platforms and uploaded preview artifacts in
+[41026034065](https://github.com/sujanmj/aura-companion/actions/runs/41026034065).
+This is software-only evidence.
