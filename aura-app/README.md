@@ -60,6 +60,8 @@ Use **Include camera context in replies** to exclude the latest scene labels and
 
 During an active session, **Use private replies for this session** routes new addressed phrases through AURA's existing unsaved private-turn path. It does not use saved memories, camera context or saved chat history. Requests still go to the configured provider, which may retain them under its own policy. Pause, window close or sleep clears this session-only choice; a request already sent cannot be recalled.
 
+During an active session, **Speak AURA's replies** can be turned off to keep new responses visible in the native helper without speaking them. Listening continues, and the choice resets to on when the session ends. This setting does not mute separately opted-in reminders.
+
 The native menu bar helper can stay running while your Mac is awake, even when you close the web browser. Build it on Apple Silicon with `npm run macos:app`; it appears in the ZIP as `release/AURA Companion.app`. Start the AURA web server first with `npm start`, then open the menu bar app and pair once per server session using the session code printed in Terminal. The helper stores only its session cookie in the macOS Keychain.
 
 The build enables Apple's Hardened Runtime and includes only the audio-input and camera entitlements needed for ambient mode. For a stable signed build, set `AURA_MACOS_SIGN_IDENTITY` to an installed Developer ID Application identity before building. Without one, the build uses an ad-hoc signature for development; macOS can treat each rebuilt ad-hoc binary as a different permission requester, and the app cannot be notarized.

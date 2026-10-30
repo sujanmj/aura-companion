@@ -56,6 +56,19 @@ struct SessionReplyPrivacy {
     }
 }
 
+struct SessionSpeechOutput {
+    private(set) var enabled = true
+
+    mutating func setEnabled(_ enabled: Bool, sessionActive: Bool) {
+        guard sessionActive else { return }
+        self.enabled = enabled
+    }
+
+    mutating func reset() {
+        enabled = true
+    }
+}
+
 enum StartupWatchdog {
     static func timeoutMessage(for stage: String) -> String {
         switch stage {

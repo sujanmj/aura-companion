@@ -487,8 +487,8 @@ Status: foundations exist in the original reaction/memory engines.
   context only when the user mentions matching terms; unrelated notes stay out.
   Notes are marked unverified, shown in Memory, and can be deleted there. Simple
   credential and payment-secret requests are excluded from event-note storage.
-- Remaining: broader native controls beyond camera, scene-memory, reply-context
-  and private-reply choices, and lifecycle acceptance.
+- Remaining: broader native controls beyond camera, scene-memory, reply-context,
+  private-reply and spoken-reply choices, and lifecycle acceptance.
 - Handle interruptions, uncertainty and emotional cues without claiming mind-reading.
 
 Exit: behavior and privacy tests pass; preferences and consent persist correctly.
@@ -1255,3 +1255,12 @@ Commit `e401909` passed macOS, Windows and Ubuntu push CI in
 and PR CI in
 [41014366925](https://github.com/sujanmj/aura-companion/actions/runs/41014366925),
 with all three preview artifacts uploaded.
+
+## 2026-10-30 continuation — session-only Mac speech output control (Phases 2, 9)
+
+The native helper now lets the user keep replies visible while muting only new
+ambient replies for the active session. Speech remains enabled by default,
+reminders keep their separate opt-in, and pause resets this session-only choice.
+Native lifecycle tests cover the paused guard and reset. Local Mac build,
+native tests, 28 Node tests, lint and production build pass. CI is pending; no
+acoustic mute or live-speaker acceptance is claimed.

@@ -76,9 +76,11 @@ struct AURAAmbientApp: App {
     @Published private(set) var followupsEnabled = false
     @Published private(set) var followupDurationSeconds = 30
     @Published private(set) var privateRepliesEnabled = false
+    @Published private(set) var speakRepliesEnabled = true
     @Published private(set) var isSpeaking = false
     private var conversationTurns = ConversationTurnGate()
     private var replyPrivacy = SessionReplyPrivacy()
+    private var sessionSpeechOutput = SessionSpeechOutput()
     private var speechPlaybackGeneration = SpeechPlaybackGeneration()
 
     private var camera: LocalCamera?
@@ -590,6 +592,11 @@ struct AURAAmbientApp: App {
         privateRepliesEnabled = replyPrivacy.privateRepliesEnabled
     }
 
+    func setSpeakRepliesEnabled(_ enabled: Bool) {
+        sessionSpeechOutput.setEnabled(enabled, sessionActive: isActive)
+        speakRepliesEnabled = sessionSpeechOutput.enabled
+    }
+
     func setFollowupDuration(_ seconds: Int) {
         guard ConversationTurnGate.supportedFollowupDurations.contains(seconds) else { return }
         followupDurationSeconds = seconds
@@ -626,7 +633,13 @@ struct AURAAmbientApp: App {
                 return
             }
             let response = try JSONDecoder().decode(CompanionResponse.self, from: data)
-            await MainActor.run { speakLocally(response.response, generation: generation, turnGeneration: turnGeneration) }
+            if sessionSpeechOutput.enabled {
+                speakLocally(response.response, generation: generation, turnGeneration: turnGeneration)
+            } else {
+                recentResponse = response.response
+                conversationTurns.replyFinished(generation: turnGeneration, now: ProcessInfo.processInfo.systemUptime)
+                status = "AURA replied silently. The response is shown below; microphone and camera remain on."
+            }
         } catch {
             guard lifecycle.contains(generation), !Task.isCancelled else { return }
             status = "AURA’s reply was interrupted. Check the conversation before retrying; it may already be saved."
@@ -682,6 +695,8 @@ struct AURAAmbientApp: App {
         setFollowups(false)
         replyPrivacy.reset()
         privateRepliesEnabled = replyPrivacy.privateRepliesEnabled
+        sessionSpeechOutput.reset()
+        speakRepliesEnabled = sessionSpeechOutput.enabled
         startupTimeoutTask?.cancel()
         startupTimeoutTask = nil
         speechPlaybackGeneration.invalidate()
@@ -1295,6 +1310,13 @@ private struct MenuView: View {
             ))
             .disabled(!monitor.isActive)
             Text("New addressed phrases use no saved AURA memories, camera context, or saved chat history. They still go to your configured provider, which may retain requests under its policy. Pause clears this session-only choice; it cannot change requests already sent.")
+                .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Speak AURA's replies", isOn: Binding(
+                get: { monitor.speakRepliesEnabled },
+                set: { monitor.setSpeakRepliesEnabled($0) }
+            ))
+            .disabled(!monitor.isActive)
+            Text("Off keeps each reply in this window and leaves ambient listening on. This choice resets to on when you pause or end the session; it does not mute opted-in reminders.")
                 .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             Button("Stop speaking") { monitor.stopSpeaking() }
                 .disabled(!monitor.isSpeaking)

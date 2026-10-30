@@ -73,6 +73,17 @@ struct LifecycleTests {
         replyPrivacy.reset()
         precondition(!replyPrivacy.privateRepliesEnabled, "Stopping the session clears private reply mode")
 
+        var speechOutput = SessionSpeechOutput()
+        precondition(speechOutput.enabled, "Spoken replies remain enabled by default")
+        speechOutput.setEnabled(false, sessionActive: false)
+        precondition(speechOutput.enabled, "The session control cannot change while paused")
+        speechOutput.setEnabled(false, sessionActive: true)
+        precondition(!speechOutput.enabled)
+        speechOutput.setEnabled(true, sessionActive: false)
+        precondition(!speechOutput.enabled, "A paused toggle cannot change the previous session")
+        speechOutput.reset()
+        precondition(speechOutput.enabled, "The next session keeps the established speak-by-default behavior")
+
         var turns = ConversationTurnGate()
         for phrase in ["I need help", "what do you think", "I talked to Aura yesterday", "aural music", ""] {
             precondition(!turns.accepts(phrase, now: 0), "Overheard speech must not be submitted by default")
