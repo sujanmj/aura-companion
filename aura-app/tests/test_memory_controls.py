@@ -114,6 +114,23 @@ class MemoryControlsTest(unittest.TestCase):
             '2026-11-01',
         )
 
+    def test_reminder_in_a_skipped_daylight_saving_hour_fires_at_first_later_local_time(self):
+        reminder_id = self.store.add_routine_reminder(self.owner, 'Morning routine', '02:30')
+        # These instants model the spring jump from 01:59 UTC-5 to 03:00 UTC-4.
+        before_jump = datetime(
+            2026, 3, 8, 1, 59, tzinfo=timezone(timedelta(hours=-5))
+        )
+        after_jump = datetime(
+            2026, 3, 8, 3, 0, tzinfo=timezone(timedelta(hours=-4))
+        )
+        self.assertIsNone(self.store.create_due_routine_reminder(self.owner, before_jump))
+        due = self.store.create_due_routine_reminder(self.owner, after_jump)
+        self.assertEqual(due['reminder_id'], reminder_id)
+        self.assertEqual(
+            self.store.get_routine_reminders(self.owner)[0]['last_delivered_on'],
+            '2026-03-08',
+        )
+
     def test_reminder_acknowledgement_records_seen_not_completion(self):
         reminder_id = self.store.add_routine_reminder(self.owner, 'Take medication', '20:00')
         day = datetime(2026, 10, 21, 20, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
