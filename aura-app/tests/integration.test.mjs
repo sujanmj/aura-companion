@@ -888,7 +888,10 @@ test("online route needs approval, isolates memory and bounds repeated requests"
     assert.equal((await post("online/lookup", { query: "again", approved: true }, cookie)).status, 429);
     const after = await (await fetch(base + "/api/memory/export", { headers: { Cookie: cookie } })).json();
     assert.deepEqual(after.records, before.records);
-  } finally { await stop(); await rm(dir, { recursive: true, force: true }); }
+  } finally {
+    await stop();
+    await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
 });
 
 
