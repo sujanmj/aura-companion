@@ -726,3 +726,13 @@ both uploaded all three preview archives. The audit is advisory coverage for
 declared/resolved dependencies at run time, not a guarantee against unknown or
 future vulnerabilities. No hardware, signing or notarization acceptance is
 implied.
+
+## 2026-10-30 continuation — scheduled dependency updates (Phase 12)
+
+Added weekly Dependabot update configuration for the app's npm lockfile, root
+Python requirements, and GitHub Actions. The checks have a five-open-PR limit
+per ecosystem and do not auto-merge. The YAML parses locally. Since Dependabot
+reads configuration from the repository's default branch, this policy will
+become active after the branch is merged; it is not yet operating on the open
+development branch. Preview CI verifies the tree and docs but cannot verify
+Dependabot's scheduled service.

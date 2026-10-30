@@ -15,6 +15,14 @@ was fixed with bounded file-removal retries and passed in the final matrix.
 These checks do not guarantee that future or unknown dependency vulnerabilities
 are absent.
 
+## Scheduled dependency updates (Phase 12)
+
+Added weekly Dependabot checks for npm, Python requirements, and GitHub Actions,
+with a five-PR limit per ecosystem and no automatic merging. The manifest parses
+locally. GitHub only activates Dependabot from the default branch, so this
+configuration will take effect after the development branch is merged; no
+scheduled update run is claimed yet.
+
 ## Existing-memory upgrade smoke (Phases 6 and 12)
 
 The extracted preview is now tested against a synthetic database created from

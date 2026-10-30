@@ -23,6 +23,12 @@ These checks establish only the behavior covered by their tests:
   These checks do not establish hardware acceptance or guarantee protection
   from unknown/future advisories.
 
+- Added `.github/dependabot.yml` for weekly npm, pip, and GitHub Actions updates,
+  capped at five open pull requests per ecosystem with no auto-merge. Ruby's
+  YAML parser accepts the file. Dependabot reads this configuration only from
+  the repository default branch, so scheduled operation remains pending merge
+  and no Dependabot service run or update PR is claimed.
+
 - Commit `75ab2e2` tests a packaged preview startup against disposable memory
   from AURA's schema before weekday reminders. The test checks that a
   pre-migration startup backup contains the original fact and reminder, then
