@@ -34,6 +34,30 @@ struct LifecycleTests {
         captureDefaults.set(false, forKey: AmbientCaptureSettings.useCameraContextPreferenceKey)
         precondition(!AmbientCaptureSettings.useCameraContext(from: captureDefaults))
         captureDefaults.removePersistentDomain(forName: captureDefaultsName)
+        let sessionDefaultsName = "AURA.AmbientSessionSettingsTests"
+        let sessionDefaults = UserDefaults(suiteName: sessionDefaultsName)!
+        sessionDefaults.removePersistentDomain(forName: sessionDefaultsName)
+        precondition(AmbientSessionSettings.autoPauseMinutes(from: sessionDefaults) == 0)
+        for minutes in AmbientSessionSettings.supportedAutoPauseMinutes {
+            sessionDefaults.set(minutes, forKey: AmbientSessionSettings.autoPauseMinutesPreferenceKey)
+            precondition(AmbientSessionSettings.autoPauseMinutes(from: sessionDefaults) == minutes)
+        }
+        sessionDefaults.set(20, forKey: AmbientSessionSettings.autoPauseMinutesPreferenceKey)
+        precondition(AmbientSessionSettings.autoPauseMinutes(from: sessionDefaults) == 0)
+        sessionDefaults.removePersistentDomain(forName: sessionDefaultsName)
+
+        var sessionWindow = AmbientSessionWindow()
+        let timedSession = sessionWindow.begin(now: 100, durationSeconds: 900)!
+        precondition(!sessionWindow.shouldPause(generation: timedSession, now: 999.99))
+        precondition(sessionWindow.shouldPause(generation: timedSession, now: 1_000))
+        sessionWindow.cancel()
+        precondition(!sessionWindow.shouldPause(generation: timedSession, now: 10_000), "Manual Pause invalidates a pending automatic pause")
+        let unlimitedSession = sessionWindow.begin(now: 10_000, durationSeconds: 0)!
+        precondition(!sessionWindow.shouldPause(generation: unlimitedSession, now: 100_000), "No time limit remains available")
+        precondition(sessionWindow.begin(now: .nan, durationSeconds: 900) == nil)
+        precondition(sessionWindow.begin(now: 0, durationSeconds: 20) == nil)
+        sessionWindow.cancel()
+
         let cameraObservation = AmbientReplyContext.observation(
             labels: ["kitchen", "cup", "table", "window", "person", "sixth-label"],
             personPresent: true,

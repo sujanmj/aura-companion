@@ -88,6 +88,8 @@ struct AURAAmbientApp: App {
     private var pairingGeneration = PairingGeneration()
     private var replyTask: Task<Void, Never>?
     private var startupTimeoutTask: Task<Void, Never>?
+    private var sessionLimitTask: Task<Void, Never>?
+    private var sessionWindow = AmbientSessionWindow()
     private let audioCapture = LocalAudioCapture()
     private let synthesizer = AVSpeechSynthesizer()
     private var speechOutputSuppression = SpeechOutputSuppression()
@@ -389,6 +391,7 @@ struct AURAAmbientApp: App {
             guard lifecycle.activate(generation) else { return }
             observeAudioConfigurationChange(generation: generation)
             isActive = true; microphoneOn = true; microphoneStopping = false; cameraOn = wantsCamera; cameraStopping = false
+            scheduleAutomaticPause(sessionGeneration: generation)
             updateSleepPreventionActivity()
             status = wantsCamera
                 ? "Listening locally. Say Hey AURA for a direct reply; check-ins and daily reminders follow your Setup choices."
@@ -692,6 +695,8 @@ struct AURAAmbientApp: App {
     }
 
     func stop(preservingWakeResume: Bool = false) {
+        sessionLimitTask?.cancel(); sessionLimitTask = nil
+        sessionWindow.cancel()
         setFollowups(false)
         replyPrivacy.reset()
         privateRepliesEnabled = replyPrivacy.privateRepliesEnabled
@@ -743,6 +748,32 @@ struct AURAAmbientApp: App {
                     Task { await self.start() }
                 }
             }
+        }
+    }
+
+    private func scheduleAutomaticPause(sessionGeneration: UInt64) {
+        sessionLimitTask?.cancel(); sessionLimitTask = nil
+        let minutes = AmbientSessionSettings.autoPauseMinutes()
+        guard let windowGeneration = sessionWindow.begin(
+            now: ProcessInfo.processInfo.systemUptime,
+            durationSeconds: minutes * 60
+        ), minutes > 0 else { return }
+
+        let durationSeconds = minutes * 60
+        sessionLimitTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(durationSeconds) * 1_000_000_000)
+            } catch {
+                return
+            }
+            guard let self, !Task.isCancelled,
+                  self.lifecycle.contains(sessionGeneration),
+                  self.sessionWindow.shouldPause(
+                    generation: windowGeneration,
+                    now: ProcessInfo.processInfo.systemUptime
+                  ) else { return }
+            self.stop()
+            self.status = "Ambient mode paused after \(minutes) minutes. Start it again when ready."
         }
     }
 
@@ -1251,6 +1282,8 @@ private struct MenuView: View {
     @AppStorage(SpeechOutputSettings.ratePreferenceKey) private var speechRate = 0.48
     @AppStorage(PersonPresenceNoticeTracker.preferenceKey) private var personPresenceNoticesEnabled = false
     @AppStorage(AmbientPowerSettings.keepAwakePreferenceKey) private var keepMacAwake = false
+    @AppStorage(AmbientSessionSettings.autoPauseMinutesPreferenceKey)
+    private var ambientAutoPauseMinutes = AmbientSessionSettings.defaultAutoPauseMinutes
     @AppStorage(AmbientCaptureSettings.cameraEnabledPreferenceKey)
     private var ambientCameraEnabled = AmbientCaptureSettings.cameraEnabledByDefault
     @AppStorage(AmbientCaptureSettings.saveSceneSummariesPreferenceKey)
@@ -1347,6 +1380,14 @@ private struct MenuView: View {
             Toggle("Keep Mac and display awake while listening", isOn: $keepMacAwake)
                 .onChange(of: keepMacAwake) { enabled in monitor.setKeepMacAwake(enabled) }
             Text("Off by default. Prevents idle system and display sleep only during live ambient mode; Pause releases it. This does not change password or automatic-lock settings and may use more energy.")
+                .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+            Picker("Automatically pause ambient mode", selection: $ambientAutoPauseMinutes) {
+                ForEach(AmbientSessionSettings.supportedAutoPauseMinutes, id: \.self) { minutes in
+                    Text(minutes == 0 ? "No time limit" : "After \(minutes) minutes").tag(minutes)
+                }
+            }
+            .disabled(monitor.isActive || monitor.isStarting)
+            Text("Optional timer starts after the microphone and camera are live. At the limit, AURA closes capture; you can start another session. Manual Pause works at any time.")
                 .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             if !monitor.isPaired {
                 if monitor.canRetrySavedPairing {

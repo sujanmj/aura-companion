@@ -22,6 +22,41 @@ enum AmbientCaptureSettings {
     }
 }
 
+enum AmbientSessionSettings {
+    static let autoPauseMinutesPreferenceKey = "auraAmbientAutoPauseMinutes"
+    static let defaultAutoPauseMinutes = 0
+    static let supportedAutoPauseMinutes = [0, 15, 30, 60]
+
+    static func autoPauseMinutes(from defaults: UserDefaults = .standard) -> Int {
+        let stored = defaults.object(forKey: autoPauseMinutesPreferenceKey) as? Int
+            ?? defaultAutoPauseMinutes
+        return supportedAutoPauseMinutes.contains(stored) ? stored : defaultAutoPauseMinutes
+    }
+}
+
+struct AmbientSessionWindow {
+    private(set) var generation: UInt64 = 0
+    private(set) var deadline: TimeInterval?
+
+    mutating func begin(now: TimeInterval, durationSeconds: Int) -> UInt64? {
+        guard now.isFinite, now >= 0,
+              [0, 900, 1_800, 3_600].contains(durationSeconds) else { return nil }
+        generation &+= 1
+        deadline = durationSeconds == 0 ? nil : now + TimeInterval(durationSeconds)
+        return generation
+    }
+
+    func shouldPause(generation token: UInt64, now: TimeInterval) -> Bool {
+        guard generation == token, now.isFinite, let deadline else { return false }
+        return now >= deadline
+    }
+
+    mutating func cancel() {
+        generation &+= 1
+        deadline = nil
+    }
+}
+
 enum AmbientReplyContext {
     static func observation(labels: [String], personPresent: Bool, enabled: Bool) -> String {
         guard enabled else { return "" }
