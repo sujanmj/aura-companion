@@ -1361,4 +1361,11 @@ authorization failures, so caches are not instructed to retain event details,
 node/room status, or other private API payloads. Two focused header tests verify
 the success and unauthorized response paths. The 95 app Python tests and other
 sensor/room client suites pass locally. The live-auth probe was skipped because
-this workspace has no configured hub token. Cross-platform CI is pending.
+this workspace has no configured hub token. The first two exact-tree CI runs
+passed macOS and Ubuntu but timed out different Windows E2E assertions at the
+default five-second expectation limit, with 17/18 browser tests passing in each
+run ([41022301772](https://github.com/sujanmj/aura-companion/actions/runs/41022301772),
+[41022294392](https://github.com/sujanmj/aura-companion/actions/runs/41022294392)).
+The Windows-only Playwright expectation timeout is now 15 seconds. The complete
+18-test browser suite, 30 Node tests, lint, build and focused API header tests
+pass locally; cross-platform CI for the retry is pending.

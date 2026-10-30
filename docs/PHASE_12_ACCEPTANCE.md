@@ -68,6 +68,10 @@ These checks establish only the behavior covered by their tests:
   including 401 failures, with two local regression tests; cross-platform CI is
   pending. A live-auth probe was skipped because no hub token is configured in
   this workspace.
+  Its first two CI attempts passed macOS and Ubuntu but hit different Windows
+  E2E expectations at five seconds (17/18 browser tests passed in each). The
+  Windows assertion window is now 15 seconds; all 18 browser tests pass locally
+  after this adjustment, and the exact-tree CI retry is pending.
   Revocation establishes hub credential rejection, not physical device
   shutdown.
 

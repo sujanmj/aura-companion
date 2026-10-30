@@ -40,6 +40,10 @@ The sensor API now tells HTTP caches not to store any JSON response, including
 unauthorized errors. Header regression tests cover both success and auth-failure
 responses. Local validation is green; cross-platform CI is pending. The live
 hub-auth probe was skipped because no hub token is configured in this workspace.
+The first two CI attempts passed macOS and Ubuntu but timed out different
+Windows E2E assertions at five seconds; each passed 17/18 browser cases. The
+Windows-only expectation timeout is now 15 seconds, and the full browser suite
+passes locally. Cross-platform CI is rerunning.
 
 ## Observation expiry
 
