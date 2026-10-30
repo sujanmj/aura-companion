@@ -19,6 +19,7 @@ from io import StringIO
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from memory.sqlite_store import AuraMemoryStore
 from devices.room_handoff import RoomHandoff, HandoffDenied
+from devices.room_reply_delivery import deliver_invited_reply
 from api.sensor_api_server import AuraSensorAPIHandler
 from scripts import pi_node_simulator
 from scripts import room_invitation
@@ -166,6 +167,62 @@ class RoomHandoffTests(unittest.TestCase):
         self.store.conn.commit()
         with self.assertRaisesRegex(HandoffDenied, 'stale_session'):
             self.hub.validate_claim(self.tokens['bedroom'], expired['session_id'], 1, expired_turn)
+
+    def test_invited_reply_gate_with_sqlite_transfer_and_duplicate_turn(self):
+        session = self.start()
+        played = []
+        reply = 'A simulated reply for the invited room.'
+        original_turn = str(uuid.uuid4())
+
+        def claim_then_transfer(session_id, generation, turn_id):
+            try:
+                self.hub.claim(self.tokens['bedroom'], session_id, generation, turn_id)
+                # Exercise the real race window: ownership moves after reservation
+                # but before the reply gate's independent validation check.
+                self.hub.transfer(self.user, session_id, generation, 'kitchen', True)
+                return 0
+            except HandoffDenied:
+                return 1
+
+        def validate_bedroom(session_id, generation, turn_id):
+            try:
+                self.hub.validate_claim(self.tokens['bedroom'], session_id, generation, turn_id)
+                return 0
+            except HandoffDenied:
+                return 1
+
+        self.assertFalse(deliver_invited_reply(
+            session['session_id'], 1, original_turn, reply,
+            claim=claim_then_transfer,
+            validate=validate_bedroom,
+            playback=played.append,
+        ))
+        self.assertEqual(played, [])
+
+        new_turn = str(uuid.uuid4())
+
+        def operation(token, method):
+            def call(session_id, generation, turn_id):
+                try:
+                    method(token, session_id, generation, turn_id)
+                    return 0
+                except HandoffDenied:
+                    return 1
+            return call
+
+        kitchen_claim = operation(self.tokens['kitchen'], self.hub.claim)
+        kitchen_validate = operation(self.tokens['kitchen'], self.hub.validate_claim)
+        self.assertTrue(deliver_invited_reply(
+            session['session_id'], 2, new_turn, reply,
+            claim=kitchen_claim, validate=kitchen_validate, playback=played.append,
+        ))
+        self.assertFalse(deliver_invited_reply(
+            session['session_id'], 2, new_turn, reply,
+            claim=kitchen_claim, validate=kitchen_validate, playback=played.append,
+        ))
+        self.assertEqual(played, [reply])
+        self.hub.stop(self.user, session['session_id'], 2)
+        self.assertEqual(self.store.conn.execute('SELECT count(*) FROM conversation_logs').fetchone()[0], 0)
 
     def test_rotation_and_revocation_remove_invitation(self):
         for rotate in (True, False):

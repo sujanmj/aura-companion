@@ -715,3 +715,13 @@ tests, 19 browser E2E tests, lint, and production build. Corrected source commit
 and PR CI
 [41082381408](https://github.com/sujanmj/aura-companion/actions/runs/41082381408)
 on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+
+## Simulated invited-room reply handoff (Phase 5)
+
+The room handoff test now exercises the real SQLite lease and claim store with
+the fail-closed reply gate. It verifies that a transfer between reservation
+and validation blocks the former room, the newly invited room can play once,
+and the same logical turn cannot play twice. Local verification passed all
+127 app Python tests, 30 Node tests, and 24 focused room client, invitation,
+and reply-gate tests. Playback remains simulated; Pi, sensor, network-room,
+speaker, and acoustic acceptance still require physical hardware.

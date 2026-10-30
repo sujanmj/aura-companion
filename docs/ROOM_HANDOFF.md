@@ -157,3 +157,12 @@ The dashboard invitation panel's request logic is covered by
 `aura-app/tests/room-invitation-ui.test.mjs`: exact confirmation for each
 change, one request after a lost mutation response, status refresh, and safe
 rendering. The loopback API test checks that the dashboard serves this script.
+
+The SQLite-backed handoff and reply gate are also tested together in
+`aura-app/tests/test_room_handoff.py`. The simulation moves the invitation
+between claim and validation, verifies that the prior room cannot play, then
+allows one playback callback in the newly invited room and rejects a duplicate
+turn. It verifies that the reply text does not enter conversation history. This
+is software-only evidence using a fake playback callback and a temporary
+database, not a physical speaker or Pi test. Validation remains a point-in-time
+check, so real playback will still need a cancellation/fencing boundary.
