@@ -1,5 +1,17 @@
 # AURA development preview — 2026-10-31
 
+## Pi voice software preflight (Phase 5)
+
+Added an offline readiness command for the optional Pi push-to-talk software.
+It checks Python, optional speech packages, and the local model directory while
+keeping the microphone closed and the configured path private. The optional
+`espeak-ng` result is informational. A positive result does not claim audio
+permissions, device compatibility, model accuracy or physical Pi acceptance.
+
+Local verification passed four new readiness tests, all 131 app Python tests,
+34 Node tests, lint, TypeScript checking and production build. The readiness
+test is included in the macOS, Windows and Ubuntu workflow; CI is pending.
+
 ## Temporary answers from reviewed online sources (Phase 10)
 
 After checking an exact query on Wikipedia, you can optionally ask AURA to

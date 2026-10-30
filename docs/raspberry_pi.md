@@ -68,6 +68,23 @@ unit. Do not commit the filled environment file. The preparation test uses a
 temporary directory and verifies the generated limits and file permissions;
 it does not establish a Raspberry Pi installation or live heartbeat.
 
+### Check local voice software readiness
+
+Before enabling push-to-talk on a prepared Pi, run this offline preflight from
+the repository root:
+
+```sh
+python3 scripts/check_pi_voice_readiness.py
+```
+
+It checks Python 3.11+, the optional Vosk and audio packages, and the configured
+non-empty local model directory. `espeak-ng` is reported as optional. The check
+does not print the model path, import the speech provider, open a microphone,
+test device permissions, access the network, or change system settings. A
+ready result covers installed software only; microphone access, model
+compatibility and accuracy, speaker output and Pi hardware still need direct
+acceptance on the target device.
+
 ## Planned Pi service boundary
 
 The Pi integration should keep capture and sensor sampling on the device. A local companion service will read the camera through Picamera2, use local wake-word and speech recognition, synthesize speech locally, and sample individually configured sensor drivers. It should send only a wake-triggered transcript, a short camera-derived description, or a sensor event to the AURA server. AURA should then store conversations and telemetry through a cloud database adapter and call the chosen hosted AI provider from the server process. Provider keys must never be exposed to the kiosk browser. Raw ambient audio and video should not be retained or uploaded by default.

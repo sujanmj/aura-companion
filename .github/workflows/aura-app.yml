@@ -54,6 +54,7 @@ jobs:
       - run: python ../scripts/test_sensor_api_headers.py
       - run: python ../scripts/test_pi_node_heartbeat_service.py
       - run: python ../scripts/test_prepare_pi_node_service.py
+      - run: python ../scripts/test_pi_voice_readiness.py
       - run: python ../scripts/test_local_voice.py
       - run: python ../scripts/test_console_voice_flow.py
       - run: python ../scripts/test_private_session.py

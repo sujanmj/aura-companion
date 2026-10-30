@@ -763,6 +763,20 @@ Exit for these future phases: the behavior is useful in real homes, stays under
 the user's control, has passed privacy and reliability acceptance, and is never
 described as human-level or production-ready without evidence.
 
+## 2026-10-31 continuation — local voice software preflight (Phase 5)
+
+Added `scripts/check_pi_voice_readiness.py` for the eventual Pi push-to-talk
+setup. It checks Python 3.11+, installed Vosk/audio packages, a configured
+non-empty local model directory and optional `espeak-ng`. It does not import the
+speech provider, open a microphone, access the network, print the model path,
+or change system configuration. The output explicitly limits its claim to
+software readiness. Four tests cover missing dependencies, Python version,
+invalid/empty/symlinked models, optional speech output and path redaction. Local
+verification passed the new tests, all 131 app Python tests, 34 Node tests,
+lint, TypeScript checking and production build. The new test is part of the
+three-platform CI workflow. No Pi audio, permission, model-quality, speaker or
+hardware acceptance is claimed; those require the user's future hardware.
+
 ## 2026-10-28 continuation — observation expiry (Phases 4, 7, 8)
 
 Baseline `0a121ba9589155f8bee311d50380b817a3c2775f` was verified against
