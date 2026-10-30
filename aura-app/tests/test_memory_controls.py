@@ -5,6 +5,7 @@ import tempfile
 import unittest
 import sqlite3
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from memory.sqlite_store import AuraMemoryStore
@@ -129,6 +130,36 @@ class MemoryControlsTest(unittest.TestCase):
         self.assertEqual(
             self.store.get_routine_reminders(self.owner)[0]['last_delivered_on'],
             '2026-03-08',
+        )
+
+    def test_reminder_behavior_matches_installed_new_york_timezone_rules(self):
+        try:
+            zone = ZoneInfo('America/New_York')
+        except ZoneInfoNotFoundError:
+            self.skipTest('system IANA timezone data is unavailable')
+
+        spring_id = self.store.add_routine_reminder(
+            self.owner, 'Spring routine', '02:30'
+        )
+        spring_before = datetime(2026, 3, 8, 1, 59, tzinfo=zone)
+        spring_after = datetime(2026, 3, 8, 3, 0, tzinfo=zone)
+        self.assertEqual(spring_before.utcoffset(), timedelta(hours=-5))
+        self.assertEqual(spring_after.utcoffset(), timedelta(hours=-4))
+        self.assertIsNone(self.store.create_due_routine_reminder(self.owner, spring_before))
+        spring_delivery = self.store.create_due_routine_reminder(self.owner, spring_after)
+        self.assertEqual(spring_delivery['reminder_id'], spring_id)
+
+        fall_id = self.store.add_routine_reminder(
+            self.owner, 'Fall routine', '01:30'
+        )
+        first_one_thirty = datetime(2026, 11, 1, 1, 30, tzinfo=zone, fold=0)
+        second_one_thirty = datetime(2026, 11, 1, 1, 30, tzinfo=zone, fold=1)
+        self.assertEqual(first_one_thirty.utcoffset(), timedelta(hours=-4))
+        self.assertEqual(second_one_thirty.utcoffset(), timedelta(hours=-5))
+        fall_delivery = self.store.create_due_routine_reminder(self.owner, first_one_thirty)
+        self.assertEqual(fall_delivery['reminder_id'], fall_id)
+        self.assertIsNone(
+            self.store.create_due_routine_reminder(self.owner, second_one_thirty)
         )
 
     def test_reminder_acknowledgement_records_seen_not_completion(self):
