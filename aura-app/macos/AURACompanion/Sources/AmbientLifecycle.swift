@@ -3,10 +3,16 @@ import Security
 
 enum AmbientCaptureSettings {
     static let cameraEnabledPreferenceKey = "auraAmbientCameraEnabled"
+    static let saveSceneSummariesPreferenceKey = "auraSaveSceneSummaries"
     static let cameraEnabledByDefault = true
+    static let saveSceneSummariesByDefault = true
 
     static func cameraEnabled(from defaults: UserDefaults = .standard) -> Bool {
         defaults.object(forKey: cameraEnabledPreferenceKey) as? Bool ?? cameraEnabledByDefault
+    }
+
+    static func saveSceneSummaries(from defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: saveSceneSummariesPreferenceKey) as? Bool ?? saveSceneSummariesByDefault
     }
 }
 

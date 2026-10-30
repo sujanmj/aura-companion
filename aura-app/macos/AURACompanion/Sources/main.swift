@@ -356,12 +356,14 @@ struct AURAAmbientApp: App {
                                     generation: generation
                                 )
                             }
-                            self.saveSceneSummaryIfNeeded(
-                                labels: labels,
-                                confidence: confidence,
-                                humanPresent: present,
-                                generation: generation
-                            )
+                            if AmbientCaptureSettings.saveSceneSummaries() {
+                                self.saveSceneSummaryIfNeeded(
+                                    labels: labels,
+                                    confidence: confidence,
+                                    humanPresent: present,
+                                    generation: generation
+                                )
+                            }
                         }
                     },
                     onFailure: { [weak self] message in
@@ -1216,11 +1218,23 @@ private struct MenuView: View {
     @AppStorage(AmbientPowerSettings.keepAwakePreferenceKey) private var keepMacAwake = false
     @AppStorage(AmbientCaptureSettings.cameraEnabledPreferenceKey)
     private var ambientCameraEnabled = AmbientCaptureSettings.cameraEnabledByDefault
+    @AppStorage(AmbientCaptureSettings.saveSceneSummariesPreferenceKey)
+    private var saveSceneSummaries = AmbientCaptureSettings.saveSceneSummariesByDefault
 
     private var englishVoices: [AVSpeechSynthesisVoice] {
         AVSpeechSynthesisVoice.speechVoices()
             .filter { $0.language.lowercased().hasPrefix("en") }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private var ambientPrivacyDescription: String {
+        if !ambientCameraEnabled {
+            return "AURA listens on this Mac using supported on-device speech recognition. The camera is off, so room perception and scene summaries are disabled. Raw audio is never saved or sent. Requests beginning with AURA or Hey AURA reach your companion. Solo follow-ups require a separate opt-in."
+        }
+        if saveSceneSummaries {
+            return "AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. While ambient mode is on, changed scene summaries may be stored in local SQLite. Requests beginning with AURA or Hey AURA reach your companion. Solo follow-ups require a separate opt-in."
+        }
+        return "AURA checks speech and the room on this Mac using on-device processing. Periodic scene summaries are not sent to local Memory, though recent camera labels may be included with direct requests. Turn off room perception to disable camera context entirely. Raw audio and frames are never saved or sent."
     }
 
     var body: some View {
@@ -1232,14 +1246,16 @@ private struct MenuView: View {
                 VStack(alignment: .leading, spacing: 15) {
             HStack { Text("✳ AURA").font(.system(size: 22, weight: .medium)); Spacer(); Text(monitor.isActive ? "LIVE" : "PAUSED").font(.caption2).tracking(2).foregroundStyle(monitor.isActive ? .green : .secondary) }
             Text("Ambient companion").font(.headline)
-            Text(ambientCameraEnabled
-                 ? "AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. While ambient mode is on, changed scene summaries may be stored in local SQLite. Requests beginning with AURA or Hey AURA reach your companion. Solo follow-ups require a separate opt-in."
-                 : "AURA listens on this Mac using supported on-device speech recognition. The camera is off, so room perception and scene summaries are disabled. Raw audio is never saved or sent. Requests beginning with AURA or Hey AURA reach your companion. Solo follow-ups require a separate opt-in.")
+            Text(ambientPrivacyDescription)
                 .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) { Label(monitor.microphoneStopping ? "Microphone stopping" : monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn || monitor.microphoneStopping ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
             Toggle("Enable room perception (camera)", isOn: $ambientCameraEnabled)
                 .disabled(monitor.isActive || monitor.isStarting || monitor.cameraStopping)
             Text("Saved on this Mac. Turn it off before starting ambient mode to use the microphone only; no camera permission is requested and no scene or person summaries are created.")
+                .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+            Toggle("Save periodic scene summaries to Memory", isOn: $saveSceneSummaries)
+                .disabled(!ambientCameraEnabled || monitor.isActive || monitor.isStarting || monitor.cameraStopping)
+            Text("Off stops periodic summaries from being sent to AURA's memory service. Recent camera labels can still be included with direct requests; turn off room perception to disable camera context entirely.")
                 .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             Button("Stop speaking") { monitor.stopSpeaking() }
                 .disabled(!monitor.isSpeaking)
@@ -1303,8 +1319,11 @@ private struct MenuView: View {
                 Button("Clear pairing") { monitor.forgetPairing() }.font(.caption).foregroundStyle(.secondary)
             }
             Text(monitor.status).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            if ambientCameraEnabled {
-                Text("While ambient mode is live, AURA may save a short on-device scene summary locally when the view changes (at most once a minute). Photos and audio are not saved.")
+            if ambientCameraEnabled && saveSceneSummaries {
+                Text("While ambient mode is live, AURA may send a short scene summary to local Memory when the view changes (at most once a minute). Photos and audio are not saved.")
+                    .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+            } else if ambientCameraEnabled {
+                Text("Camera labels may be included in direct replies, but periodic scene summaries are not sent to local Memory. Photos and audio are not saved.")
                     .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             }
             if monitor.permissionSettingsURL != nil {

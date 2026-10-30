@@ -109,6 +109,12 @@ Status: software reliability milestones implemented; hardware acceptance remains
   [41006857996](https://github.com/sujanmj/aura-companion/actions/runs/41006857996).
   Both runs uploaded three preview archives. Physical camera permission,
   pause and room-observation acceptance remain outstanding.
+- Implemented for Mac preview: a separate saved preference disables periodic
+  camera-summary submissions to local Memory while retaining volatile scene
+  labels for direct requests. The UI explains that distinction and directs the
+  user to disable room perception to remove visual context entirely. Native
+  tests cover its default and opt-out; local native build and lifecycle tests
+  pass. Cross-platform CI and physical acceptance remain pending.
 - Fixed: AURA's spoken reply temporarily suppresses microphone transcription and
   cancels any in-flight recognition, then resumes after a quiet grace period.
   Stale speech-completion callbacks cannot reopen the microphone after a newer
@@ -455,8 +461,8 @@ Status: foundations exist in the original reaction/memory engines.
   context only when the user mentions matching terms; unrelated notes stay out.
   Notes are marked unverified, shown in Memory, and can be deleted there. Simple
   credential and payment-secret requests are excluded from event-note storage.
-- Remaining: broader native controls beyond the independent camera opt-out and
-  lifecycle acceptance.
+- Remaining: broader native controls beyond the camera and scene-memory choices,
+  and lifecycle acceptance.
 - Handle interruptions, uncertainty and emotional cues without claiming mind-reading.
 
 Exit: behavior and privacy tests pass; preferences and consent persist correctly.

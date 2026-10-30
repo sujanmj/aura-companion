@@ -19,6 +19,17 @@ struct LifecycleTests {
         )
         captureDefaults.set(true, forKey: AmbientCaptureSettings.cameraEnabledPreferenceKey)
         precondition(AmbientCaptureSettings.cameraEnabled(from: captureDefaults))
+        precondition(
+            AmbientCaptureSettings.saveSceneSummaries(from: captureDefaults),
+            "Existing installs retain scene-summary behavior when no preference is saved"
+        )
+        captureDefaults.set(false, forKey: AmbientCaptureSettings.saveSceneSummariesPreferenceKey)
+        precondition(
+            !AmbientCaptureSettings.saveSceneSummaries(from: captureDefaults),
+            "An explicit opt-out must prevent periodic scene summaries from being sent to Memory"
+        )
+        captureDefaults.set(true, forKey: AmbientCaptureSettings.saveSceneSummariesPreferenceKey)
+        precondition(AmbientCaptureSettings.saveSceneSummaries(from: captureDefaults))
         captureDefaults.removePersistentDomain(forName: captureDefaultsName)
 
         var turns = ConversationTurnGate()
