@@ -1,9 +1,26 @@
+import Foundation
 import Security
 
 @main
 struct LifecycleTests {
     @MainActor
     static func main() async {
+        let captureDefaultsName = "aura-capture-settings-tests"
+        let captureDefaults = UserDefaults(suiteName: captureDefaultsName)!
+        captureDefaults.removePersistentDomain(forName: captureDefaultsName)
+        precondition(
+            AmbientCaptureSettings.cameraEnabled(from: captureDefaults),
+            "Existing installs retain camera-enabled behavior when no preference is saved"
+        )
+        captureDefaults.set(false, forKey: AmbientCaptureSettings.cameraEnabledPreferenceKey)
+        precondition(
+            !AmbientCaptureSettings.cameraEnabled(from: captureDefaults),
+            "An explicit camera opt-out must skip camera permission and capture"
+        )
+        captureDefaults.set(true, forKey: AmbientCaptureSettings.cameraEnabledPreferenceKey)
+        precondition(AmbientCaptureSettings.cameraEnabled(from: captureDefaults))
+        captureDefaults.removePersistentDomain(forName: captureDefaultsName)
+
         var turns = ConversationTurnGate()
         for phrase in ["I need help", "what do you think", "I talked to Aura yesterday", "aural music", ""] {
             precondition(!turns.accepts(phrase, now: 0), "Overheard speech must not be submitted by default")

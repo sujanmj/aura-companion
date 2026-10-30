@@ -52,6 +52,8 @@ Use the Sonnet model ID already working in your account. No provider key is sent
 
 ## Optional 24/7 ambient mode on Mac
 
+Before starting, use **Enable room perception (camera)** to choose whether AURA should use the camera. It defaults on to preserve the existing behavior; turn it off to start with local speech only. When off, AURA does not request camera permission and does not create scene or person summaries. Change this preference only while paused; it stays on this Mac.
+
 The native menu bar helper can stay running while your Mac is awake, even when you close the web browser. Build it on Apple Silicon with `npm run macos:app`; it appears in the ZIP as `release/AURA Companion.app`. Start the AURA web server first with `npm start`, then open the menu bar app and pair once per server session using the session code printed in Terminal. The helper stores only its session cookie in the macOS Keychain.
 
 The build enables Apple's Hardened Runtime and includes only the audio-input and camera entitlements needed for ambient mode. For a stable signed build, set `AURA_MACOS_SIGN_IDENTITY` to an installed Developer ID Application identity before building. Without one, the build uses an ad-hoc signature for development; macOS can treat each rebuilt ad-hoc binary as a different permission requester, and the app cannot be notarized.

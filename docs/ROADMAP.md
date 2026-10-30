@@ -96,6 +96,14 @@ Status: software reliability milestones implemented; hardware acceptance remains
   changed. The local app build and native lifecycle tests pass, and push CI
   passed on macOS and Ubuntu in run 39617638169. Pull-request CI, energy-use,
   and sleep/wake acceptance remain outstanding.
+- Implemented for Mac preview: camera room perception can be disabled in the
+  native helper before starting a session. The saved preference defaults to the
+  prior camera-enabled behavior for existing installs; when disabled, startup
+  requests no camera permission and starts local speech alone, with no scene or
+  person summaries. The control is locked during capture so changes apply only
+  after Pause. Native tests verify the saved preference's default and opt-out.
+  Local native build and lifecycle tests pass; CI and live-device acceptance
+  remain pending.
 - Fixed: AURA's spoken reply temporarily suppresses microphone transcription and
   cancels any in-flight recognition, then resumes after a quiet grace period.
   Stale speech-completion callbacks cannot reopen the microphone after a newer
@@ -442,7 +450,8 @@ Status: foundations exist in the original reaction/memory engines.
   context only when the user mentions matching terms; unrelated notes stay out.
   Notes are marked unverified, shown in Memory, and can be deleted there. Simple
   credential and payment-secret requests are excluded from event-note storage.
-- Remaining: broader native controls and lifecycle acceptance.
+- Remaining: broader native controls beyond the independent camera opt-out and
+  lifecycle acceptance.
 - Handle interruptions, uncertainty and emotional cues without claiming mind-reading.
 
 Exit: behavior and privacy tests pass; preferences and consent persist correctly.

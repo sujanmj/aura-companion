@@ -332,56 +332,61 @@ struct AURAAmbientApp: App {
             self.transcriber = LegacySpeechPipeline(recognizer: recognizer, onFinal: onFinal)
 #endif
             guard lifecycle.contains(generation) else { self.transcriber?.stop(); self.transcriber = nil; return }
-            status = "Checking camera access…"
-            let cameraAllowed = await requestCapturePermission(for: .video)
-            guard lifecycle.contains(generation) else { return }
-            guard cameraAllowed else {
-                self.transcriber?.stop(); self.transcriber = nil
-                status = "Camera access is off. Allow it in System Settings."; return
-            }
-            let camera = LocalCamera(
-                onScene: { [weak self] labels, confidence, present in
-                    Task { @MainActor in
-                        guard let self, self.lifecycle.acceptsCaptureEvent(generation) else { return }
-                        self.contextLabels = labels; self.scene = labels.joined(separator: ", ")
-                        self.isPersonPresent = present
-                        if self.personPresenceNoticeTracker.observe(
-                            isPresent: present,
-                            enabled: UserDefaults.standard.bool(forKey: PersonPresenceNoticeTracker.preferenceKey)
-                        ) {
-                            self.speakLocally(
-                                "I noticed a person in view. I can’t identify who it is.",
+            let wantsCamera = AmbientCaptureSettings.cameraEnabled()
+            if wantsCamera {
+                status = "Checking camera access…"
+                let cameraAllowed = await requestCapturePermission(for: .video)
+                guard lifecycle.contains(generation) else { return }
+                guard cameraAllowed else {
+                    self.transcriber?.stop(); self.transcriber = nil
+                    status = "Camera access is off. Allow it in System Settings or turn off room perception in AURA."; return
+                }
+                let camera = LocalCamera(
+                    onScene: { [weak self] labels, confidence, present in
+                        Task { @MainActor in
+                            guard let self, self.lifecycle.acceptsCaptureEvent(generation) else { return }
+                            self.contextLabels = labels; self.scene = labels.joined(separator: ", ")
+                            self.isPersonPresent = present
+                            if self.personPresenceNoticeTracker.observe(
+                                isPresent: present,
+                                enabled: UserDefaults.standard.bool(forKey: PersonPresenceNoticeTracker.preferenceKey)
+                            ) {
+                                self.speakLocally(
+                                    "I noticed a person in view. I can’t identify who it is.",
+                                    generation: generation
+                                )
+                            }
+                            self.saveSceneSummaryIfNeeded(
+                                labels: labels,
+                                confidence: confidence,
+                                humanPresent: present,
                                 generation: generation
                             )
                         }
-                        self.saveSceneSummaryIfNeeded(
-                            labels: labels,
-                            confidence: confidence,
-                            humanPresent: present,
-                            generation: generation
-                        )
+                    },
+                    onFailure: { [weak self] message in
+                        Task { @MainActor in
+                            guard let self, self.lifecycle.acceptsCaptureEvent(generation) else { return }
+                            self.stop()
+                            self.status = message
+                        }
                     }
-                },
-                onFailure: { [weak self] message in
-                    Task { @MainActor in
-                        guard let self, self.lifecycle.acceptsCaptureEvent(generation) else { return }
-                        self.stop()
-                        self.status = message
-                    }
-                }
-            )
-            self.camera = camera
-            status = "Starting local camera classification…"
-            try await camera.start()
-            guard lifecycle.contains(generation) else { camera.stop(); return }
+                )
+                self.camera = camera
+                status = "Starting local camera classification…"
+                try await camera.start()
+                guard lifecycle.contains(generation) else { camera.stop(); return }
+            }
             status = "Starting local microphone recognition…"
             try await audioCapture.start(transcriber: transcriber)
             guard lifecycle.contains(generation) else { audioCapture.stop(); return }
             guard lifecycle.activate(generation) else { return }
             observeAudioConfigurationChange(generation: generation)
-            isActive = true; microphoneOn = true; microphoneStopping = false; cameraOn = true; cameraStopping = false
+            isActive = true; microphoneOn = true; microphoneStopping = false; cameraOn = wantsCamera; cameraStopping = false
             updateSleepPreventionActivity()
-            status = "Listening locally. Say Hey AURA for a direct reply; check-ins and daily reminders follow your Setup choices."
+            status = wantsCamera
+                ? "Listening locally. Say Hey AURA for a direct reply; check-ins and daily reminders follow your Setup choices."
+                : "Listening locally with the camera off. Room perception and scene summaries are disabled."
         } catch {
             guard lifecycle.contains(generation) else { return }
             stop(); status = "Couldn’t start the local microphone and camera: \(error.localizedDescription)"
@@ -1209,6 +1214,8 @@ private struct MenuView: View {
     @AppStorage(SpeechOutputSettings.ratePreferenceKey) private var speechRate = 0.48
     @AppStorage(PersonPresenceNoticeTracker.preferenceKey) private var personPresenceNoticesEnabled = false
     @AppStorage(AmbientPowerSettings.keepAwakePreferenceKey) private var keepMacAwake = false
+    @AppStorage(AmbientCaptureSettings.cameraEnabledPreferenceKey)
+    private var ambientCameraEnabled = AmbientCaptureSettings.cameraEnabledByDefault
 
     private var englishVoices: [AVSpeechSynthesisVoice] {
         AVSpeechSynthesisVoice.speechVoices()
@@ -1225,8 +1232,15 @@ private struct MenuView: View {
                 VStack(alignment: .leading, spacing: 15) {
             HStack { Text("✳ AURA").font(.system(size: 22, weight: .medium)); Spacer(); Text(monitor.isActive ? "LIVE" : "PAUSED").font(.caption2).tracking(2).foregroundStyle(monitor.isActive ? .green : .secondary) }
             Text("Ambient companion").font(.headline)
-            Text("AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. While ambient mode is on, changed scene summaries may be stored in local SQLite. Requests beginning with AURA or Hey AURA reach your companion. Solo follow-ups require a separate opt-in.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(ambientCameraEnabled
+                 ? "AURA checks speech and the room on this Mac. Speech recognition uses supported on-device models only; raw audio and frames are never saved or sent. While ambient mode is on, changed scene summaries may be stored in local SQLite. Requests beginning with AURA or Hey AURA reach your companion. Solo follow-ups require a separate opt-in."
+                 : "AURA listens on this Mac using supported on-device speech recognition. The camera is off, so room perception and scene summaries are disabled. Raw audio is never saved or sent. Requests beginning with AURA or Hey AURA reach your companion. Solo follow-ups require a separate opt-in.")
+                .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) { Label(monitor.microphoneStopping ? "Microphone stopping" : monitor.microphoneOn ? "Microphone on" : "Microphone off", systemImage: "mic.fill").foregroundStyle(monitor.microphoneOn || monitor.microphoneStopping ? .orange : .secondary); Label(monitor.cameraStopping ? "Camera stopping" : monitor.cameraOn ? "Camera on" : "Camera off", systemImage: "camera.fill").foregroundStyle(monitor.cameraOn || monitor.cameraStopping ? .orange : .secondary) }.font(.caption)
+            Toggle("Enable room perception (camera)", isOn: $ambientCameraEnabled)
+                .disabled(monitor.isActive || monitor.isStarting || monitor.cameraStopping)
+            Text("Saved on this Mac. Turn it off before starting ambient mode to use the microphone only; no camera permission is requested and no scene or person summaries are created.")
+                .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             Button("Stop speaking") { monitor.stopSpeaking() }
                 .disabled(!monitor.isSpeaking)
             Group {
@@ -1250,6 +1264,7 @@ private struct MenuView: View {
             Text("Voice and pace stay on this Mac and apply to AURA’s spoken replies and opted-in reminders.")
                 .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             Toggle("Speak when a person enters view", isOn: $personPresenceNoticesEnabled)
+                .disabled(!ambientCameraEnabled)
             Text("Off by default. AURA may also notice you; it cannot identify anyone or tell whether someone is a visitor. Detection stays on this Mac and only runs while ambient mode is on.")
                 .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
             Toggle("Keep Mac and display awake while listening", isOn: $keepMacAwake)
@@ -1288,8 +1303,10 @@ private struct MenuView: View {
                 Button("Clear pairing") { monitor.forgetPairing() }.font(.caption).foregroundStyle(.secondary)
             }
             Text(monitor.status).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Text("While ambient mode is live, AURA may save a short on-device scene summary locally when the view changes (at most once a minute). Photos and audio are not saved.")
-                .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+            if ambientCameraEnabled {
+                Text("While ambient mode is live, AURA may save a short on-device scene summary locally when the view changes (at most once a minute). Photos and audio are not saved.")
+                    .font(.system(size: 10)).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
+            }
             if monitor.permissionSettingsURL != nil {
                 Button("Open Privacy Settings") { monitor.openPermissionSettings() }
                     .buttonStyle(.bordered)

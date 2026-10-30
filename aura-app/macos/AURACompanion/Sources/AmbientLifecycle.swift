@@ -1,6 +1,15 @@
 import Foundation
 import Security
 
+enum AmbientCaptureSettings {
+    static let cameraEnabledPreferenceKey = "auraAmbientCameraEnabled"
+    static let cameraEnabledByDefault = true
+
+    static func cameraEnabled(from defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: cameraEnabledPreferenceKey) as? Bool ?? cameraEnabledByDefault
+    }
+}
+
 enum StartupWatchdog {
     static func timeoutMessage(for stage: String) -> String {
         switch stage {
