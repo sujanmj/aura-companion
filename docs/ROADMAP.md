@@ -1594,6 +1594,13 @@ and a credential-placeholder environment example for a chosen Pi deployment
 path. It refuses path injection, symlinked output directories and overwrites,
 uses restrictive file modes where supported, and does not install software,
 enroll a node, create an account or enable systemd. Temporary-directory tests
-verify the rendered files and safety boundaries. Local verification and
-cross-platform CI are pending. Raspberry Pi installation, network heartbeat
-and hardware acceptance remain open.
+verify the rendered files and safety boundaries; all three preparation tests
+pass locally. Commit `f53ad9b` passed push CI
+[41084344415](https://github.com/sujanmj/aura-companion/actions/runs/41084344415)
+and PR CI
+[41084354874](https://github.com/sujanmj/aura-companion/actions/runs/41084354874)
+on macOS, Windows and Ubuntu. Both runs uploaded all three preview archives.
+Push artifact digest prefixes: macOS `0f3bdba7`, Windows `24d25637`, Ubuntu
+`485ec483`; PR artifact digest prefixes: macOS `aefaaf5e`, Windows `70ed7641`,
+Ubuntu `fc4d357d`. Raspberry Pi installation, network heartbeat and hardware
+acceptance remain open.

@@ -548,8 +548,13 @@ on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
 Added a development-computer command that generates the hardened Pi heartbeat
 service unit and a placeholder configuration example. It refuses unsafe paths
 and overwrites, does not contain or generate real node credentials, and does
-not install or enable a service. Local tests and cross-platform CI are pending;
-no Raspberry Pi installation or hardware heartbeat is claimed.
+not install or enable a service. All three preparation tests passed locally.
+Commit `f53ad9b` passed push CI
+[41084344415](https://github.com/sujanmj/aura-companion/actions/runs/41084344415)
+and PR CI
+[41084354874](https://github.com/sujanmj/aura-companion/actions/runs/41084354874)
+on macOS, Windows and Ubuntu, with all three preview archives in each run. No
+Raspberry Pi installation or hardware heartbeat is claimed.
 Pi installation, room playback, acoustic acceptance, macOS hardware acceptance,
 and Developer ID signing/notarization remain open.
 
