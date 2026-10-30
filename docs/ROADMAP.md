@@ -1436,6 +1436,13 @@ The disposable loopback integration now copies a pre-clear SQLite backup to a
 new database after stopping the original service, starts AURA against that
 copy, and verifies the owner's saved conversation and facts are present. This
 complements existing backup-creation and restart-persistence checks without
-opening or changing the user's database. All 30 Node tests pass locally. This
-is a simulated database recovery check, not a home upgrade, cross-device restore
-or hardware acceptance result; cross-platform CI is pending.
+opening or changing the user's database. The 30-test Node suite and lint pass
+locally. Push CI
+[41029925282](https://github.com/sujanmj/aura-companion/actions/runs/41029925282)
+and PR CI
+[41029933353](https://github.com/sujanmj/aura-companion/actions/runs/41029933353)
+passed on macOS, Windows and Ubuntu with all three preview archives uploaded.
+The local Mac preview for source commit `de7dfbd` has SHA-256
+`a35787b750a6ac5b4d3e93a2e0401f20844e7ffe10c8353eb1bb65a9eb58ecbd`; it is
+ad-hoc signed and not notarized. This is a simulated database recovery check,
+not a home upgrade, cross-device restore or hardware acceptance result.

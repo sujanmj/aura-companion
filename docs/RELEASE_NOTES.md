@@ -26,6 +26,14 @@ database after stopping the original service, then verifies saved conversation
 and facts through a fresh authenticated AURA process. All 30 Node tests pass
 locally. This confirms a simulated software recovery path, not a household
 upgrade, cross-device restore or hardware result.
+Push CI
+[41029925282](https://github.com/sujanmj/aura-companion/actions/runs/41029925282)
+and PR CI
+[41029933353](https://github.com/sujanmj/aura-companion/actions/runs/41029933353)
+passed on macOS, Windows and Ubuntu with all three preview artifacts uploaded.
+The local Mac preview for source commit `de7dfbd` has SHA-256
+`a35787b750a6ac5b4d3e93a2e0401f20844e7ffe10c8353eb1bb65a9eb58ecbd`; it is
+ad-hoc signed and not notarized. No hardware acceptance is implied.
 
 ## 2026-10-30 — Owner-controlled sensor-node revocation
 

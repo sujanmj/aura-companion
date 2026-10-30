@@ -28,8 +28,17 @@ These checks establish only the behavior covered by their tests:
 - The SQLite loopback integration now restores a startup backup to a fresh
   temporary database and verifies saved conversation and facts after
   authenticating to a new service process. All 30 Node tests pass locally.
-  This validates a simulated recovery path only; the required home backup,
-  cross-device privacy and hardware checks below remain NOT RUN.
+  Push CI
+  [41029925282](https://github.com/sujanmj/aura-companion/actions/runs/41029925282)
+  and PR CI
+  [41029933353](https://github.com/sujanmj/aura-companion/actions/runs/41029933353)
+  passed on macOS, Windows and Ubuntu, with all three preview artifacts
+  uploaded for each. A local Mac preview for commit `de7dfbd` was checked
+  against its embedded manifest and SHA-256
+  `a35787b750a6ac5b4d3e93a2e0401f20844e7ffe10c8353eb1bb65a9eb58ecbd`;
+  it is ad-hoc signed and not notarized. This is a simulated recovery path;
+  the required home backup, cross-device privacy and hardware checks below
+  remain NOT RUN.
 - Current software continuation on branch `aura-holographic-companion`:
   session-only private replies and reply-speech control are covered by native
   tests; room claim revalidation and its simulator CLI are covered by 12 client
