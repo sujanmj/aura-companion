@@ -806,6 +806,9 @@ export, can be deleted individually, and are removed when the person is
 forgotten. Prompt recall includes a note only when the user explicitly mentions
 that person's name; notes are labeled unverified and never come from face or
 identity inference. Local verification passed: all 116 Python tests, all 30
-Node tests, all 19 browser E2E tests, lint, and production build. Cross-platform
-CI is pending. This does not establish third-party consent beyond the user's
+Node tests, all 19 browser E2E tests, lint, and production build. Commit
+`0bbd889` passed PR CI
+[41071898837](https://github.com/sujanmj/aura-companion/actions/runs/41071898837)
+on macOS, Windows and Ubuntu, uploading preview archives for all three
+platforms. This does not establish third-party consent beyond the user's
 confirmation, camera identification, or hardware behavior.

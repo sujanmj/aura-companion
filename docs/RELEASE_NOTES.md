@@ -646,4 +646,7 @@ whose name is already consented in AURA. Each note requires its own permission
 confirmation, stays local, appears in memory export, and can be removed alone
 or by forgetting the person. AURA recalls it only when the user mentions that
 person, and labels it unverified. It does not identify people from camera
-images. Local tests and build pass; cross-platform CI is pending.
+images. Local verification passed all 116 Python tests, 30 Node tests, 19
+browser E2E tests, lint, and production build. Commit `0bbd889` passed PR CI
+[41071898837](https://github.com/sujanmj/aura-companion/actions/runs/41071898837)
+on macOS, Windows and Ubuntu and uploaded all three preview archives.
