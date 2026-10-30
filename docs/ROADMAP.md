@@ -1236,5 +1236,22 @@ The hardened systemd heartbeat-only service now declares 10% CPU, 128 MiB
 memory and 16 task ceilings. Regression coverage checks the unit retains these
 limits alongside its existing sandboxing and fail-closed credential preflight.
 These are configured limits, not Pi measurements, and do not apply to a future
-voice/perception runtime. Local service and Python tests pass; CI is pending.
+voice/perception runtime. Local service and Python tests pass. The limits
+passed macOS, Windows and Ubuntu push CI in
+[41013242908](https://github.com/sujanmj/aura-companion/actions/runs/41013242908)
+and were rechecked in the all-platform PR run
+[41014366925](https://github.com/sujanmj/aura-companion/actions/runs/41014366925).
 No Pi installation or hardware resource measurement is claimed.
+
+## 2026-10-30 continuation — prevent stale Memory refresh overwrite (Phases 2, 4)
+
+A Windows browser run exposed an ordering race where a Memory refresh started
+before a reminder save could finish later and overwrite the newer saved state.
+The companion now applies only the newest status refresh. An end-to-end test
+holds the old response until after the reminder save to verify the stale result
+cannot replace it. All 18 browser tests, lint and production build pass locally.
+Commit `e401909` passed macOS, Windows and Ubuntu push CI in
+[41014353029](https://github.com/sujanmj/aura-companion/actions/runs/41014353029)
+and PR CI in
+[41014366925](https://github.com/sujanmj/aura-companion/actions/runs/41014366925),
+with all three preview artifacts uploaded.
