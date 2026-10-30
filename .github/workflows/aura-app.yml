@@ -27,6 +27,8 @@ jobs:
         with:
           python-version: '3.11'
       - run: npm ci --ignore-scripts
+      - if: matrix.os == 'ubuntu-latest'
+        run: npm audit --audit-level=high
       - run: npm run build
       - if: runner.os == 'macOS'
         run: npm run macos:app
