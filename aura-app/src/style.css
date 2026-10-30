@@ -723,6 +723,12 @@ footer {
   color: var(--accent);
   font-size: 13px;
 }
+.memory-export.conversation-retention {
+  display: grid;
+  gap: 8px;
+  max-width: 420px;
+  color: var(--text);
+}
 .memory-controls button {
   color: var(--accent);
   font-size: 12px;

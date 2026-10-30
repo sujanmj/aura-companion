@@ -543,6 +543,28 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     ).json();
     assert.equal(restored.conversations.length, 8);
     assert.equal(restored.routines.length, 0);
+    assert.deepEqual(restored.conversation_retention, { days: 0 });
+    assert.equal(
+      (await post("conversations/retention-preview", { days: 30 }, cookie)).status,
+      200,
+    );
+    assert.equal(
+      (await post("conversations/retention", { days: 30 }, cookie)).status,
+      400,
+    );
+    assert.equal(
+      (await post("conversations/retention", { days: 30, confirmed: true }, cookie)).status,
+      200,
+    );
+    assert.equal(
+      (await post("conversations/retention", { days: 2, confirmed: true }, cookie)).status,
+      400,
+    );
+    const retained = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.deepEqual(retained.conversation_retention, { days: 30 });
+    assert.equal(retained.conversations.length, 8);
     assert.equal((await post("conversations/clear", {})).status, 401);
     assert.equal(
       (

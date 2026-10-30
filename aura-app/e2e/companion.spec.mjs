@@ -573,6 +573,25 @@ test("conversation history can be cleared while saved memory remains", async ({
   await page.getByRole("button", { name: "Send ↗" }).click();
   await expect(page.locator(".message.assistant").last()).toBeVisible();
   await page.getByRole("button", { name: "Memory 02" }).click();
+  const retention = page.getByLabel("Expire saved conversation history after");
+  await expect(retention).toHaveValue("0");
+  await retention.selectOption("30");
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain("saved facts, routines, people, notes, and observations remain");
+    expect(dialog.message()).toContain("Old backups can retain copies");
+    await dialog.dismiss();
+  });
+  await page.getByRole("button", { name: "Review conversation expiry" }).click();
+  await expect(retention).toHaveValue("30");
+  const dismissedRetention = await page.evaluate(async () => (await (await fetch("/api/status")).json()).conversation_retention);
+  expect(dismissedRetention).toEqual({ days: 0 });
+  await retention.selectOption("7");
+  await retention.selectOption("30");
+  page.once("dialog", async (dialog) => await dialog.accept());
+  await page.getByRole("button", { name: "Review conversation expiry" }).click();
+  await expect(page.getByRole("status")).toContainText("Conversation history expiry saved");
+  const savedRetention = await page.evaluate(async () => (await (await fetch("/api/status")).json()).conversation_retention);
+  expect(savedRetention).toEqual({ days: 30 });
   const clearButton = page.getByRole("button", {
     name: "Clear conversation history",
   });

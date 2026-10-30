@@ -340,12 +340,18 @@ CREATE TABLE IF NOT EXISTS observation_retention (
     user_id INTEGER PRIMARY KEY REFERENCES users(id),
     days INTEGER NOT NULL DEFAULT 0 CHECK(days IN (0, 1, 7, 30, 90, 365))
 );
+-- Conversation expiry is separate and opt-in; saved facts and notes are unaffected.
+CREATE TABLE IF NOT EXISTS conversation_retention (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    days INTEGER NOT NULL DEFAULT 0 CHECK(days IN (0, 1, 7, 30, 90, 365))
+);
 -- Person notes are a separate consented-memory category with their own opt-in expiry.
 CREATE TABLE IF NOT EXISTS person_memory_retention (
     user_id INTEGER PRIMARY KEY REFERENCES users(id),
     days INTEGER NOT NULL DEFAULT 0 CHECK(days IN (0, 1, 7, 30, 90, 365))
 );
 CREATE INDEX IF NOT EXISTS idx_observations_user_created ON observations(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_conversations_user_created ON conversation_logs(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_person_events_user_created
     ON person_events(user_id, created_at);
 

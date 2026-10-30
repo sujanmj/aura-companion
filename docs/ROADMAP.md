@@ -860,3 +860,18 @@ hostile newline-containing memories stay one quoted value and checks all three
 provider boundaries. Local verification passed all 120 app Python tests, 30
 Node tests, lint, and production build. Cross-platform CI is pending. This is
 defense in depth, not proof that every model resists prompt injection.
+
+## 2026-10-30 continuation — opt-in conversation history expiry (Phases 4, 7)
+
+Memory now offers a separate conversation-history expiry policy, defaulting to
+keep-until-deleted. Owners can preview and confirm a 1/7/30/90/365-day policy;
+only saved messages and replies are removed. Facts, routines, people, notes,
+observations and retention settings remain. Before local deletion, AURA drops
+pending cloud-upload references and queues remote row deletions when cloud sync
+is configured. The UI warns that existing backups or unavailable cloud sync
+can retain older copies. Tests cover defaults, preview, owner isolation,
+selective expiry, persistence, export, authenticated confirmation, cloud-queue
+integration boundaries, and browser cancellation/confirmation. Local
+verification passed all 126 app Python tests, 30 Node tests, 19 browser E2E
+tests, lint, and production build. Cross-platform CI is pending. Expiry does
+not rewrite backups or prove remote deletion when cloud credentials are absent.

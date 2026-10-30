@@ -683,3 +683,13 @@ current user message as the request to answer and keeps the separate approval
 gate for tools. Local verification passed all 120 app Python tests, 30 Node
 tests, lint, and production build. Cross-platform CI is pending. These prompt
 boundaries are defense in depth, not a guarantee against all model behavior.
+
+## Conversation history expiry (Phases 4, 7)
+
+Owners can set a separate, opt-in expiry period for saved messages and replies.
+The default keeps history until the owner deletes it. AURA previews the affected
+count and asks for confirmation; facts and other memory categories remain. When
+cloud sync is configured, pending uploads for expired rows are removed and
+remote deletions are queued. Existing backups or unavailable cloud sync may
+retain copies. Local verification passed all 126 app Python tests, 30 Node
+tests, 19 browser E2E tests, lint, and production build. Cross-platform CI is pending.

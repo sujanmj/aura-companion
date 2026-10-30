@@ -30,6 +30,26 @@ from shared_conversation import shared_contribution
 from companion.private_session import generate_private_response
 
 
+def expire_conversations_with_cloud_cleanup(store, user_id: int, days: int | None = None) -> int:
+    expired_ids = store.get_expired_conversation_ids(user_id, days)
+    if not expired_ids:
+        return 0
+    deleted = store.expire_conversations(user_id, days=days)
+    if deleted:
+        discard_pending_conversations(expired_ids)
+        enqueue_conversation_deletions(expired_ids)
+    return deleted
+
+
+def set_conversation_retention_with_cloud_cleanup(store, user_id: int, days: int) -> dict[str, int]:
+    expired_ids = store.get_expired_conversation_ids(user_id, days)
+    result = store.set_conversation_retention(user_id, days)
+    if result.get('deleted') and expired_ids:
+        discard_pending_conversations(expired_ids)
+        enqueue_conversation_deletions(expired_ids)
+    return result
+
+
 def main():
     load_env_file()
     path = Path(os.environ.get('AURA_DB_PATH', str(DEFAULT_DB_PATH))).expanduser().resolve()
@@ -54,6 +74,7 @@ def main():
                 op = req['op']
                 if op != 'private_chat':
                     store.expire_observations(user)
+                    expire_conversations_with_cloud_cleanup(store, user)
                 if op == 'private_chat':
                     result = generate_private_response(req.get('message'))
                 elif op == 'readiness':
@@ -86,6 +107,7 @@ def main():
                                   and event.get('consent_to_remember')
                               ][:50],
                               'observation_retention': store.observation_retention(user),
+                              'conversation_retention': store.conversation_retention(user),
                               'person_memory_retention': store.person_memory_retention(user),
                               'preferences': store.get_companion_preferences(user),
                               'backups': list_database_backups(path)}
@@ -175,6 +197,11 @@ def main():
                     discard_pending_conversations(pending_ids)
                     enqueue_conversation_deletions(pending_ids)
                     result = {'deleted': deleted}
+                elif op == 'preview_conversation_expiry':
+                    result = store.preview_conversation_expiry(user, req.get('days'))
+                elif op == 'set_conversation_retention':
+                    days = req.get('days')
+                    result = set_conversation_retention_with_cloud_cleanup(store, user, days)
                 elif op == 'preview_observation_expiry':
                     result = store.preview_observation_expiry(user, req.get('days'))
                 elif op == 'set_observation_retention':
