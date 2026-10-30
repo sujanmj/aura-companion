@@ -42,7 +42,16 @@ These checks establish only the behavior covered by their tests:
   [41017738378](https://github.com/sujanmj/aura-companion/actions/runs/41017738378),
   uploading each preview artifact; PR run
   [41017743156](https://github.com/sujanmj/aura-companion/actions/runs/41017743156)
-  is still finishing Windows validation. The dashboard change is not yet pushed.
+  also passed all three platforms. Dashboard commits `1210c1c` and `60c169e`
+  passed the exact-tree PR matrix in
+  [41018596692](https://github.com/sujanmj/aura-companion/actions/runs/41018596692),
+  with each preview artifact uploaded. Their push run
+  [41018590170](https://github.com/sujanmj/aura-companion/actions/runs/41018590170)
+  passed macOS and Ubuntu but failed Windows E2E on two Memory-state timeouts
+  after 16 cases passed. The Setup E2E case had left proactive check-ins enabled
+  in the shared temporary database; a follow-up cleanup disables that opt-in
+  and awaits the expiry dialog. All 18 browser tests pass locally afterward;
+  cross-platform CI for the cleanup is pending.
   Revocation establishes hub credential rejection, not physical device
   shutdown.
 

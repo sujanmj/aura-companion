@@ -140,6 +140,15 @@ test("setup distinguishes local availability from live verification", async ({
   await expect(
     page.getByRole("checkbox", { name: "Check a real conversation" }),
   ).not.toBeChecked();
+  await page.getByLabel("Allow AURA to check in").uncheck();
+  await page.getByRole("button", { name: "Save check-in preferences" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Check-in preferences saved",
+  );
+  const savedPreferences = await page.evaluate(async () =>
+    (await (await fetch("/api/status")).json()).preferences,
+  );
+  expect(savedPreferences.checkins_enabled).toBe(false);
 });
 
 test("browser speech voice and pace are local and persist after reload", async ({
@@ -577,9 +586,9 @@ test("note expiry previews a change and persists only after confirmation", async
   await page.getByRole("button", { name: "Review note expiry" }).click();
   await dismissed;
   await expect(page.getByText(/Note expiry: keep until you delete/)).toBeVisible();
-  page.once("dialog", dialog => {
+  page.once("dialog", async dialog => {
     expect(dialog.message()).toContain("Backups and chat history remain");
-    void dialog.accept();
+    await dialog.accept();
   });
   await page.getByRole("button", { name: "Review note expiry" }).click();
   await expect(page.getByRole("status")).toContainText("Note expiry saved");

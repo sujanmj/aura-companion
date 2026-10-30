@@ -1297,9 +1297,9 @@ HTTP, and a hub response that does not confirm revocation. Focused local checks
 pass: 16 sensor-admin tests, 12 room-client tests, and all 95 application
 Python tests. Commit `89ee2f7` passed all three push-CI platforms in
 [41017738378](https://github.com/sujanmj/aura-companion/actions/runs/41017738378),
-which uploaded the macOS, Windows and Ubuntu previews. Its pull-request run
+which uploaded the macOS, Windows and Ubuntu previews; pull-request run
 [41017743156](https://github.com/sujanmj/aura-companion/actions/runs/41017743156)
-is still finishing Windows validation. The CLI does not enroll devices,
+also passed all three platforms. The CLI does not enroll devices,
 retrieve tokens, or claim physical node shutdown; revoked credentials are
 rejected by the existing hub.
 
@@ -1309,5 +1309,14 @@ requires the exact typed phrase, refreshes enrolled-node and invitation status
 after a confirmed response, and explains that credential revocation does not
 power off the device. A revoked node's active invitation is cleared by the hub.
 Six dashboard interaction tests and all 30 Node tests pass along with lint and
-the production web build. This Command Center addition is local and awaits CI;
-no physical device shutdown is claimed.
+the production web build. Commits `1210c1c` and `60c169e` passed the exact-tree
+macOS, Windows and Ubuntu PR matrix in
+[41018596692](https://github.com/sujanmj/aura-companion/actions/runs/41018596692),
+which uploaded all three preview archives. The matching push run
+[41018590170](https://github.com/sujanmj/aura-companion/actions/runs/41018590170)
+passed macOS and Ubuntu but failed the Windows browser suite: 16 tests passed,
+and two Memory assertions timed out. The Setup E2E test had left proactive
+check-ins enabled in the suite's shared temporary database. A follow-up now
+turns that opt-in back off and awaits the expiry confirmation dialog. The full
+18-test browser suite passes locally after the cleanup; its cross-platform CI
+is pending. No physical device shutdown is claimed.

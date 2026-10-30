@@ -1,4 +1,27 @@
-# AURA development preview — 2026-10-28
+# AURA development preview — 2026-10-30
+
+## 2026-10-30 — Owner-controlled sensor-node revocation
+
+An owner can now revoke an enrolled node credential from the Command Center or
+run `python scripts/revoke_sensor_node.py <node_id>`. Both paths require typing
+the exact `REVOKE <node_id>` phrase. The CLI refuses remote HTTP and avoids
+system proxies when sending the hub admin credential. Revoking disables that
+credential and ends its active room invitation; it does not power down the node.
+If a request response is lost, the Command Center blocks retries until status
+is refreshed, while the CLI advises checking node status before retrying.
+
+Six dashboard interaction tests, 30 Node tests, 16 sensor-admin tests, 12 room
+client tests, all 95 app Python tests, 18 browser E2E tests, lint, production
+build and a local preview bundle pass. The latest exact-tree PR workflow
+[41018596692](https://github.com/sujanmj/aura-companion/actions/runs/41018596692)
+passed on macOS, Windows and Ubuntu with all preview archives uploaded. The
+matching push workflow [41018590170](https://github.com/sujanmj/aura-companion/actions/runs/41018590170)
+passed macOS and Ubuntu but failed two Windows Memory E2E assertions. The
+browser suite shared the check-in opt-in saved by an earlier setup test; a
+follow-up now resets that preference and awaits the expiry confirmation. All
+18 browser tests pass locally after that change, and cross-platform CI is
+pending. These results verify software only; Pi installation and physical
+node shutdown are untested.
 
 ## Observation expiry
 
