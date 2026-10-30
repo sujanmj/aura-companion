@@ -71,7 +71,12 @@ These checks establish only the behavior covered by their tests:
   Its first two CI attempts passed macOS and Ubuntu but hit different Windows
   E2E expectations at five seconds (17/18 browser tests passed in each). The
   Windows assertion window is now 15 seconds; all 18 browser tests pass locally
-  after this adjustment, and the exact-tree CI retry is pending.
+  after this adjustment. Commit `f32a159` passed macOS, Windows and Ubuntu in
+  push run
+  [41023358488](https://github.com/sujanmj/aura-companion/actions/runs/41023358488)
+  and PR run
+  [41023365160](https://github.com/sujanmj/aura-companion/actions/runs/41023365160),
+  both with all three preview artifacts uploaded.
   Revocation establishes hub credential rejection, not physical device
   shutdown.
 

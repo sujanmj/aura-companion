@@ -1368,4 +1368,8 @@ run ([41022301772](https://github.com/sujanmj/aura-companion/actions/runs/410223
 [41022294392](https://github.com/sujanmj/aura-companion/actions/runs/41022294392)).
 The Windows-only Playwright expectation timeout is now 15 seconds. The complete
 18-test browser suite, 30 Node tests, lint, build and focused API header tests
-pass locally; cross-platform CI for the retry is pending.
+pass locally. Commit `f32a159` passed all three platforms in the push run
+[41023358488](https://github.com/sujanmj/aura-companion/actions/runs/41023358488)
+and PR run
+[41023365160](https://github.com/sujanmj/aura-companion/actions/runs/41023365160);
+both uploaded macOS, Windows and Ubuntu preview archives.

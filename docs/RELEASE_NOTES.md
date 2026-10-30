@@ -43,7 +43,11 @@ hub-auth probe was skipped because no hub token is configured in this workspace.
 The first two CI attempts passed macOS and Ubuntu but timed out different
 Windows E2E assertions at five seconds; each passed 17/18 browser cases. The
 Windows-only expectation timeout is now 15 seconds, and the full browser suite
-passes locally. Cross-platform CI is rerunning.
+passes locally. Commit `f32a159` then passed all three platforms in push run
+[41023358488](https://github.com/sujanmj/aura-companion/actions/runs/41023358488)
+and PR run
+[41023365160](https://github.com/sujanmj/aura-companion/actions/runs/41023365160),
+both uploading macOS, Windows and Ubuntu preview archives.
 
 ## Observation expiry
 
