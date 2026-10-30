@@ -1353,3 +1353,12 @@ lint, build and 18 browser E2E tests pass locally. Cross-platform CI for this
 addition passed on macOS, Windows and Ubuntu in commit `c2da152` PR run
 [41021377750](https://github.com/sujanmj/aura-companion/actions/runs/41021377750),
 which uploaded all three preview archives. No target hardware is claimed.
+
+## 2026-10-30 continuation — disable HTTP caching for sensor API JSON (Phases 5, 7)
+
+The sensor API now adds `Cache-Control: no-store` to every JSON response, including
+authorization failures, so caches are not instructed to retain event details,
+node/room status, or other private API payloads. Two focused header tests verify
+the success and unauthorized response paths. The 95 app Python tests and other
+sensor/room client suites pass locally. The live-auth probe was skipped because
+this workspace has no configured hub token. Cross-platform CI is pending.

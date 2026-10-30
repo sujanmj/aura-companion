@@ -41,6 +41,10 @@ must be at least 32 characters. Missing or short tokens deny access; the API
 never falls back to open event ingestion. `/health` remains public and contains
 no user or device data.
 
+Every JSON response, including authorization failures, carries
+`Cache-Control: no-store` so browsers and intermediary HTTP caches do not retain
+room status, event details, or other API payloads.
+
 Generate a token:
 
 ```powershell

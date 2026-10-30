@@ -36,6 +36,11 @@ workflow in
 which uploaded all preview archives. These results verify software only; Pi
 installation and physical node shutdown are untested.
 
+The sensor API now tells HTTP caches not to store any JSON response, including
+unauthorized errors. Header regression tests cover both success and auth-failure
+responses. Local validation is green; cross-platform CI is pending. The live
+hub-auth probe was skipped because no hub token is configured in this workspace.
+
 ## Observation expiry
 
 Memory now offers an optional expiry policy for saved observations and event

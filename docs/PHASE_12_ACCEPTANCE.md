@@ -64,6 +64,10 @@ These checks establish only the behavior covered by their tests:
   added in commit `c2da152`; the three-platform PR run
   [41021377750](https://github.com/sujanmj/aura-companion/actions/runs/41021377750)
   passed and uploaded all preview artifacts.
+  Current change adds `Cache-Control: no-store` to sensor API JSON responses,
+  including 401 failures, with two local regression tests; cross-platform CI is
+  pending. A live-auth probe was skipped because no hub token is configured in
+  this workspace.
   Revocation establishes hub credential rejection, not physical device
   shutdown.
 
