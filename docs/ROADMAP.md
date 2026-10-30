@@ -131,9 +131,10 @@ Status: software reliability milestones implemented; hardware acceptance remains
   addressed phrases through AURA's existing unsaved private-turn endpoint. The
   request omits saved-memory access and camera context and does not enter saved
   chat history. Pause, sleep or closing the window clears the choice. Native
-  tests verify private routing and payload exclusions; the existing API suite
-  covers unsaved private turns. Local verification passes: 28 Node tests, 94
-  Python tests, lint, native lifecycle/speech tests and an ad-hoc Mac app build.
+  tests verify private routing, payload exclusions and that private mode cannot
+  be enabled outside an active session and resets on stop; the existing API
+  suite covers unsaved private turns. Local verification passes: 28 Node tests,
+  94 Python tests, lint, native lifecycle/speech tests and an ad-hoc Mac app build.
   CI passed on macOS, Windows and Ubuntu for the exact same source tree in push
   run [41010752411](https://github.com/sujanmj/aura-companion/actions/runs/41010752411)
   and pull-request run [41010757482](https://github.com/sujanmj/aura-companion/actions/runs/41010757482).

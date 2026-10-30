@@ -78,6 +78,7 @@ struct AURAAmbientApp: App {
     @Published private(set) var privateRepliesEnabled = false
     @Published private(set) var isSpeaking = false
     private var conversationTurns = ConversationTurnGate()
+    private var replyPrivacy = SessionReplyPrivacy()
     private var speechPlaybackGeneration = SpeechPlaybackGeneration()
 
     private var camera: LocalCamera?
@@ -585,7 +586,8 @@ struct AURAAmbientApp: App {
     }
 
     func setPrivateRepliesEnabled(_ enabled: Bool) {
-        privateRepliesEnabled = enabled && isActive
+        replyPrivacy.setPrivateReplies(enabled: enabled, sessionActive: isActive)
+        privateRepliesEnabled = replyPrivacy.privateRepliesEnabled
     }
 
     func setFollowupDuration(_ seconds: Int) {
@@ -596,7 +598,7 @@ struct AURAAmbientApp: App {
 
     private func sendToCompanion(_ transcript: String, generation: UInt64, turnGeneration: UInt64) async {
         guard lifecycle.contains(generation), !Task.isCancelled else { return }
-        let privateMode = privateRepliesEnabled
+        let privateMode = replyPrivacy.privateRepliesEnabled
         let endpoint = AmbientReplyRequest.endpoint(privateMode: privateMode)
         guard let cookie, let url = URL(string: "http://127.0.0.1:8790\(endpoint)") else { return }
         let observation = AmbientReplyContext.observation(
@@ -678,7 +680,8 @@ struct AURAAmbientApp: App {
 
     func stop(preservingWakeResume: Bool = false) {
         setFollowups(false)
-        privateRepliesEnabled = false
+        replyPrivacy.reset()
+        privateRepliesEnabled = replyPrivacy.privateRepliesEnabled
         startupTimeoutTask?.cancel()
         startupTimeoutTask = nil
         speechPlaybackGeneration.invalidate()

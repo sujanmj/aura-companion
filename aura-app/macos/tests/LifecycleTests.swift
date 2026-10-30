@@ -65,6 +65,14 @@ struct LifecycleTests {
         )
         precondition(ambientPayload["observation"] as? String == "Local camera context: cup. Person present: yes.")
 
+        var replyPrivacy = SessionReplyPrivacy()
+        replyPrivacy.setPrivateReplies(enabled: true, sessionActive: false)
+        precondition(!replyPrivacy.privateRepliesEnabled, "Private replies cannot be enabled outside an active session")
+        replyPrivacy.setPrivateReplies(enabled: true, sessionActive: true)
+        precondition(replyPrivacy.privateRepliesEnabled)
+        replyPrivacy.reset()
+        precondition(!replyPrivacy.privateRepliesEnabled, "Stopping the session clears private reply mode")
+
         var turns = ConversationTurnGate()
         for phrase in ["I need help", "what do you think", "I talked to Aura yesterday", "aural music", ""] {
             precondition(!turns.accepts(phrase, now: 0), "Overheard speech must not be submitted by default")

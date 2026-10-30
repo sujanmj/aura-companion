@@ -44,6 +44,18 @@ enum AmbientReplyRequest {
     }
 }
 
+struct SessionReplyPrivacy {
+    private(set) var privateRepliesEnabled = false
+
+    mutating func setPrivateReplies(enabled: Bool, sessionActive: Bool) {
+        privateRepliesEnabled = enabled && sessionActive
+    }
+
+    mutating func reset() {
+        privateRepliesEnabled = false
+    }
+}
+
 enum StartupWatchdog {
     static func timeoutMessage(for stage: String) -> String {
         switch stage {
