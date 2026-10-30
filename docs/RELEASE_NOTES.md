@@ -19,6 +19,14 @@ The local Mac preview archive is tied to that source commit and has SHA-256
 `416315bed9985564943f81468555c5a04c90a7f1949bd91ccb2c413aa485b35e`; it is
 ad-hoc signed, not notarized, and does not establish hardware acceptance.
 
+## SQLite backup restore verification (Phase 12)
+
+The temporary-database integration now restores a startup backup to a new
+database after stopping the original service, then verifies saved conversation
+and facts through a fresh authenticated AURA process. All 30 Node tests pass
+locally. This confirms a simulated software recovery path, not a household
+upgrade, cross-device restore or hardware result.
+
 ## 2026-10-30 — Owner-controlled sensor-node revocation
 
 An owner can now revoke an enrolled node credential from the Command Center or

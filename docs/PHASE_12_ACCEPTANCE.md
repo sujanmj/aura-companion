@@ -25,6 +25,11 @@ These checks establish only the behavior covered by their tests:
   `416315bed9985564943f81468555c5a04c90a7f1949bd91ccb2c413aa485b35e`;
   its native app is ad-hoc signed, not notarized. These are software and
   packaging results only, not physical companion acceptance.
+- The SQLite loopback integration now restores a startup backup to a fresh
+  temporary database and verifies saved conversation and facts after
+  authenticating to a new service process. All 30 Node tests pass locally.
+  This validates a simulated recovery path only; the required home backup,
+  cross-device privacy and hardware checks below remain NOT RUN.
 - Current software continuation on branch `aura-holographic-companion`:
   session-only private replies and reply-speech control are covered by native
   tests; room claim revalidation and its simulator CLI are covered by 12 client

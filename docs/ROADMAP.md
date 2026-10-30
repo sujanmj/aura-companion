@@ -1429,3 +1429,13 @@ and PR CI
 [41028796545](https://github.com/sujanmj/aura-companion/actions/runs/41028796545)
 passed on macOS, Windows and Ubuntu and uploaded all three preview artifacts.
 No medication or health-device integration is claimed.
+
+## 2026-10-30 continuation — SQLite backup restore verification (Phase 12)
+
+The disposable loopback integration now copies a pre-clear SQLite backup to a
+new database after stopping the original service, starts AURA against that
+copy, and verifies the owner's saved conversation and facts are present. This
+complements existing backup-creation and restart-persistence checks without
+opening or changing the user's database. All 30 Node tests pass locally. This
+is a simulated database recovery check, not a home upgrade, cross-device restore
+or hardware acceptance result; cross-platform CI is pending.

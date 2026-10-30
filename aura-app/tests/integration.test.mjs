@@ -3,7 +3,7 @@ import http from "node:http";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm, readdir, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, readdir, writeFile, copyFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { once } from "node:events";
@@ -560,6 +560,18 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     assert.ok(
       (await readdir(path.join(dir, "backups"))).some((f) => f.endsWith(".db")),
     );
+    await stop();
+    const backupName = (await readdir(path.join(dir, "backups"))).find((name) => name.endsWith(".db"));
+    assert.ok(backupName, "a stopped service should leave a restorable SQLite backup");
+    const recoveredDb = path.join(dir, "recovered.db");
+    await copyFile(path.join(dir, "backups", backupName), recoveredDb);
+    await start(recoveredDb);
+    const recoveryCookie = await login();
+    const recovered = await (
+      await fetch(base + "/api/status", { headers: { Cookie: recoveryCookie } })
+    ).json();
+    assert.equal(recovered.conversations.length, 8);
+    assert.ok(recovered.facts.length > 0);
   } finally {
     await stop();
     await rm(dir, { recursive: true, force: true });
