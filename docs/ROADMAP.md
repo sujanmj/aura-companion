@@ -774,8 +774,16 @@ software readiness. Four tests cover missing dependencies, Python version,
 invalid/empty/symlinked models, optional speech output and path redaction. Local
 verification passed the new tests, all 131 app Python tests, 34 Node tests,
 lint, TypeScript checking and production build. The new test is part of the
-three-platform CI workflow. No Pi audio, permission, model-quality, speaker or
-hardware acceptance is claimed; those require the user's future hardware.
+three-platform CI workflow. Exact source commit `77567ec` passed macOS, Windows
+and Ubuntu push CI
+([41113641055](https://github.com/sujanmj/aura-companion/actions/runs/41113641055))
+and pull-request CI
+([41113651110](https://github.com/sujanmj/aura-companion/actions/runs/41113651110));
+both runs uploaded all three preview archives. Push digest prefixes: macOS
+`89572271`, Windows `d342f3eb`, Ubuntu `579f37be`; pull-request prefixes:
+macOS `79d966cf`, Windows `73bc9845`, Ubuntu `8fd6d83f`. No Pi audio,
+permission, model-quality, speaker or hardware acceptance is claimed; those
+require the user's future hardware.
 
 ## 2026-10-28 continuation — observation expiry (Phases 4, 7, 8)
 

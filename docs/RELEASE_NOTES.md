@@ -10,7 +10,14 @@ permissions, device compatibility, model accuracy or physical Pi acceptance.
 
 Local verification passed four new readiness tests, all 131 app Python tests,
 34 Node tests, lint, TypeScript checking and production build. The readiness
-test is included in the macOS, Windows and Ubuntu workflow; CI is pending.
+test is included in the macOS, Windows and Ubuntu workflow. Exact source commit
+`77567ec` passed push CI
+[41113641055](https://github.com/sujanmj/aura-companion/actions/runs/41113641055)
+and pull-request CI
+[41113651110](https://github.com/sujanmj/aura-companion/actions/runs/41113651110).
+Both runs uploaded all three preview archives. Push digest prefixes: macOS
+`89572271`, Windows `d342f3eb`, Ubuntu `579f37be`; pull-request prefixes:
+macOS `79d966cf`, Windows `73bc9845`, Ubuntu `8fd6d83f`.
 
 ## Temporary answers from reviewed online sources (Phase 10)
 
