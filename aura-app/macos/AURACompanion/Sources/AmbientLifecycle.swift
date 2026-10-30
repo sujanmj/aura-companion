@@ -4,8 +4,10 @@ import Security
 enum AmbientCaptureSettings {
     static let cameraEnabledPreferenceKey = "auraAmbientCameraEnabled"
     static let saveSceneSummariesPreferenceKey = "auraSaveSceneSummaries"
+    static let useCameraContextPreferenceKey = "auraUseCameraContext"
     static let cameraEnabledByDefault = true
     static let saveSceneSummariesByDefault = true
+    static let useCameraContextByDefault = true
 
     static func cameraEnabled(from defaults: UserDefaults = .standard) -> Bool {
         defaults.object(forKey: cameraEnabledPreferenceKey) as? Bool ?? cameraEnabledByDefault
@@ -13,6 +15,19 @@ enum AmbientCaptureSettings {
 
     static func saveSceneSummaries(from defaults: UserDefaults = .standard) -> Bool {
         defaults.object(forKey: saveSceneSummariesPreferenceKey) as? Bool ?? saveSceneSummariesByDefault
+    }
+
+    static func useCameraContext(from defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: useCameraContextPreferenceKey) as? Bool ?? useCameraContextByDefault
+    }
+}
+
+enum AmbientReplyContext {
+    static func observation(labels: [String], personPresent: Bool, enabled: Bool) -> String {
+        guard enabled else { return "" }
+        let label = labels.prefix(5).joined(separator: ", ")
+        guard !label.isEmpty else { return "" }
+        return "Local camera context: \(label). Person present: \(personPresent ? "yes" : "no")."
     }
 }
 

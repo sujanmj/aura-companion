@@ -30,7 +30,25 @@ struct LifecycleTests {
         )
         captureDefaults.set(true, forKey: AmbientCaptureSettings.saveSceneSummariesPreferenceKey)
         precondition(AmbientCaptureSettings.saveSceneSummaries(from: captureDefaults))
+        precondition(AmbientCaptureSettings.useCameraContext(from: captureDefaults))
+        captureDefaults.set(false, forKey: AmbientCaptureSettings.useCameraContextPreferenceKey)
+        precondition(!AmbientCaptureSettings.useCameraContext(from: captureDefaults))
         captureDefaults.removePersistentDomain(forName: captureDefaultsName)
+        let cameraObservation = AmbientReplyContext.observation(
+            labels: ["kitchen", "cup", "table", "window", "person", "sixth-label"],
+            personPresent: true,
+            enabled: true
+        )
+        precondition(cameraObservation.contains("kitchen, cup, table, window, person"))
+        precondition(!cameraObservation.contains("sixth-label"), "Reply context stays bounded to five labels")
+        precondition(
+            AmbientReplyContext.observation(labels: ["kitchen"], personPresent: true, enabled: false).isEmpty,
+            "Opting out excludes camera labels and presence from requests"
+        )
+        precondition(
+            AmbientReplyContext.observation(labels: [], personPresent: true, enabled: true).isEmpty,
+            "Presence alone remains excluded when there is no scene label"
+        )
 
         var turns = ConversationTurnGate()
         for phrase in ["I need help", "what do you think", "I talked to Aura yesterday", "aural music", ""] {
