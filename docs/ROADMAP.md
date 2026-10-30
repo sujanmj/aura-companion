@@ -657,6 +657,14 @@ not close the unresolved Phase 2 hardware acceptance gates.
   and out-of-range values are rejected; reminders remain owner-scoped and
   deliver once per selected local date while the app/helper is running. This is
   a general reminder schedule, not a medication tracker or proof of completion.
+- Implemented: an owner can acknowledge that today's delivered reminder was
+  seen or dismiss it for today. Acknowledgment requires an actual delivery,
+  applies only to the owning account, is idempotent for the local date, and
+  resets on the next delivery. Acknowledgment and dismissal are mutually
+  exclusive. The UI and reminder text state that neither action verifies task
+  or medication completion. Legacy databases add the nullable status column
+  without changing existing reminder data. This does not add dose tracking or
+  cross-device medication scheduling.
 - Add optional, user-controlled links to iPhone or wearable health data where
   supported, and show what is collected, where it is stored and how to remove it.
 - Summarize trends in sleep, activity and meals as non-diagnostic observations
@@ -1402,3 +1410,17 @@ with all preview artifacts uploaded. The documentation snapshot passed its
 three-platform PR workflow in
 [41026034065](https://github.com/sujanmj/aura-companion/actions/runs/41026034065).
 This is software-only evidence.
+
+## 2026-10-30 continuation — reminder acknowledgment (Phase 11)
+
+Scheduled reminders now have separate owner-scoped actions to record that the
+current day's reminder was seen or to dismiss it for the day. Acknowledgment is
+available only after delivery, is safe to repeat, and does not record task or
+dose completion. Dismissal and acknowledgment cannot both be recorded for the
+same delivery; both statuses reset when the next scheduled occurrence is
+delivered. Legacy SQLite databases receive the new nullable field in place.
+Verification includes the database migration, local-date rollover, account
+isolation, API delivery and response, and the browser acknowledgment flow. Full
+local counts and cross-platform CI run links will be recorded after the pushed
+branch completes verification. No medication or health-device integration is
+claimed.

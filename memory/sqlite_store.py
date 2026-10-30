@@ -40,6 +40,9 @@ class AuraMemoryStore:
             self.conn.execute(
                 "ALTER TABLE routine_reminders ADD COLUMN days_of_week TEXT NOT NULL DEFAULT '1,2,3,4,5,6,7'"
             )
+            reminder_columns.add("days_of_week")
+        if "acknowledged_on" not in reminder_columns:
+            self.conn.execute("ALTER TABLE routine_reminders ADD COLUMN acknowledged_on TEXT")
         self.conn.execute(
             """CREATE UNIQUE INDEX IF NOT EXISTS idx_device_events_external_id
                ON device_events(user_id, source, external_event_id)"""
@@ -266,7 +269,7 @@ class AuraMemoryStore:
     def get_routine_reminders(self, user_id: int) -> list[dict[str, Any]]:
         rows = self.conn.execute(
             """SELECT id, label, local_time, days_of_week, enabled, last_delivered_on,
-                      dismissed_on, created_at
+                      dismissed_on, acknowledged_on, created_at
                FROM routine_reminders WHERE user_id=? ORDER BY local_time, id""",
             (user_id,),
         ).fetchall()
@@ -354,13 +357,45 @@ class AuraMemoryStore:
         now = now or datetime.now().astimezone()
         if now.tzinfo is None:
             raise ValueError("Dismissal time must include a timezone")
+        today = now.date().isoformat()
         cur = self.conn.execute(
             """UPDATE routine_reminders SET dismissed_on=?
-               WHERE id=? AND user_id=? AND enabled=1""",
-            (now.date().isoformat(), reminder_id, user_id),
+               WHERE id=? AND user_id=? AND enabled=1 AND last_delivered_on=?
+                 AND (acknowledged_on IS NULL OR acknowledged_on<>?)""",
+            (today, reminder_id, user_id, today, today),
         )
         self.conn.commit()
         return cur.rowcount == 1
+
+    def acknowledge_routine_reminder(
+        self,
+        user_id: int,
+        reminder_id: int,
+        now: datetime | None = None,
+    ) -> bool:
+        """Record that the owner saw today's delivered reminder, not its completion."""
+        now = now or datetime.now().astimezone()
+        if now.tzinfo is None:
+            raise ValueError("Acknowledgement time must include a timezone")
+        today = now.date().isoformat()
+        cur = self.conn.execute(
+            """UPDATE routine_reminders SET acknowledged_on=?
+               WHERE id=? AND user_id=? AND last_delivered_on=?
+                 AND (dismissed_on IS NULL OR dismissed_on<>?)
+                 AND (acknowledged_on IS NULL OR acknowledged_on<>?)""",
+            (today, reminder_id, user_id, today, today, today),
+        )
+        changed = cur.rowcount == 1
+        if not changed:
+            row = self.conn.execute(
+                """SELECT 1 FROM routine_reminders WHERE id=? AND user_id=?
+                     AND last_delivered_on=? AND acknowledged_on=?
+                     AND (dismissed_on IS NULL OR dismissed_on<>?)""",
+                (reminder_id, user_id, today, today, today),
+            ).fetchone()
+            changed = row is not None
+        self.conn.commit()
+        return changed
 
     def create_due_routine_reminder(
         self, user_id: int, now: datetime | None = None
@@ -390,11 +425,13 @@ class AuraMemoryStore:
         greeting = f"{name}, " if name else ""
         response = (
             f"{greeting}a reminder you set: {reminder['label']}. "
-            "I can’t tell whether you’ve done it; you can dismiss today’s reminder in Memory."
+            "I can’t tell whether you’ve done it. In Memory, acknowledge it to record that you saw it, "
+            "or dismiss it for today; neither action confirms completion or a dose."
         )
         with self.conn:
             claimed = self.conn.execute(
-                """UPDATE routine_reminders SET last_delivered_on=?
+                """UPDATE routine_reminders SET last_delivered_on=?, dismissed_on=NULL,
+                       acknowledged_on=NULL
                    WHERE id=? AND user_id=? AND enabled=1
                      AND (last_delivered_on IS NULL OR last_delivered_on<>?)
                      AND instr(',' || days_of_week || ',', ',' || ? || ',') > 0

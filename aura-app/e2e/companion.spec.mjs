@@ -384,12 +384,38 @@ test("scheduled reminders require opt-in, support selected weekdays, and can be 
   await expect(
     page.getByText("A reminder is not confirmation that you completed the task or took a dose."),
   ).toBeVisible();
+  await expect(page.getByText("Acknowledge only records that you saw the reminder; it does not confirm the task or a dose.")).toBeVisible();
   await reminder.getByRole("button", { name: "Pause reminder" }).click();
   await expect(reminder).toContainText("paused");
   await expect(page.getByRole("status")).toContainText("Daily reminder paused");
   await reminder.getByRole("button", { name: "Enable reminder" }).click();
   await expect(reminder).toContainText("active");
   await expect(page.getByRole("status")).toContainText("Daily reminder enabled");
+  const weekday = await page.evaluate(() => ((new Date().getDay() + 6) % 7) + 1);
+  await page.getByLabel("What should AURA remind you about?").fill("Acknowledge test");
+  await page.getByLabel("Local reminder time").fill("00:00");
+  const weekdays = page.locator(".weekday-options input");
+  for (let index = 0; index < await weekdays.count(); index++) {
+    const checkbox = weekdays.nth(index);
+    if (index + 1 === weekday) await checkbox.check();
+    else await checkbox.uncheck();
+  }
+  await page.getByLabel("Enable this reminder on this Mac.").check();
+  await page.getByRole("button", { name: "Add scheduled reminder" }).click();
+  const seenReminder = page.locator(".fact").filter({ hasText: "Acknowledge test" });
+  await expect(seenReminder).toBeVisible();
+  const delivery = await page.evaluate(async () => fetch("/api/checkin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  }).then((response) => response.json()));
+  expect(delivery.due).toBe(true);
+  await page.reload();
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  const delivered = page.locator(".fact").filter({ hasText: "Acknowledge test" });
+  await expect(delivered.getByRole("button", { name: "Acknowledge reminder" })).toBeVisible();
+  await delivered.getByRole("button", { name: "Acknowledge reminder" }).click();
+  await expect(delivered).toContainText("Acknowledged today — completion not confirmed");
   page.once("dialog", (dialog) => {
     expect(dialog.message()).toContain("Delete the scheduled reminder");
     void dialog.accept();

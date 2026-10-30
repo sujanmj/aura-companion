@@ -91,6 +91,29 @@ class MemoryControlsTest(unittest.TestCase):
         self.assertTrue(self.store.delete_routine_reminder(self.owner, reminder_id))
         self.assertEqual(self.store.get_routine_reminders(self.owner), [])
 
+    def test_reminder_acknowledgement_records_seen_not_completion(self):
+        reminder_id = self.store.add_routine_reminder(self.owner, 'Take medication', '20:00')
+        day = datetime(2026, 10, 21, 20, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+        self.assertFalse(self.store.acknowledge_routine_reminder(self.owner, reminder_id, day))
+        self.assertFalse(self.store.acknowledge_routine_reminder(self.other, reminder_id, day))
+        delivery = self.store.create_due_routine_reminder(self.owner, day)
+        self.assertIn('neither action confirms completion or a dose', delivery['response'])
+        self.assertTrue(self.store.acknowledge_routine_reminder(self.owner, reminder_id, day))
+        self.assertTrue(self.store.acknowledge_routine_reminder(self.owner, reminder_id, day))
+        self.assertFalse(self.store.dismiss_routine_reminder(self.owner, reminder_id, day))
+        current = self.store.get_routine_reminders(self.owner)[0]
+        self.assertEqual(current['acknowledged_on'], '2026-10-21')
+        self.assertIsNone(current['dismissed_on'])
+        exported = self.store.export_user_memory(self.owner)
+        self.assertEqual(
+            exported['records']['routine_reminders'][0]['acknowledged_on'], '2026-10-21'
+        )
+        tomorrow = day + timedelta(days=1)
+        self.store.create_due_routine_reminder(self.owner, tomorrow)
+        current = self.store.get_routine_reminders(self.owner)[0]
+        self.assertIsNone(current['acknowledged_on'])
+        self.assertIsNone(current['dismissed_on'])
+
     def test_daily_reminders_reject_invalid_values_and_repeat_tomorrow(self):
         for label, clock in (('', '09:00'), ('x' * 121, '09:00'), ('Water', '25:00')):
             with self.assertRaises(ValueError):
@@ -142,6 +165,7 @@ class MemoryControlsTest(unittest.TestCase):
             self.assertEqual(len(reminders), 1)
             self.assertEqual(reminders[0]['label'], 'Existing reminder')
             self.assertEqual(reminders[0]['days_of_week'], '1,2,3,4,5,6,7')
+            self.assertIsNone(reminders[0]['acknowledged_on'])
         finally:
             migrated.close()
 

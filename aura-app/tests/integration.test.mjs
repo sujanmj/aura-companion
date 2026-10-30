@@ -699,14 +699,37 @@ test("people memory is private and forget removes its associated timeline", asyn
       (await post("reminder/enabled", { reminder_id: reminder.reminder_id, enabled: true }, cookie)).status,
       200,
     );
+    const now = new Date();
+    const today = ((now.getDay() + 6) % 7) + 1;
+    const seenReminder = await post("reminder/create", {
+      label: "Acknowledgement check",
+      local_time: "00:00",
+      days_of_week: [today],
+      enabled: true,
+    }, cookie);
+    assert.equal(seenReminder.status, 201);
+    const seen = await seenReminder.json();
+    const deliveredReminder = await post("checkin", {}, cookie);
+    assert.equal(deliveredReminder.status, 200);
+    assert.equal((await deliveredReminder.json()).due, true);
     assert.equal(
-      (await post("reminder/dismiss", { reminder_id: reminder.reminder_id }, cookie)).status,
+      (await post("reminder/acknowledge", { reminder_id: seen.reminder_id }, cookie)).status,
       200,
     );
     const dismissedStatus = await (
       await fetch(base + "/api/status", { headers: { Cookie: cookie } })
     ).json();
-    assert.ok(dismissedStatus.reminders[0].dismissed_on);
+    const acknowledged = dismissedStatus.reminders.find((item) => item.id === seen.reminder_id);
+    assert.ok(acknowledged.acknowledged_on);
+    assert.equal(acknowledged.dismissed_on, null);
+    assert.equal(
+      (await post("reminder/dismiss", { reminder_id: seen.reminder_id }, cookie)).status,
+      404,
+    );
+    assert.equal(
+      (await post("reminder/delete", { reminder_id: seen.reminder_id }, cookie)).status,
+      200,
+    );
     assert.equal(
       (await post("reminder/delete", { reminder_id: reminder.reminder_id }, cookie)).status,
       200,

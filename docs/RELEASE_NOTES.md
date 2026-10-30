@@ -1,5 +1,14 @@
 # AURA development preview — 2026-10-30
 
+## Reminder acknowledgment (Phase 11)
+
+After a scheduled reminder is delivered, its owner can acknowledge that they saw
+it or dismiss it for that day. Acknowledgment is limited to the delivered
+occurrence and never records task or medication completion. The UI says this
+explicitly; legacy SQLite databases migrate without replacing existing data.
+This remains a general local reminder feature, not a medication tracker or
+cross-device health integration.
+
 ## 2026-10-30 — Owner-controlled sensor-node revocation
 
 An owner can now revoke an enrolled node credential from the Command Center or

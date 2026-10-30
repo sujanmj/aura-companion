@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS routine_reminders (
     enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
     last_delivered_on TEXT,
     dismissed_on TEXT,
+    acknowledged_on TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );

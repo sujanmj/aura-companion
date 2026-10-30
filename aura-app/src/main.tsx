@@ -56,6 +56,7 @@ type Status = {
     enabled: boolean;
     last_delivered_on: string | null;
     dismissed_on: string | null;
+    acknowledged_on: string | null;
   }[];
   observation_retention: { days: number };
   preferences: CheckinPreferences;
@@ -1237,6 +1238,8 @@ function App() {
                     These run on this Mac while AURA is open or ambient mode is
                     active. A reminder is not confirmation that you completed
                     the task or took a dose.
+                    {" "}Acknowledge only records that you saw the reminder; it does not confirm the
+                    task or a dose.
                   </p>
                   <form
                     className="person-form"
@@ -1346,25 +1349,46 @@ function App() {
                           >
                             {reminder.enabled ? "Pause reminder" : "Enable reminder"}
                           </button>
-                          {reminder.enabled && reminder.last_delivered_on === localDateKey() &&
+                          {reminder.last_delivered_on === localDateKey() &&
                             (reminder.dismissed_on === localDateKey() ? (
                               <span>Dismissed today</span>
+                            ) : reminder.acknowledged_on === localDateKey() ? (
+                              <span>Acknowledged today — completion not confirmed</span>
                             ) : (
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await api("reminder/dismiss", {
-                                      reminder_id: reminder.id,
-                                    });
-                                    await refresh();
-                                    setError("Reminder dismissed for today.");
-                                  } catch (e) {
-                                    setError(String(e));
-                                  }
-                                }}
-                              >
-                                Dismiss today’s reminder
-                              </button>
+                              <>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await api("reminder/acknowledge", {
+                                        reminder_id: reminder.id,
+                                      });
+                                      await refresh();
+                                      setError("Reminder seen; completion was not confirmed.");
+                                    } catch (e) {
+                                      setError(String(e));
+                                    }
+                                  }}
+                                >
+                                  Acknowledge reminder
+                                </button>
+                                {reminder.enabled && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await api("reminder/dismiss", {
+                                          reminder_id: reminder.id,
+                                        });
+                                        await refresh();
+                                        setError("Reminder dismissed for today.");
+                                      } catch (e) {
+                                        setError(String(e));
+                                      }
+                                    }}
+                                  >
+                                    Dismiss today’s reminder
+                                  </button>
+                                )}
+                              </>
                             ))}
                           <button
                             onClick={async () => {

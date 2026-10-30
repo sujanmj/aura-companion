@@ -126,6 +126,13 @@ def main():
                     if not store.dismiss_routine_reminder(user, reminder_id):
                         raise ValueError('Reminder not found')
                     result = {'ok': True}
+                elif op == 'acknowledge_reminder':
+                    reminder_id = req.get('reminder_id')
+                    if not isinstance(reminder_id, int) or isinstance(reminder_id, bool) or reminder_id <= 0:
+                        raise ValueError('Invalid reminder')
+                    if not store.acknowledge_routine_reminder(user, reminder_id):
+                        raise ValueError('Reminder not found or no delivered reminder to acknowledge')
+                    result = {'ok': True}
                 elif op == 'export':
                     result = store.export_user_memory(user)
                 elif op == 'clear_conversations':

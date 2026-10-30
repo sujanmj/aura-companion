@@ -383,6 +383,7 @@ const server = http.createServer(async (req, res) => {
       if (
         url.pathname === "/api/reminder/delete" ||
         url.pathname === "/api/reminder/dismiss" ||
+        url.pathname === "/api/reminder/acknowledge" ||
         url.pathname === "/api/reminder/enabled"
       ) {
         if (!Number.isSafeInteger(data.reminder_id) || data.reminder_id <= 0)
@@ -394,7 +395,9 @@ const server = http.createServer(async (req, res) => {
             ? "delete_reminder"
             : url.pathname.endsWith("/enabled")
               ? "set_reminder_enabled"
-              : "dismiss_reminder";
+              : url.pathname.endsWith("/acknowledge")
+                ? "acknowledge_reminder"
+                : "dismiss_reminder";
           const result = await memory(op, data);
           if (result.reason === "not_found")
             return json(res, 404, { error: "That reminder could not be found." });
