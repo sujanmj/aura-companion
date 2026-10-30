@@ -835,6 +835,14 @@ export. The UI warns that old database snapshots may still contain prior
 copies. Tests cover opt-in defaults, preview, owner isolation, selective expiry,
 recall/export cleanup, validation, authenticated API confirmation, and the
 browser flow. Local verification passed all 119 app Python tests, 30 Node
-tests, 19 browser E2E tests, lint, and production build. Cross-platform CI is
-pending. This does not erase retained backup files or provide third-party
-consent beyond the user's confirmation.
+tests, 19 browser E2E tests, lint, and production build. Commit `1c0cb21`
+passed Windows and Ubuntu push CI
+[41077129996](https://github.com/sujanmj/aura-companion/actions/runs/41077129996)
+and macOS and Ubuntu PR CI
+[41077136778](https://github.com/sujanmj/aura-companion/actions/runs/41077136778).
+Preview archives were uploaded for macOS
+([12987209033](https://github.com/sujanmj/aura-companion/actions/runs/41077136778)),
+Windows ([12987982245](https://github.com/sujanmj/aura-companion/actions/runs/41077129996)),
+and Ubuntu ([12987656674](https://github.com/sujanmj/aura-companion/actions/runs/41077129996)).
+The Windows PR leg is still running. This does not erase retained backup files
+or provide third-party consent beyond the user's confirmation.

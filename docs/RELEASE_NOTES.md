@@ -666,4 +666,9 @@ Owners can preview the affected count and confirm an expiry interval; only
 those notes are removed, while person profiles and other timeline events stay
 intact. Existing database snapshots may retain old copies. Local verification
 passed all 119 app Python tests, 30 Node tests, 19 browser E2E tests, lint, and
-production build. Cross-platform CI is pending.
+production build. Commit `1c0cb21` passed Windows and Ubuntu push CI
+[41077129996](https://github.com/sujanmj/aura-companion/actions/runs/41077129996)
+and macOS and Ubuntu PR CI
+[41077136778](https://github.com/sujanmj/aura-companion/actions/runs/41077136778).
+Preview archives were uploaded for macOS, Windows and Ubuntu. The Windows PR
+leg is still running.
