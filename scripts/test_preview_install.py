@@ -28,9 +28,9 @@ def _safe_environment():
 
 def _install_dependencies(app_dir: Path, env: dict[str, str]) -> None:
     if os.name == "nt":
-        command = ["cmd.exe", "/d", "/s", "/c", "npm ci --ignore-scripts --offline"]
+        command = ["cmd.exe", "/d", "/s", "/c", "npm ci --ignore-scripts"]
     else:
-        command = ["npm", "ci", "--ignore-scripts", "--offline"]
+        command = ["npm", "ci", "--ignore-scripts"]
     result = subprocess.run(
         command, cwd=app_dir, env=env, text=True, capture_output=True,
         timeout=240, check=False,
