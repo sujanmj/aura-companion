@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 24234)
-Total output lines: 2134
-
 import {
   Component,
   lazy,
@@ -70,8 +67,8 @@ type Status = {
   }[];
   backups: { name: string; size_bytes: number; created_at: string }[];
   observation_retention: { days: number };
-  conversation_retention: { days: number };
   person_memory_retention: { days: number };
+  conversation_retention: { days: number };
   preferences: CheckinPreferences;
   conversations: Message[];
   actions: boolean;
@@ -900,7 +897,530 @@ function App() {
                           {providerTest.state === "live_verified"
                             ? `${providerTest.provider} replied to the test request.`
                             : providerTest.state === "test_failed"
-                              ? `${providerT…6234 tokens truncated…ys.includes(value)}
+                              ? `${providerTest.provider} did not complete the test request.`
+                              : `Provider test unavailable: ${providerTest.state.replaceAll("_", " ")}.`}
+                        </p>
+                      )}
+                    </article>
+                    <article className="fact">
+                      <h3>Voice</h3>
+                      <p>
+                        {readiness.voice.stt === "browser"
+                          ? "Speech input uses browser recognition when supported."
+                          : "Cloud transcription is configured but has not been tested live."}
+                      </p>
+                      <p>
+                        {readiness.voice.tts === "browser"
+                          ? "Replies use browser speech."
+                          : "Cloud speech is configured but has not been tested live."}
+                      </p>
+                      <p>
+                        Microphone, speakers, camera and native on-device
+                        recognition still require a real-device check. Browser
+                        recognition may use the browser vendor’s cloud service.
+                      </p>
+                      <label htmlFor="browser-voice">
+                        Installed browser voice
+                      </label>
+                      <select
+                        id="browser-voice"
+                        value={speechPreferences.voiceURI}
+                        onChange={(event) =>
+                          updateSpeechPreferences({
+                            ...speechPreferences,
+                            voiceURI: event.target.value,
+                          })
+                        }
+                      >
+                        <option value="">System default</option>
+                        {browserVoices.map((browserVoice) => (
+                          <option
+                            key={browserVoice.voiceURI}
+                            value={browserVoice.voiceURI}
+                          >
+                            {browserVoice.name} ({browserVoice.lang})
+                          </option>
+                        ))}
+                      </select>
+                      <label htmlFor="browser-voice-rate">
+                        Browser speaking pace (
+                        {speechPreferences.rate.toFixed(2)}×)
+                      </label>
+                      <input
+                        id="browser-voice-rate"
+                        type="range"
+                        min="0.8"
+                        max="1.2"
+                        step="0.05"
+                        value={speechPreferences.rate}
+                        onChange={(event) =>
+                          updateSpeechPreferences({
+                            ...speechPreferences,
+                            rate: Number(event.target.value),
+                          })
+                        }
+                      />
+                      <small>
+                        Saved only in this browser. These choices apply to
+                        browser speech and local fallback if cloud speech is
+                        configured.
+                      </small>
+                    </article>
+                    <article className="fact">
+                      <h3>External actions</h3>
+                      <p>
+                        {readiness.actions.state === "disabled"
+                          ? "Disabled. No tool task can run."
+                          : readiness.actions.state === "missing_configuration"
+                            ? "Opted in, but MCP servers or allowed tools are missing. Complete the local configuration first."
+                            : "Configured, not tested live. Each tool invocation still needs your approval."}
+                      </p>
+                    </article>
+                  </>
+                )}
+                <article className="fact acceptance-checklist">
+                  <h3>First-device acceptance</h3>
+                  <p>
+                    Work through the checks on this device. These boxes are
+                    manual notes saved only in this browser; checking one does
+                    not run a test or prove a capability by itself.
+                  </p>
+                  <div className="acceptance-steps">
+                    {acceptanceSteps.map((step) => (
+                      <div className="acceptance-step" key={step.id}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={acceptanceChecks[step.id] === true}
+                            onChange={(event) => {
+                              const next = {
+                                ...acceptanceChecks,
+                                [step.id]: event.target.checked,
+                              };
+                              setAcceptanceChecks(next);
+                              try {
+                                localStorage.setItem(
+                                  acceptanceStorageKey,
+                                  JSON.stringify(next),
+                                );
+                              } catch {
+                                setError(
+                                  "Could not save these checklist notes in this browser.",
+                                );
+                              }
+                            }}
+                          />
+                          <span>{step.title}</span>
+                        </label>
+                        <p>{step.detail}</p>
+                        {step.tab !== "setup" && (
+                          <button
+                            type="button"
+                            onClick={() => setTab(step.tab)}
+                          >
+                            Open{" "}
+                            {step.tab === "memory"
+                              ? "Memory"
+                              : step.tab === "actions"
+                                ? "Actions"
+                                : "Conversation"}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAcceptanceChecks({});
+                      try {
+                        localStorage.removeItem(acceptanceStorageKey);
+                      } catch {
+                        setError(
+                          "Could not clear these checklist notes in this browser.",
+                        );
+                      }
+                    }}
+                  >
+                    Clear checklist notes
+                  </button>
+                </article>
+                {checkinPreferences && (
+                  <article className="fact checkin-settings">
+                    <h3>Companion check-ins</h3>
+                    <p>
+                      Optional and off by default. AURA checks in only while
+                      this app is open, after your chosen idle interval, and
+                      outside quiet hours. Check-ins stay in local memory.
+                    </p>
+                    <form
+                      onSubmit={async (event) => {
+                        event.preventDefault();
+                        try {
+                          const saved = await api<CheckinPreferences>(
+                            "preferences",
+                            checkinPreferences,
+                          );
+                          setCheckinPreferences(saved);
+                          setStatus((current) =>
+                            current
+                              ? { ...current, preferences: saved }
+                              : current,
+                          );
+                          setError("Check-in preferences saved.");
+                        } catch (e) {
+                          setError(String(e));
+                        }
+                      }}
+                    >
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={checkinPreferences.checkins_enabled}
+                          onChange={(event) =>
+                            setCheckinPreferences({
+                              ...checkinPreferences,
+                              checkins_enabled: event.target.checked,
+                            })
+                          }
+                        />
+                        Allow AURA to check in
+                      </label>
+                      <label>
+                        Quiet hours start
+                        <input
+                          type="time"
+                          value={checkinPreferences.quiet_start}
+                          onChange={(event) =>
+                            setCheckinPreferences({
+                              ...checkinPreferences,
+                              quiet_start: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Quiet hours end
+                        <input
+                          type="time"
+                          value={checkinPreferences.quiet_end}
+                          onChange={(event) =>
+                            setCheckinPreferences({
+                              ...checkinPreferences,
+                              quiet_end: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Check in after this many idle hours
+                        <input
+                          type="number"
+                          min={4}
+                          max={168}
+                          value={checkinPreferences.checkin_interval_hours}
+                          onChange={(event) =>
+                            setCheckinPreferences({
+                              ...checkinPreferences,
+                              checkin_interval_hours: Number(
+                                event.target.value,
+                              ),
+                            })
+                          }
+                        />
+                      </label>
+                      <button className="primary">
+                        Save check-in preferences
+                      </button>
+                    </form>
+                  </article>
+                )}
+              </div>
+            ) : tab === "memory" ? (
+              <div className="details">
+                <span className="eyebrow">CONTINUITY, NOT A FRESH START</span>
+                <h2>Your companion remembers.</h2>
+                <p>
+                  These are the facts in your existing AURA memory.
+                  Conversations and feedback continue in the same database.
+                </p>
+                <section className="memory-review">
+                  <h3>Local database backups</h3>
+                  <p>
+                    These snapshots may contain private memory for every account in this database.
+                    AURA keeps them until you remove one; deletion removes that recovery copy and
+                    cannot be undone. It does not change the active database. Verify checks a
+                    snapshot read-only; it does not restore or change any data.
+                  </p>
+                  <button
+                    className="primary"
+                    onClick={async () => {
+                      if (!window.confirm(
+                        "Create a verified local recovery snapshot? It will contain private memory for every account in this database.",
+                      )) return;
+                      try {
+                        await api("backups/create", { confirmed: true });
+                        await refresh();
+                        setError("Local database backup created and verified.");
+                      } catch (e) {
+                        setError(String(e));
+                      }
+                    }}
+                  >
+                    Create local backup now
+                  </button>
+                  {status.backups.length === 0 ? (
+                    <p>No local startup backups are available.</p>
+                  ) : (
+                    status.backups.map((backup) => (
+                      <article className="fact" key={backup.name}>
+                        <small>{new Date(backup.created_at).toLocaleString()} · {(backup.size_bytes / 1024).toFixed(1)} KB</small>
+                        <p>{backup.name}</p>
+                        {backupChecks[backup.name] && (
+                          <small role="status">
+                            {backupChecks[backup.name].integrity === "ok"
+                              ? `Integrity check passed at ${new Date(backupChecks[backup.name].checkedAt).toLocaleString()}.`
+                              : "Integrity check failed. The active database was not changed."}
+                          </small>
+                        )}
+                        <div className="fact-actions">
+                          <button
+                            onClick={async () => {
+                              try {
+                                const result = await api<{ backup: { checked_at: string; integrity: "ok" } }>(
+                                  "backups/verify", { name: backup.name },
+                                );
+                                setBackupChecks((current) => ({
+                                  ...current,
+                                  [backup.name]: { integrity: "ok", checkedAt: result.backup.checked_at },
+                                }));
+                                setError("Local backup integrity check passed; nothing was restored or changed.");
+                              } catch (e) {
+                                setBackupChecks((current) => ({
+                                  ...current,
+                                  [backup.name]: { integrity: "failed", checkedAt: new Date().toISOString() },
+                                }));
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            Verify backup
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm(
+                                `Delete local backup ${backup.name}? This removes this recovery copy for every account in the database and cannot be undone. The active database will not be changed.`,
+                              )) return;
+                              try {
+                                await api("backups/delete", { name: backup.name, confirmed: true });
+                                await refresh();
+                                setError("Local backup deleted; the active database was not changed.");
+                              } catch (e) {
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            Delete local backup
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </section>
+                <a className="memory-export" href="/api/memory/export" download>
+                  Download all my AURA data (JSON)
+                </a>
+                <section className="memory-review">
+                  <h3>Conversation history expiry</h3>
+                  <p>History expiry: {status.conversation_retention.days === 0 ? "keep until you delete" : `${status.conversation_retention.days} days`}. This covers saved messages and replies only; facts, routines, people, and observations remain. Existing backups or unavailable cloud sync may retain older copies.</p>
+                  <form onSubmit={async (event) => {
+                    event.preventDefault();
+                    try {
+                      const days = Number(conversationRetentionDays);
+                      const preview = await api<{ expiring: number }>("conversations/retention-preview", { days });
+                      const expiry = days === 0 ? "keep until deleted" : `${days} days`;
+                      if (!window.confirm(`Change saved conversation expiry to ${expiry}? ${preview.expiring} messages currently qualify for deletion. The count may change before saving. Only conversation history is removed; saved facts, routines, people, notes, and observations remain. Old backups can retain copies, and cloud deletion requires working sync. This cannot restore deleted history.`)) return;
+                      await api("conversations/retention", { days, confirmed: true });
+                      await refresh();
+                      setError("Conversation history expiry saved.");
+                    } catch (e) {
+                      setError(String(e));
+                    }
+                  }}>
+                    <label htmlFor="conversation-retention">Expire saved conversation history after</label>
+                    <select id="conversation-retention" value={conversationRetentionDays} onChange={(event) => setConversationRetentionDays(event.target.value)}>
+                      {[0, 1, 7, 30, 90, 365].map((days) => <option key={days} value={days}>{days === 0 ? "Keep until I delete" : `${days} days`}</option>)}
+                    </select>
+                    <button type="submit">Review conversation expiry</button>
+                  </form>
+                </section>
+                <button
+                  className="memory-export"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        "Clear all saved conversation messages and replies? Saved facts, routines, and observations will remain. This cannot be undone.",
+                      )
+                    )
+                      return;
+                    try {
+                      const result = await api<{ deleted: number }>(
+                        "conversations/clear",
+                        {},
+                      );
+                      await refresh();
+                      setError(
+                        `Conversation history cleared (${result.deleted} messages).`,
+                      );
+                    } catch (e) {
+                      setError(String(e));
+                    }
+                  }}
+                >
+                  Clear conversation history
+                </button>
+                {status.facts.length === 0 ? (
+                  <p>No facts yet. Start a conversation.</p>
+                ) : (
+                  status.facts.map((f) => (
+                    <article className="fact" key={f.id}>
+                      <small>{f.fact_key.replaceAll("_", " ")}</small>
+                      {editingFact === f.id ? (
+                        <form
+                          onSubmit={async (event) => {
+                            event.preventDefault();
+                            try {
+                              await api("fact/update", {
+                                fact_id: f.id,
+                                value: factDraft,
+                              });
+                              await refresh();
+                              setEditingFact(null);
+                              setError("Memory corrected.");
+                            } catch (e) {
+                              setError(String(e));
+                            }
+                          }}
+                        >
+                          <label htmlFor={"fact-" + f.id}>
+                            Correct what AURA remembers
+                          </label>
+                          <textarea
+                            id={"fact-" + f.id}
+                            value={factDraft}
+                            maxLength={2000}
+                            onChange={(event) =>
+                              setFactDraft(event.target.value)
+                            }
+                            required
+                          />
+                          <button
+                            className="primary"
+                            disabled={!factDraft.trim()}
+                          >
+                            Save correction
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingFact(null)}
+                          >
+                            Cancel
+                          </button>
+                        </form>
+                      ) : (
+                        <>
+                          <p>{f.fact_value}</p>
+                          <div className="memory-controls">
+                            <button
+                              onClick={() => {
+                                setEditingFact(f.id);
+                                setFactDraft(f.fact_value);
+                              }}
+                            >
+                              Correct
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (
+                                  !window.confirm(
+                                    "Forget this memory? AURA removes this saved summary and will not automatically save it again. Your original messages remain in chat history and may still inform recent context.",
+                                  )
+                                )
+                                  return;
+                                try {
+                                  await api("fact/delete", { fact_id: f.id });
+                                  await refresh();
+                                  setError("Memory forgotten.");
+                                } catch (e) {
+                                  setError(String(e));
+                                }
+                              }}
+                            >
+                              Forget
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </article>
+                  ))
+                )}
+                <section className="memory-review">
+                  <h3>Scheduled reminders</h3>
+                  <p>
+                    These run on this Mac while AURA is open or ambient mode is
+                    active. A reminder is not confirmation that you completed
+                    the task or took a dose.
+                    {" "}Acknowledge only records that you saw the reminder; it does not confirm the
+                    task or a dose.
+                  </p>
+                  <form
+                    className="person-form"
+                    onSubmit={async (event) => {
+                      event.preventDefault();
+                      try {
+                        await api("reminder/create", {
+                          label: reminderLabel,
+                          local_time: reminderTime,
+                          days_of_week: reminderDays,
+                          enabled: reminderConsent,
+                        });
+                        await refresh();
+                        setReminderLabel("");
+                        setReminderTime("20:00");
+                        setReminderDays([1, 2, 3, 4, 5, 6, 7]);
+                        setReminderConsent(false);
+                        setError("Daily reminder saved.");
+                      } catch (e) {
+                        setError(String(e));
+                      }
+                    }}
+                  >
+                    <label htmlFor="reminder-label">What should AURA remind you about?</label>
+                    <input
+                      id="reminder-label"
+                      value={reminderLabel}
+                      maxLength={120}
+                      onChange={(event) => setReminderLabel(event.target.value)}
+                      required
+                    />
+                    <label htmlFor="reminder-time">Local reminder time</label>
+                    <input
+                      id="reminder-time"
+                      type="time"
+                      value={reminderTime}
+                      onChange={(event) => setReminderTime(event.target.value)}
+                      required
+                    />
+                    <fieldset>
+                      <legend>Repeat on</legend>
+                      <div className="weekday-options">
+                        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => {
+                          const value = index + 1;
+                          return (
+                            <label key={day}>
+                              <input
+                                type="checkbox"
+                                checked={reminderDays.includes(value)}
                                 onChange={(event) => setReminderDays((current) =>
                                   event.target.checked
                                     ? [...current, value].sort()
