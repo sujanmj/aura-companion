@@ -1617,4 +1617,11 @@ simulation leaves conversation history empty. Local verification
 passed all 127 app Python tests, 30 Node tests, and the 24 focused room client,
 invitation, and reply-gate tests. This uses temporary databases and a fake
 playback callback; it does not test speakers, Pi hardware, acoustic handoff, or
-the post-validation physical playback race.
+the post-validation physical playback race. Commit `5b58ec8` passed push CI
+[41086481235](https://github.com/sujanmj/aura-companion/actions/runs/41086481235)
+and PR CI
+[41086493106](https://github.com/sujanmj/aura-companion/actions/runs/41086493106)
+on macOS, Windows and Ubuntu. Both runs uploaded all three preview archives.
+Push artifact digest prefixes: macOS `1806124c`, Windows `0af4461b`, Ubuntu
+`6ca78d6b`; PR prefixes: macOS `03bf64d9`, Windows `f9bf5a04`, Ubuntu
+`ec4d8d8f`.

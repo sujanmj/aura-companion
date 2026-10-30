@@ -727,3 +727,11 @@ allowing a fake playback callback. Local verification passed all 127 app
 Python tests, 30 Node tests, and 24 focused room client, invitation, and
 reply-gate tests. Playback remains simulated; Pi, sensor, network-room,
 speaker, and acoustic acceptance still require physical hardware.
+Commit `5b58ec8` passed push CI
+[41086481235](https://github.com/sujanmj/aura-companion/actions/runs/41086481235)
+and PR CI
+[41086493106](https://github.com/sujanmj/aura-companion/actions/runs/41086493106)
+on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+Push artifact digest prefixes: macOS `1806124c`, Windows `0af4461b`, Ubuntu
+`6ca78d6b`; PR prefixes: macOS `03bf64d9`, Windows `f9bf5a04`, Ubuntu
+`ec4d8d8f`.
