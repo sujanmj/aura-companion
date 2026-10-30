@@ -1,5 +1,33 @@
 # AURA development preview — 2026-10-31
 
+## Session-only built-in local reply engine (Phases 2, 4)
+
+Mac ambient mode now lets the owner bypass the configured language model for
+new replies and use AURA's built-in local reaction engine instead. The choice
+is available only during an active session and resets on Pause. Ordinary
+ambient turns still use saved AURA memory and conversation history; the
+separate private-reply option remains unsaved. Normal storage and optional
+cloud-sync behavior still apply, and the UI explains that boundary.
+
+Tests verify the model endpoint receives no request for a local-only turn, a
+later regular turn still uses the configured model, ambient memory remains
+available, private local replies stay unsaved, and the session toggle resets.
+Local verification passed all 132 app Python tests, 35 Node tests, all 19
+browser tests, native lifecycle/speech tests, lint, TypeScript checking,
+production build, Mac signature verification, archive integrity, and
+clean-install/legacy-database upgrade smoke. Exact source commit `79cf411`
+passed push CI
+[41118891881](https://github.com/sujanmj/aura-companion/actions/runs/41118891881)
+and PR CI
+[41118896869](https://github.com/sujanmj/aura-companion/actions/runs/41118896869)
+on macOS, Windows and Ubuntu. Both runs uploaded all three preview archives.
+Push digest prefixes: macOS `166dbba4`, Windows `fbbf7435`, Ubuntu `0c1d9090`;
+PR prefixes: macOS `df9c8388`, Windows `a6253f09`, Ubuntu `073f4e99`. The exact-
+head local Mac archive SHA-256 is
+`c9f66cc41c0041b817f382cf4922bfe37f97d07f752b238a076e7d14dff0cc7b`. It is
+ad-hoc signed and not notarized. No physical Mac permission or home hardware
+acceptance is claimed.
+
 ## Optional ambient-session auto-pause (Phase 2)
 
 Mac ambient mode now offers an optional 15, 30 or 60-minute capture limit. It

@@ -808,6 +808,32 @@ SHA-256 is
 ad-hoc signed and not notarized. This does not establish real permission,
 long-duration, acoustic or hardware acceptance.
 
+## 2026-10-31 continuation — session-only built-in local replies (Phases 2, 4)
+
+The Mac ambient panel now offers a session-only choice to bypass the configured
+language model and use AURA's built-in reaction engine. It is locked while
+paused and resets on Pause. Normal ambient turns retain their local memory and
+conversation behavior; private turns remain unsaved. The setting does not
+change whether normal conversation and observation records use configured
+cloud sync. A status-tested integration drives an authenticated loopback app
+with a local fake Ollama endpoint: the local-only turn produces no model request
+while memory remains enabled, and the next ordinary turn still reaches that
+model. Private local mode also bypasses the model and remains unsaved. Native
+tests cover request payloads and toggle lifetime. Local verification passed
+132 app Python tests, 35 Node tests, all 19 browser tests, native
+lifecycle/speech tests, lint, TypeScript checking, production build, ad-hoc Mac
+signature checks, preview archive integrity and clean-install/legacy-database
+upgrade smoke. Exact source commit `79cf411` passed three-platform push CI
+([41118891881](https://github.com/sujanmj/aura-companion/actions/runs/41118891881))
+and PR CI
+([41118896869](https://github.com/sujanmj/aura-companion/actions/runs/41118896869));
+both uploaded macOS, Windows and Ubuntu preview archives. Push digest prefixes:
+macOS `166dbba4`, Windows `fbbf7435`, Ubuntu `0c1d9090`; PR prefixes: macOS
+`df9c8388`, Windows `a6253f09`, Ubuntu `073f4e99`. The exact-head local Mac
+archive SHA-256 is
+`c9f66cc41c0041b817f382cf4922bfe37f97d07f752b238a076e7d14dff0cc7b`; it is
+ad-hoc signed and not notarized. No home hardware acceptance is claimed.
+
 ## 2026-10-28 continuation — observation expiry (Phases 4, 7, 8)
 
 Baseline `0a121ba9589155f8bee311d50380b817a3c2775f` was verified against
