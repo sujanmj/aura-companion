@@ -787,6 +787,28 @@ test("a short shared conversation needs fresh agreement per turn and stays out o
   await expect(page.getByText("local · temporary shared exchange · not in AURA memory · online sources not checked")).toHaveCount(0);
 });
 
+test("shared reply preferences reset after a failed local turn", async ({ page }) => {
+  await connect(page);
+  await page.getByText("Invite AURA to answer a shared question", { exact: true }).click();
+  await page.route("**/api/shared", route => route.fulfill({
+    status: 503,
+    contentType: "application/json",
+    body: JSON.stringify({ error: "simulated shared-service outage" }),
+  }));
+  const question = page.getByLabel("Reviewed shared question");
+  const localEngine = page.getByLabel("Use AURA’s built-in local reply engine for this shared turn; skip the configured model and use only the current question.");
+  const consent = page.getByLabel(/Everyone agrees/);
+  const send = page.getByRole("button", { name: "Invite AURA to respond" });
+  await question.fill("Can you suggest a group activity?");
+  await localEngine.check();
+  await consent.check();
+  await send.click();
+  await expect(localEngine).not.toBeChecked();
+  await expect(consent).not.toBeChecked();
+  await expect(send).toBeDisabled();
+  await expect(page.getByText("AURA:", { exact: false })).toHaveCount(0);
+});
+
 
 test("a private turn skips saved memory and stays out of conversation history", async ({ page }) => {
   await connect(page);
