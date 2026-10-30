@@ -10,6 +10,19 @@ missing prerequisite is available.
 
 These checks establish only the behavior covered by their tests:
 
+- Commit `811332a` adds continuous Node and Python dependency advisory checks to
+  Ubuntu CI. The npm audit blocks high-severity advisories; `pip-audit` 2.10.1
+  examines `requirements.txt` from an isolated temporary environment. Both
+  found no known advisories on 2026-10-30. The 30-test Node suite passes locally.
+  A Windows SQLite temp-file cleanup race found by the PR matrix was fixed with
+  bounded removal retries. Push CI
+  [41049167203](https://github.com/sujanmj/aura-companion/actions/runs/41049167203)
+  and PR CI
+  [41049176739](https://github.com/sujanmj/aura-companion/actions/runs/41049176739)
+  passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+  These checks do not establish hardware acceptance or guarantee protection
+  from unknown/future advisories.
+
 - Commit `75ab2e2` tests a packaged preview startup against disposable memory
   from AURA's schema before weekday reminders. The test checks that a
   pre-migration startup backup contains the original fact and reminder, then

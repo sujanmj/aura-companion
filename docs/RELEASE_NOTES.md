@@ -1,5 +1,20 @@
 # AURA development preview — 2026-10-30
 
+## Continuous dependency advisories (Phase 12)
+
+Ubuntu CI checks the locked npm dependency tree for high-severity or greater
+advisories and audits the Python requirements using `pip-audit` in an isolated
+temporary environment. The local checks reported no known advisories on
+2026-10-30. Commit `811332a` passed push CI
+[41049167203](https://github.com/sujanmj/aura-companion/actions/runs/41049167203)
+and PR CI
+[41049176739](https://github.com/sujanmj/aura-companion/actions/runs/41049176739)
+on macOS, Windows and Ubuntu; both runs uploaded preview artifacts for all
+three platforms. A Windows SQLite cleanup race found during an earlier PR run
+was fixed with bounded file-removal retries and passed in the final matrix.
+These checks do not guarantee that future or unknown dependency vulnerabilities
+are absent.
+
 ## Existing-memory upgrade smoke (Phases 6 and 12)
 
 The extracted preview is now tested against a synthetic database created from
