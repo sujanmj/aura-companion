@@ -55,8 +55,12 @@ requirements alongside `requirements.txt`, and CI installs the test pin before
 Python unit tests. Local verification passed: the focused New York DST test,
 all 21 memory-controls tests, all 112 Python app tests, 30 Node tests, lint,
 production build, and browser E2E (19/19). `pip-audit` found no known
-vulnerabilities in both requirement files. Cross-platform CI remains pending;
-Windows execution is not claimed from this non-Windows host.
+vulnerabilities in both requirement files. PR run
+[41065495500](https://github.com/sujanmj/aura-companion/actions/runs/41065495500)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+Windows installed the pin and ran all 112 Python tests; its three skips were
+the POSIX-only symlink checks, so the IANA timezone regression ran. No
+physical reminder delivery is claimed.
 
 ## Existing-memory upgrade smoke (Phases 6 and 12)
 

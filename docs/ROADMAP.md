@@ -774,5 +774,9 @@ app Python unit tests, and Ubuntu `pip-audit` covers both requirement files.
 Local verification passed: focused New York DST test (1/1), all 21
 memory-controls tests, all 112 Python app tests, 30 Node tests, lint,
 production build, and browser E2E (19/19). `pip-audit` reported no known
-vulnerabilities across both requirement files. Cross-platform CI for this
-commit is pending; this macOS run does not prove Windows runner behavior.
+vulnerabilities across both requirement files. PR run
+[41065495500](https://github.com/sujanmj/aura-companion/actions/runs/41065495500)
+passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+Windows installed the pinned timezone data and ran all 112 Python tests; its
+three skips were the POSIX-only symlink checks, so the IANA timezone case ran.
+No physical reminder delivery is claimed.
