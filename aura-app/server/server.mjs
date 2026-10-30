@@ -8,23 +8,12 @@ import { pythonCommand, pythonEnvironment } from "./python-runtime.mjs";
 import { MemoryClient } from "./memory-client.mjs";
 import { ApprovalGate, permittedOrigin } from "./policy.mjs";
 import { lookupWikipedia } from "./online-lookup.mjs";
+import { TemporaryOnlineSourceCache } from "./online-source-cache.mjs";
 let onlineBusy = false;
 let nextOnlineLookup = 0;
 let onlineAnswerBusy = false;
 let nextOnlineAnswer = 0;
-const onlineSourceCache = new Map();
-const ONLINE_SOURCE_TTL_MS = 10 * 60 * 1000;
-const ONLINE_SOURCE_CACHE_LIMIT = 12;
-
-function cleanOnlineSourceCache() {
-  const now = Date.now();
-  for (const [id, entry] of onlineSourceCache) {
-    if (entry.expiresAt <= now) onlineSourceCache.delete(id);
-  }
-  while (onlineSourceCache.size > ONLINE_SOURCE_CACHE_LIMIT) {
-    onlineSourceCache.delete(onlineSourceCache.keys().next().value);
-  }
-}
+const onlineSourceCache = new TemporaryOnlineSourceCache();
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const port = Number(process.env.AURA_PORT || 8790);
@@ -343,15 +332,8 @@ const server = http.createServer(async (req, res) => {
         try {
           const result = await lookupWikipedia(data.query, true, { signal: controller.signal });
           if (res.destroyed || controller.signal.aborted) return;
-          cleanOnlineSourceCache();
           if (result.sources.length) {
-            const lookupId = randomBytes(24).toString("base64url");
-            onlineSourceCache.set(lookupId, {
-              sources: result.sources,
-              expiresAt: Date.now() + ONLINE_SOURCE_TTL_MS,
-            });
-            result.lookup_id = lookupId;
-            cleanOnlineSourceCache();
+            result.lookup_id = onlineSourceCache.put(result.sources);
           }
           if (!res.destroyed) return json(res, 200, result);
         } catch {
@@ -368,9 +350,8 @@ const server = http.createServer(async (req, res) => {
             !data.question.trim() || data.question.length > 1000 ||
             typeof data.lookup_id !== "string" || !/^[A-Za-z0-9_-]{32}$/.test(data.lookup_id))
           return json(res, 400, { error: "Review the question and approve an answer from the current source excerpts." });
-        cleanOnlineSourceCache();
-        const entry = onlineSourceCache.get(data.lookup_id);
-        if (!entry) return json(res, 410, { error: "These reviewed sources expired or were cleared. Check the source again." });
+        const sources = onlineSourceCache.get(data.lookup_id);
+        if (!sources) return json(res, 410, { error: "These reviewed sources expired or were cleared. Check the source again." });
         if (onlineAnswerBusy || busy || Date.now() < nextOnlineAnswer)
           return json(res, 429, { error: "Wait a moment before another AURA answer." });
         onlineAnswerBusy = true;
@@ -378,7 +359,7 @@ const server = http.createServer(async (req, res) => {
         try {
           const answer = await memory("grounded_answer", {
             question: data.question,
-            sources: entry.sources,
+            sources,
             consent: true,
           });
           return json(res, 200, { ...answer, answered_at: new Date().toISOString() });
@@ -393,7 +374,7 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === "/api/online/clear") {
         if (typeof data.lookup_id !== "string" || !/^[A-Za-z0-9_-]{32}$/.test(data.lookup_id))
           return json(res, 400, { error: "Invalid source result." });
-        onlineSourceCache.delete(data.lookup_id);
+        onlineSourceCache.clear(data.lookup_id);
         return json(res, 200, { cleared: true });
       }
       if (url.pathname === "/api/ambient/observation") {
