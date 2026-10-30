@@ -29,6 +29,11 @@ jobs:
       - run: npm ci --ignore-scripts
       - if: matrix.os == 'ubuntu-latest'
         run: npm audit --audit-level=high
+      - if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m venv "$RUNNER_TEMP/aura-pip-audit"
+          "$RUNNER_TEMP/aura-pip-audit/bin/python" -m pip install --disable-pip-version-check pip-audit==2.10.1
+          "$RUNNER_TEMP/aura-pip-audit/bin/pip-audit" -r ../requirements.txt
       - run: npm run build
       - if: runner.os == 'macOS'
         run: npm run macos:app
