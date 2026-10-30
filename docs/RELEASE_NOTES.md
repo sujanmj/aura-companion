@@ -31,8 +31,8 @@ browser tests, lint and production build. Push CI
 [41106827966](https://github.com/sujanmj/aura-companion/actions/runs/41106827966)
 passed on macOS, Windows and Ubuntu and uploaded each preview archive. The PR
 matrix [41106836974](https://github.com/sujanmj/aura-companion/actions/runs/41106836974)
-passed macOS and Ubuntu; Windows was still running at this update. No Pi or
-live-provider acceptance is claimed.
+also passed macOS, Windows and Ubuntu, and uploaded all three preview
+archives. No Pi or live-provider acceptance is claimed.
 
 ## Optional local push-to-talk speech on Pi and Linux (Phase 5)
 

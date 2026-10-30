@@ -1706,7 +1706,9 @@ production build. Push CI
 passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
 The matching PR run
 [41106836974](https://github.com/sujanmj/aura-companion/actions/runs/41106836974)
-has passed macOS and Ubuntu; Windows was still running at this update. Push
+also passed on macOS, Windows and Ubuntu and uploaded all three preview
+archives. PR artifact digest prefixes: macOS `cb51593e`, Windows `dde12317`,
+Ubuntu `abafeeff`. Push
 artifact digest prefixes: macOS `dee291aa`, Windows `799f10d2`, Ubuntu
 `63996f0e`. This does not establish live-provider retention behavior or
 Raspberry Pi acceptance.
