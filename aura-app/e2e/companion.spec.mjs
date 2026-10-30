@@ -330,6 +330,17 @@ test("people are added only with recorded consent and can be forgotten", async (
 }) => {
   await connect(page);
   await page.getByRole("button", { name: "Memory 02" }).click();
+  const personRetention = page.getByLabel("Expire user-entered person notes after");
+  await expect(personRetention).toHaveValue("0");
+  await personRetention.selectOption("7");
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("only user-entered notes about people");
+    expect(dialog.message()).toContain("Existing backups may still contain older copies");
+    void dialog.accept();
+  });
+  await page.getByRole("button", { name: "Review person note expiry" }).click();
+  await expect(page.getByRole("status")).toContainText("Person memory note expiry saved");
+  await expect(personRetention).toHaveValue("7");
   await page.getByLabel("Name", { exact: true }).fill("Maya");
   await page.getByLabel("Relationship (optional)").fill("friend");
   const add = page.getByRole("button", { name: "Add person" });

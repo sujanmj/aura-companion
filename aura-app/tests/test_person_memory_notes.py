@@ -78,6 +78,55 @@ class PersonMemoryNotesTests(unittest.TestCase):
         self.assertTrue(self.store.forget_known_person(self.owner, self.person))
         self.assertEqual(self.store.get_recent_person_events(self.owner), [])
 
+    def test_person_note_retention_is_opt_in_owner_scoped_and_limited_to_explicit_notes(self):
+        note_id = self.store.add_person_memory_note(
+            self.owner, self.person, "We went to the park.", True
+        )
+        other_person = self.store.add_known_person(
+            self.other, "Taylor", consent_to_remember=True
+        )
+        other_note = self.store.add_person_memory_note(
+            self.other, other_person, "Other owner's note.", True
+        )
+        generated_event = self.store.add_person_event(
+            self.owner, self.person, "introduced", "Taylor was introduced to AURA."
+        )
+        self.store.conn.execute(
+            "UPDATE person_events SET created_at=datetime('now', '-31 days') WHERE id IN (?, ?, ?)",
+            (note_id, other_note, generated_event),
+        )
+        self.store.conn.commit()
+
+        self.assertEqual(self.store.person_memory_retention(self.owner), {"days": 0})
+        self.assertEqual(self.store.preview_person_memory_expiry(self.owner, 30), {
+            "days": 30, "expiring": 1,
+        })
+        self.assertEqual(len(self.store.get_recent_person_events(self.owner)), 2)
+        self.assertEqual(self.store.set_person_memory_retention(self.owner, 30), {
+            "days": 30, "deleted": 1,
+        })
+        remaining = self.store.get_recent_person_events(self.owner)
+        self.assertEqual([event["event_type"] for event in remaining], ["introduced"])
+        self.assertEqual(len(self.store.get_recent_person_events(self.other)), 1)
+        self.assertEqual(len(self.store.export_user_memory(self.owner)["records"]["person_events"]), 1)
+
+    def test_person_note_retention_validation_and_expiry_on_recall(self):
+        note_id = self.store.add_person_memory_note(
+            self.owner, self.person, "We went to the park.", True
+        )
+        self.store.set_person_memory_retention(self.owner, 1)
+        self.store.conn.execute(
+            "UPDATE person_events SET created_at=datetime('now', '-2 days') WHERE id=?",
+            (note_id,),
+        )
+        self.store.conn.commit()
+        self.assertEqual(self.store.get_recent_person_events(self.owner), [])
+        self.assertEqual(self.store.person_memory_retention(self.owner), {"days": 1})
+        for days in (True, False, -1, 2, 30.0, "30", None, 366):
+            with self.subTest(days=days), self.assertRaises(ValueError):
+                self.store.set_person_memory_retention(self.owner, days)
+        self.assertEqual(self.store.person_memory_retention(self.owner), {"days": 1})
+
 
 if __name__ == "__main__":
     unittest.main()

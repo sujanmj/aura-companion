@@ -823,3 +823,18 @@ application Python tests pass locally. Commit `ce6d4a0` passed PR CI
 on macOS, Windows and Ubuntu, uploading all three preview archives. The scan
 is a narrow accidental-leak guard, not a comprehensive secret audit or proof
 that credentials are absent from the repository.
+
+## 2026-10-30 continuation — opt-in person-note expiry (Phases 4, 12)
+
+User-entered notes about consented people now have a separate retention control,
+because the existing observation expiry policy did not cover this memory type.
+The default remains keep-until-deleted. Owners can preview and confirm a
+1/7/30/90/365-day expiry policy; it removes only user-entered person notes,
+preserves person profiles and other timeline events, and runs before recall and
+export. The UI warns that old database snapshots may still contain prior
+copies. Tests cover opt-in defaults, preview, owner isolation, selective expiry,
+recall/export cleanup, validation, authenticated API confirmation, and the
+browser flow. Local verification passed all 119 app Python tests, 30 Node
+tests, 19 browser E2E tests, lint, and production build. Cross-platform CI is
+pending. This does not erase retained backup files or provide third-party
+consent beyond the user's confirmation.

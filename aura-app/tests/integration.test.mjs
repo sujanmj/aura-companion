@@ -730,6 +730,27 @@ test("people memory is private and forget removes its associated timeline", asyn
     assert.equal(afterCreate.person_events.length, 1);
     assert.equal(afterCreate.person_events[0].display_name, "Taylor");
     assert.equal(afterCreate.person_events[0].event_summary, "We visited the museum together.");
+    assert.deepEqual(afterCreate.person_memory_retention, { days: 0 });
+    assert.equal(
+      (await post("person-memory/retention-preview", { days: 30 }, cookie)).status,
+      200,
+    );
+    assert.equal(
+      (await post("person-memory/retention", { days: 30 }, cookie)).status,
+      400,
+    );
+    assert.equal(
+      (await post("person-memory/retention", { days: 30, confirmed: true }, cookie)).status,
+      200,
+    );
+    assert.equal(
+      (await post("person-memory/retention", { days: 2, confirmed: true }, cookie)).status,
+      400,
+    );
+    const afterRetention = await (
+      await fetch(base + "/api/status", { headers: { Cookie: cookie } })
+    ).json();
+    assert.deepEqual(afterRetention.person_memory_retention, { days: 30 });
     assert.equal(
       (await post("person/event/delete", { event_id: afterCreate.person_events[0].id }, cookie)).status,
       200,

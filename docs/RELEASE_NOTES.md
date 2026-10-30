@@ -657,3 +657,13 @@ Commit `ce6d4a0` passed PR CI
 [41073880193](https://github.com/sujanmj/aura-companion/actions/runs/41073880193)
 on macOS, Windows and Ubuntu and uploaded all three preview archives. This is
 a narrow secret-marker check, not a comprehensive repository secret audit.
+
+## Person memory note expiry (Phases 4, 12)
+
+The Memory screen now offers a separate, opt-in expiry policy for user-entered
+notes about consented people. Existing notes remain until deletion by default.
+Owners can preview the affected count and confirm an expiry interval; only
+those notes are removed, while person profiles and other timeline events stay
+intact. Existing database snapshots may retain old copies. Local verification
+passed all 119 app Python tests, 30 Node tests, 19 browser E2E tests, lint, and
+production build. Cross-platform CI is pending.

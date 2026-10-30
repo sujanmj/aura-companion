@@ -292,6 +292,18 @@ const server = http.createServer(async (req, res) => {
           return json(res, 503, { error: "Observation retention is unavailable." });
         }
       }
+      if (["/api/person-memory/retention", "/api/person-memory/retention-preview"].includes(url.pathname)) {
+        if (!Number.isInteger(data.days) || ![0, 1, 7, 30, 90, 365].includes(data.days))
+          return json(res, 400, { error: "Invalid person memory retention." });
+        const saving = url.pathname === "/api/person-memory/retention";
+        if (saving && data.confirmed !== true)
+          return json(res, 400, { error: "Confirm the person memory retention change first." });
+        try {
+          return json(res, 200, await memory(saving ? "set_person_memory_retention" : "preview_person_memory_expiry", { days: data.days }));
+        } catch {
+          return json(res, 503, { error: "Person memory retention is unavailable." });
+        }
+      }
       if (url.pathname === "/api/online/lookup") {
         if (data.approved !== true || typeof data.query !== "string" || !data.query.trim() || data.query.length > 300)
           return json(res, 400, { error: "Review and approve a query of 1–300 characters." });

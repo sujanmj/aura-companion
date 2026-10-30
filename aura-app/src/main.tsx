@@ -67,6 +67,7 @@ type Status = {
   }[];
   backups: { name: string; size_bytes: number; created_at: string }[];
   observation_retention: { days: number };
+  person_memory_retention: { days: number };
   preferences: CheckinPreferences;
   conversations: Message[];
   actions: boolean;
@@ -235,6 +236,7 @@ function App() {
     [editingObservation, setEditingObservation] = useState<number | null>(null),
     [observationDraft, setObservationDraft] = useState(""),
     [retentionDays, setRetentionDays] = useState("30"),
+    [personMemoryRetentionDays, setPersonMemoryRetentionDays] = useState("0"),
     [privateQuestion, setPrivateQuestion] = useState(""),
     [privateConsent, setPrivateConsent] = useState(false),
     [privateBusy, setPrivateBusy] = useState(false),
@@ -286,6 +288,9 @@ function App() {
       silence();
     };
   }, []);
+  useEffect(() => {
+    if (status) setPersonMemoryRetentionDays(String(status.person_memory_retention.days));
+  }, [status?.person_memory_retention.days]);
   useEffect(() => {
     if (
       (!status?.preferences.checkins_enabled &&
@@ -1597,6 +1602,26 @@ function App() {
                     This is a manual name memory; face recognition is not
                     enabled.
                   </p>
+                  <form onSubmit={async (event) => {
+                    event.preventDefault();
+                    try {
+                      const days = Number(personMemoryRetentionDays);
+                      const preview = await api<{ expiring: number }>("person-memory/retention-preview", { days });
+                      const expiry = days === 0 ? "keep until deleted" : `${days} days`;
+                      if (!window.confirm(`Change person memory note expiry to ${expiry}? ${preview.expiring} existing person notes currently qualify for deletion. The count can change before saving. This affects only user-entered notes about people; profiles and other memories remain. Existing backups may still contain older copies. This cannot restore deleted notes.`)) return;
+                      await api("person-memory/retention", { days, confirmed: true });
+                      await refresh();
+                      setError("Person memory note expiry saved.");
+                    } catch (e) {
+                      setError(String(e));
+                    }
+                  }}>
+                    <label htmlFor="person-memory-retention">Expire user-entered person notes after</label>
+                    <select id="person-memory-retention" value={personMemoryRetentionDays} onChange={(event) => setPersonMemoryRetentionDays(event.target.value)}>
+                      {[0, 1, 7, 30, 90, 365].map((days) => <option key={days} value={days}>{days === 0 ? "Keep until I delete" : `${days} days`}</option>)}
+                    </select>
+                    <button type="submit">Review person note expiry</button>
+                  </form>
                   <form
                     className="person-form"
                     onSubmit={async (event) => {

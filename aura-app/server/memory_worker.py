@@ -86,6 +86,7 @@ def main():
                                   and event.get('consent_to_remember')
                               ][:50],
                               'observation_retention': store.observation_retention(user),
+                              'person_memory_retention': store.person_memory_retention(user),
                               'preferences': store.get_companion_preferences(user),
                               'backups': list_database_backups(path)}
                 elif op == 'delete_backup':
@@ -178,6 +179,10 @@ def main():
                     result = store.preview_observation_expiry(user, req.get('days'))
                 elif op == 'set_observation_retention':
                     result = store.set_observation_retention(user, req.get('days'))
+                elif op == 'preview_person_memory_expiry':
+                    result = store.preview_person_memory_expiry(user, req.get('days'))
+                elif op == 'set_person_memory_retention':
+                    result = store.set_person_memory_retention(user, req.get('days'))
                 elif op == 'clear_observations':
                     result = {'deleted': store.clear_observations(user)}
                 elif op == 'update_fact':

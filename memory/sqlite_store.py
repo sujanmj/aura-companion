@@ -162,6 +162,7 @@ class AuraMemoryStore:
             raise ValueError("User not found")
 
         self.expire_observations(user_id)
+        self.expire_person_memory_notes(user_id)
         self.conn.execute("DELETE FROM room_sessions WHERE expires_at <= strftime('%s', 'now')")
         self.conn.commit()
         tables = (
@@ -169,6 +170,7 @@ class AuraMemoryStore:
             "room_reply_claims",
             "companion_preferences",
             "observation_retention",
+            "person_memory_retention",
             "conversation_logs",
             "memory_facts",
             "forgotten_memory_facts",
@@ -860,6 +862,49 @@ class AuraMemoryStore:
             self.conn.commit()
         return cur.rowcount
 
+    def person_memory_retention(self, user_id: int) -> dict[str, int]:
+        row = self.conn.execute(
+            "SELECT days FROM person_memory_retention WHERE user_id=?", (user_id,)
+        ).fetchone()
+        return {"days": row["days"] if row else 0}
+
+    def preview_person_memory_expiry(self, user_id: int, days: int) -> dict[str, int]:
+        if type(days) is not int or days not in (0, 1, 7, 30, 90, 365):
+            raise ValueError("Invalid person memory retention")
+        count = self.conn.execute(
+            """SELECT count(*) FROM person_events
+               WHERE user_id=? AND event_type='user_memory_note'
+                 AND source='user_explicit'
+                 AND julianday(created_at) < julianday('now', ?)""",
+            (user_id, f"-{days} days"),
+        ).fetchone()[0] if days else 0
+        return {"days": days, "expiring": count}
+
+    def set_person_memory_retention(self, user_id: int, days: int) -> dict[str, int]:
+        self.preview_person_memory_expiry(user_id, days)
+        with self.conn:
+            self.conn.execute(
+                "INSERT INTO person_memory_retention(user_id, days) VALUES (?, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET days=excluded.days", (user_id, days)
+            )
+            deleted = self.expire_person_memory_notes(user_id, commit=False)
+        return {"days": days, "deleted": deleted}
+
+    def expire_person_memory_notes(self, user_id: int, *, commit: bool = True) -> int:
+        days = self.person_memory_retention(user_id)["days"]
+        if not days:
+            return 0
+        cur = self.conn.execute(
+            """DELETE FROM person_events
+               WHERE user_id=? AND event_type='user_memory_note'
+                 AND source='user_explicit'
+                 AND julianday(created_at) < julianday('now', ?)""",
+            (user_id, f"-{days} days"),
+        )
+        if commit:
+            self.conn.commit()
+        return cur.rowcount
+
     def get_latest_observations(self, user_id: int, limit: int = 10) -> list[dict[str, Any]]:
         self.expire_observations(user_id)
         cur = self.conn.execute(
@@ -1317,6 +1362,7 @@ class AuraMemoryStore:
         return cur.rowcount == 1
 
     def get_recent_person_events(self, user_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        self.expire_person_memory_notes(user_id)
         cur = self.conn.execute(
             """
             SELECT event.id, event.person_id, person.display_name,
