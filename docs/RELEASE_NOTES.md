@@ -542,6 +542,14 @@ tests and loopback API integration pass. Commit `bd89594` passed push CI in
 and PR CI in
 [40956043251](https://github.com/sujanmj/aura-companion/actions/runs/40956043251)
 on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+
+## Pi heartbeat service preparation (Phase 5)
+
+Added a development-computer command that generates the hardened Pi heartbeat
+service unit and a placeholder configuration example. It refuses unsafe paths
+and overwrites, does not contain or generate real node credentials, and does
+not install or enable a service. Local tests and cross-platform CI are pending;
+no Raspberry Pi installation or hardware heartbeat is claimed.
 Pi installation, room playback, acoustic acceptance, macOS hardware acceptance,
 and Developer ID signing/notarization remain open.
 

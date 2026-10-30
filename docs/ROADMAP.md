@@ -1586,3 +1586,14 @@ desktop platform. Push artifact digests: macOS `36b2bb9d`, Windows `f6f4e886`,
 Ubuntu `103ff60d`; PR artifact digests: macOS `ac4375ef`, Windows `6bacb5fa`,
 Ubuntu `fa20cb45` (SHA-256 prefixes). Existing backups and offline/unconfigured
 cloud copies can retain older data.
+
+## 2026-10-30 continuation — Pi heartbeat service preparation (Phase 5)
+
+Added an offline command that prepares the existing hardened heartbeat unit
+and a credential-placeholder environment example for a chosen Pi deployment
+path. It refuses path injection, symlinked output directories and overwrites,
+uses restrictive file modes where supported, and does not install software,
+enroll a node, create an account or enable systemd. Temporary-directory tests
+verify the rendered files and safety boundaries. Local verification and
+cross-platform CI are pending. Raspberry Pi installation, network heartbeat
+and hardware acceptance remain open.

@@ -47,6 +47,27 @@ The database stays in the service's private
 from trusted devices before enabling the service. The unit and startup validator
 are covered by automated tests, but have not been run on a Raspberry Pi.
 
+### Prepare the enrolled-node heartbeat files
+
+On a development computer, prepare the templates without installing a service
+or changing the computer's system settings:
+
+```sh
+python3 scripts/prepare_pi_node_service.py --output-dir ./pi-node-prep \
+  --project-root /opt/aura-companion
+```
+
+The output contains the hardened systemd unit and a placeholder environment
+example. It never enrolls a node, generates or copies a credential, creates a
+service account, enables systemd, or writes to `/etc`. Use the existing
+`scripts/enroll_sensor_node.py` on the trusted hub to enroll the real Pi, then
+replace every placeholder on the Pi, install the environment file with
+owner-only permissions for `aura-node`, and run
+`scripts/check_pi_node_heartbeat_config.py` as that account before enabling the
+unit. Do not commit the filled environment file. The preparation test uses a
+temporary directory and verifies the generated limits and file permissions;
+it does not establish a Raspberry Pi installation or live heartbeat.
+
 ## Planned Pi service boundary
 
 The Pi integration should keep capture and sensor sampling on the device. A local companion service will read the camera through Picamera2, use local wake-word and speech recognition, synthesize speech locally, and sample individually configured sensor drivers. It should send only a wake-triggered transcript, a short camera-derived description, or a sensor event to the AURA server. AURA should then store conversations and telemetry through a cloud database adapter and call the chosen hosted AI provider from the server process. Provider keys must never be exposed to the kiosk browser. Raw ambient audio and video should not be retained or uploaded by default.
