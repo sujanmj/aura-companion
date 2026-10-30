@@ -102,8 +102,13 @@ Status: software reliability milestones implemented; hardware acceptance remains
   requests no camera permission and starts local speech alone, with no scene or
   person summaries. The control is locked during capture so changes apply only
   after Pause. Native tests verify the saved preference's default and opt-out.
-  Local native build and lifecycle tests pass; CI and live-device acceptance
-  remain pending.
+  Local native build and lifecycle tests pass; commit `3127c7e` passed macOS,
+  Windows and Ubuntu push CI in
+  [41006853364](https://github.com/sujanmj/aura-companion/actions/runs/41006853364)
+  and pull-request CI in
+  [41006857996](https://github.com/sujanmj/aura-companion/actions/runs/41006857996).
+  Both runs uploaded three preview archives. Physical camera permission,
+  pause and room-observation acceptance remain outstanding.
 - Fixed: AURA's spoken reply temporarily suppresses microphone transcription and
   cancels any in-flight recognition, then resumes after a quiet grace period.
   Stale speech-completion callbacks cannot reopen the microphone after a newer
