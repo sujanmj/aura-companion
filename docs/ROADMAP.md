@@ -750,3 +750,16 @@ reminder on a real device. All 110 Python app tests passed locally. Commit
 and PR CI
 [41052482168](https://github.com/sujanmj/aura-companion/actions/runs/41052482168)
 on macOS, Windows and Ubuntu, each with all three preview artifacts.
+
+## 2026-10-30 continuation — reminder DST gap coverage (Phase 11)
+
+Added the spring-forward counterpart: when a 02:30 reminder falls in the
+simulated jump from 01:59 UTC-5 to 03:00 UTC-4, it becomes due at 03:00 on the
+same local date. All 111 Python app tests pass locally, including 20
+memory-controls tests. Commit `6252e1f` passed push CI
+[41054980576](https://github.com/sujanmj/aura-companion/actions/runs/41054980576)
+and PR CI
+[41054988634](https://github.com/sujanmj/aura-companion/actions/runs/41054988634)
+on all three desktop platforms with all preview archives. These fixed-offset
+instants simulate a clock gap; platform timezone and live notification
+acceptance remain open.

@@ -39,6 +39,15 @@ These checks establish only the behavior covered by their tests:
   passed on all three platforms and uploaded all preview archives. Fixed-offset
   simulation does not prove DST behavior on a specific OS, live scheduling, or
   spoken reminders.
+- Commit `6252e1f` adds the spring-forward case: a reminder set for the skipped
+  02:30 becomes due at the first tested local time after the jump, 03:00. The
+  20-test memory-controls suite and all 111 Python app tests pass locally. Push
+  CI [41054980576](https://github.com/sujanmj/aura-companion/actions/runs/41054980576)
+  and PR CI
+  [41054988634](https://github.com/sujanmj/aura-companion/actions/runs/41054988634)
+  passed on macOS, Windows and Ubuntu, with each preview artifact uploaded.
+  Fixed-offset simulation does not validate a platform timezone database or
+  live notification delivery.
 - Commit `75ab2e2` tests a packaged preview startup against disposable memory
   from AURA's schema before weekday reminders. The test checks that a
   pre-migration startup backup contains the original fact and reminder, then

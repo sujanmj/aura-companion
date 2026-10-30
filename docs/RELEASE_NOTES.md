@@ -35,6 +35,16 @@ on macOS, Windows and Ubuntu with all preview artifacts uploaded. The test
 simulates the two offsets; it does not establish platform timezone, live timer,
 or acoustic acceptance.
 
+A second regression covers the spring-forward gap: a 02:30 reminder becomes
+due at 03:00 local time after the skipped hour. All 111 Python app tests pass
+locally; push run
+[41054980576](https://github.com/sujanmj/aura-companion/actions/runs/41054980576)
+and PR run
+[41054988634](https://github.com/sujanmj/aura-companion/actions/runs/41054988634)
+passed on macOS, Windows and Ubuntu and uploaded preview artifacts. Both clock
+transitions are fixed-offset simulations; they do not prove a platform's DST
+rules or real-device delivery.
+
 ## Existing-memory upgrade smoke (Phases 6 and 12)
 
 The extracted preview is now tested against a synthetic database created from
