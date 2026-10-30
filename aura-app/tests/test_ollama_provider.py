@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from brain.llm_provider import LLMProvider, OllamaProvider
+from brain.llm_provider import LLMProvider, OllamaProvider, PROVIDER_SYSTEM_INSTRUCTIONS
 
 
 class OllamaTransportTests(unittest.TestCase):
@@ -61,7 +61,12 @@ class OllamaTransportTests(unittest.TestCase):
         self.assertEqual(provider.provider.generate('नमस्ते'), 'नमस्ते — AURA')
         path, body = self.requests[-1]
         self.assertEqual(path, '/api/generate')
-        self.assertEqual(body, {'model': 'local-model', 'prompt': 'नमस्ते', 'stream': False})
+        self.assertEqual(body, {
+            'model': 'local-model',
+            'system': PROVIDER_SYSTEM_INSTRUCTIONS,
+            'prompt': 'नमस्ते',
+            'stream': False,
+        })
 
     def test_non_loopback_urls_and_unbounded_prompts_are_never_sent(self):
         for url in (

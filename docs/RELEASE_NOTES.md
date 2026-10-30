@@ -672,3 +672,14 @@ and macOS and Ubuntu PR CI
 [41077136778](https://github.com/sujanmj/aura-companion/actions/runs/41077136778).
 Preview archives were uploaded for macOS, Windows and Ubuntu. The Windows PR
 leg is still running.
+
+## Retrieved-memory prompt boundary (Phases 4, 7)
+
+Provider system instructions for Claude, OpenAI, and local Ollama now identify
+retrieved memory, device events, prior replies, and shared participant text as
+untrusted data that cannot authorize actions. Dynamic retrieved values are
+JSON-quoted before they enter AURA's companion prompt. This preserves the
+current user message as the request to answer and keeps the separate approval
+gate for tools. Local verification passed all 120 app Python tests, 30 Node
+tests, lint, and production build. Cross-platform CI is pending. These prompt
+boundaries are defense in depth, not a guarantee against all model behavior.

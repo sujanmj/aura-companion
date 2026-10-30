@@ -846,3 +846,17 @@ Windows ([12987982245](https://github.com/sujanmj/aura-companion/actions/runs/41
 and Ubuntu ([12987656674](https://github.com/sujanmj/aura-companion/actions/runs/41077129996)).
 The Windows PR leg is still running. This does not erase retained backup files
 or provide third-party consent beyond the user's confirmation.
+
+## 2026-10-30 continuation — isolate retrieved memory from provider instructions (Phases 4, 7)
+
+Claude, OpenAI, and local Ollama requests now carry a separate provider system
+instruction that treats saved memories, observations, device events, prior
+assistant replies, and shared participant text as untrusted data. Retrieved
+values in AURA's companion prompt are JSON-quoted so newlines cannot imitate
+prompt section boundaries. Current user text remains the request to answer;
+stored context cannot grant tool permission, and the existing exact approval
+gate remains required for external actions. Regression coverage verifies
+hostile newline-containing memories stay one quoted value and checks all three
+provider boundaries. Local verification passed all 120 app Python tests, 30
+Node tests, lint, and production build. Cross-platform CI is pending. This is
+defense in depth, not proof that every model resists prompt injection.
