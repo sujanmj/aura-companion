@@ -637,13 +637,16 @@ test("local database backups are created, reviewed, and deleted only after expli
   expect(status.backups[0].size_bytes).toBeGreaterThan(0);
   const backup = backups.locator(".fact").filter({ hasText: status.backups[0].name });
   await expect(backup).toBeVisible();
+  await backup.getByRole("button", { name: "Verify backup" }).click();
+  await expect(backup.getByRole("status")).toContainText("Integrity check passed");
+  await expect(page.getByRole("status").last()).toContainText("nothing was restored or changed");
   page.once("dialog", (dialog) => {
     expect(dialog.message()).toContain("cannot be undone");
     expect(dialog.message()).toContain("active database will not be changed");
     void dialog.accept();
   });
   await backup.getByRole("button", { name: "Delete local backup" }).click();
-  await expect(page.getByRole("status")).toContainText("active database was not changed");
+  await expect(page.locator(".notice[role='status']")).toContainText("active database was not changed");
   await expect(backups.getByText("No local startup backups are available.")).toBeVisible();
   const after = await page.evaluate(async () => (await fetch("/api/status").then((r) => r.json())));
   expect(after.conversations).toEqual(status.conversations);

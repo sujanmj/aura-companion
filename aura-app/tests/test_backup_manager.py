@@ -14,6 +14,7 @@ from backup_manager import (
     create_database_backup,
     delete_database_backup,
     list_database_backups,
+    verify_database_backup,
 )
 
 
@@ -73,6 +74,40 @@ class BackupManagerTest(unittest.TestCase):
             )
         finally:
             active.close()
+
+    def test_existing_snapshot_can_be_verified_read_only(self):
+        backup = create_database_backup(self.database)
+        result = verify_database_backup(self.database, backup["name"])
+        self.assertEqual(result["name"], backup["name"])
+        self.assertEqual(result["size_bytes"], backup["size_bytes"])
+        self.assertEqual(result["integrity"], "ok")
+        self.assertRegex(result["checked_at"], r"Z$")
+        with _connect(self.database) as active:
+            self.assertEqual(active.execute("SELECT note FROM memory").fetchone()[0], "private saved note")
+
+    def test_verification_rejects_invalid_names_symlinks_and_corrupt_files(self):
+        for name in ("../memory.db", "not-a-backup.db", None):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                verify_database_backup(self.database, name)
+
+        backup_dir = self.root / "backups"
+        backup_dir.mkdir()
+        corrupt = "aura-20261030T091700000000.db"
+        (backup_dir / corrupt).write_text("not sqlite")
+        with self.assertRaisesRegex(ValueError, "integrity check"):
+            verify_database_backup(self.database, corrupt)
+
+    @unittest.skipUnless(os.name == "posix", "symlink creation is not portable on Windows")
+    def test_verification_refuses_symlinked_snapshot_and_directory(self):
+        outside = self.root / "outside.db"
+        outside.write_bytes(self.database.read_bytes())
+        name = "aura-20261030T091700000000.db"
+        backup_dir = self.root / "backups"
+        backup_dir.mkdir()
+        (backup_dir / name).symlink_to(outside)
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            verify_database_backup(self.database, name)
+        self.assertTrue(outside.exists())
 
     def test_inventory_hides_nonbackup_files_and_delete_removes_only_exact_snapshot(self):
         first = create_database_backup(self.database)

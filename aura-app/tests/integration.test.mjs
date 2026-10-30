@@ -82,6 +82,7 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     );
     assert.equal((await post("observations/clear", {})).status, 401);
     assert.equal((await post("backups/create", { confirmed: true })).status, 401);
+    assert.equal((await post("backups/verify", { name: "aura-20261030T091700000000.db" })).status, 401);
     assert.equal((await post("backups/delete", { name: "aura-20261030T091700000000.db", confirmed: true })).status, 401);
     assert.equal(
       (await post("login", { token }, "", "https://evil.test")).status,
@@ -589,6 +590,23 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     const createdBackup = (await createdBackupResponse.json()).backup;
     assert.match(createdBackup.name, /^aura-\d{8}T\d{12}\.db$/);
     assert.ok(createdBackup.size_bytes > 0);
+    assert.equal(
+      (await post("backups/verify", { name: "../memory.db" }, recoveryCookie)).status,
+      400,
+    );
+    assert.equal(
+      (await post("backups/verify", { name: createdBackup.name }, recoveryCookie, "https://evil.test")).status,
+      403,
+    );
+    const verifiedBackupResponse = await post(
+      "backups/verify", { name: createdBackup.name }, recoveryCookie,
+    );
+    assert.equal(verifiedBackupResponse.status, 200);
+    const verifiedBackup = (await verifiedBackupResponse.json()).backup;
+    assert.equal(verifiedBackup.integrity, "ok");
+    assert.equal(verifiedBackup.size_bytes, createdBackup.size_bytes);
+    assert.ok(verifiedBackup.checked_at.endsWith("Z"));
+    assert.ok(!JSON.stringify(verifiedBackup).includes(dir));
     assert.equal(
       (await post("backups/delete", { name: createdBackup.name }, recoveryCookie)).status,
       400,

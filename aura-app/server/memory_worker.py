@@ -23,6 +23,7 @@ from backup_manager import (
     create_database_backup,
     delete_database_backup,
     list_database_backups,
+    verify_database_backup,
 )
 from readiness import brain_readiness, test_provider_connection
 from shared_conversation import shared_contribution
@@ -83,6 +84,8 @@ def main():
                               'backups': list_database_backups(path)}
                 elif op == 'delete_backup':
                     result = {'deleted': delete_database_backup(path, req.get('name'))}
+                elif op == 'verify_backup':
+                    result = {'backup': verify_database_backup(path, req.get('name'))}
                 elif op == 'create_backup':
                     result = {'backup': create_database_backup(path)}
                 elif op == 'preferences':

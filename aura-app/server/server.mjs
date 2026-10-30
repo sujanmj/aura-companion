@@ -257,6 +257,15 @@ const server = http.createServer(async (req, res) => {
           return json(res, 503, { error: "A local database backup could not be created and verified." });
         }
       }
+      if (url.pathname === "/api/backups/verify") {
+        if (typeof data.name !== "string" || !/^aura-\d{8}T\d{12}\.db$/.test(data.name))
+          return json(res, 400, { error: "Choose one valid local backup." });
+        try {
+          return json(res, 200, await memory("verify_backup", { name: data.name }));
+        } catch {
+          return json(res, 422, { error: "This local backup could not be verified. The active database was not changed." });
+        }
+      }
       if (url.pathname === "/api/backups/delete") {
         if (data.confirmed !== true)
           return json(res, 400, { error: "Confirm the backup deletion first." });

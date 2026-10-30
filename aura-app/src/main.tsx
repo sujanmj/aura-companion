@@ -237,6 +237,7 @@ function App() {
     [sharedBusy, setSharedBusy] = useState(false),
     [sharedTurns, setSharedTurns] = useState<{ role: "user" | "assistant"; message: string }[]>([]),
     [sharedProvider, setSharedProvider] = useState("local"),
+    [backupChecks, setBackupChecks] = useState<Record<string, { integrity: "ok" | "failed"; checkedAt: string }>>({}),
     [personName, setPersonName] = useState(""),
     [personRelation, setPersonRelation] = useState(""),
     [personConsent, setPersonConsent] = useState(false),
@@ -1129,7 +1130,8 @@ function App() {
                   <p>
                     These snapshots may contain private memory for every account in this database.
                     AURA keeps them until you remove one; deletion removes that recovery copy and
-                    cannot be undone. It does not change the active database.
+                    cannot be undone. It does not change the active database. Verify checks a
+                    snapshot read-only; it does not restore or change any data.
                   </p>
                   <button
                     className="primary"
@@ -1155,7 +1157,36 @@ function App() {
                       <article className="fact" key={backup.name}>
                         <small>{new Date(backup.created_at).toLocaleString()} · {(backup.size_bytes / 1024).toFixed(1)} KB</small>
                         <p>{backup.name}</p>
+                        {backupChecks[backup.name] && (
+                          <small role="status">
+                            {backupChecks[backup.name].integrity === "ok"
+                              ? `Integrity check passed at ${new Date(backupChecks[backup.name].checkedAt).toLocaleString()}.`
+                              : "Integrity check failed. The active database was not changed."}
+                          </small>
+                        )}
                         <div className="fact-actions">
+                          <button
+                            onClick={async () => {
+                              try {
+                                const result = await api<{ backup: { checked_at: string; integrity: "ok" } }>(
+                                  "backups/verify", { name: backup.name },
+                                );
+                                setBackupChecks((current) => ({
+                                  ...current,
+                                  [backup.name]: { integrity: "ok", checkedAt: result.backup.checked_at },
+                                }));
+                                setError("Local backup integrity check passed; nothing was restored or changed.");
+                              } catch (e) {
+                                setBackupChecks((current) => ({
+                                  ...current,
+                                  [backup.name]: { integrity: "failed", checkedAt: new Date().toISOString() },
+                                }));
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            Verify backup
+                          </button>
                           <button
                             onClick={async () => {
                               if (!window.confirm(

@@ -1472,5 +1472,12 @@ uses the directory's inherited ACL. Automated tests cover restore-readable
 content, integrity, owner-only POSIX mode, authentication, CSRF, traversal,
 symlink refusal, and confirmation UI. Local verification passed 105 app Python
 tests, 30 Node tests, 19 browser E2E tests, lint, and the production build.
-Cross-platform CI is pending. This is software recovery evidence; home restore,
-cross-device privacy and hardware acceptance remain NOT RUN.
+Owners can also re-run a read-only SQLite integrity check on any listed snapshot.
+The check follows only an exact generated filename, refuses symlinks, reveals no
+filesystem path, and reports that it never restores or alters the active database.
+Automated coverage includes valid, corrupt, invalid-name and symlinked snapshots,
+authenticated API and browser verification. Local verification passed 108 app
+Python tests, 30 Node tests, 19 browser E2E tests, lint, production build, and
+native Mac lifecycle tests. Cross-platform CI is pending. This is software
+recovery evidence; home restore, cross-device privacy and hardware acceptance
+remain NOT RUN.

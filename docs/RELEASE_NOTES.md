@@ -1,5 +1,15 @@
 # AURA development preview — 2026-10-30
 
+## Read-only backup verification (Phases 4 and 12)
+
+Owners can check an existing local SQLite snapshot at any time without restoring
+it or changing the active database. The check refuses invalid names and
+symlinked files, opens the snapshot read-only, and displays whether SQLite's
+integrity check passed. Automated verification passed 108 app Python tests, 30
+Node tests, 19 browser E2E tests, lint, production build, and native Mac lifecycle
+tests. Cross-platform CI is pending. This remains software recovery evidence;
+home restore and hardware acceptance are not claimed.
+
 ## Explicit local backup controls (Phases 4 and 12)
 
 Memory lists local SQLite snapshots by timestamp and size, can create a verified
