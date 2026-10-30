@@ -72,6 +72,34 @@ it does not establish a Raspberry Pi installation or live heartbeat.
 
 The Pi integration should keep capture and sensor sampling on the device. A local companion service will read the camera through Picamera2, use local wake-word and speech recognition, synthesize speech locally, and sample individually configured sensor drivers. It should send only a wake-triggered transcript, a short camera-derived description, or a sensor event to the AURA server. AURA should then store conversations and telemetry through a cloud database adapter and call the chosen hosted AI provider from the server process. Provider keys must never be exposed to the kiosk browser. Raw ambient audio and video should not be retained or uploaded by default.
 
+### Local push-to-talk speech prototype
+
+The Python companion console can use optional on-device Vosk speech recognition
+on Linux/Raspberry Pi and macOS. Install the packages from
+`requirements-pi-voice.txt`, install a compatible model separately, and set
+`AURA_VOSK_MODEL_PATH` to that existing model directory. AURA never downloads a
+model. At startup, microphone input is off unless the user explicitly enables
+it; each capture begins only after Enter is pressed, is limited to 15 seconds,
+and is immediately closed after one utterance. The recognized text is shown for
+confirmation before the existing SQLite memory/personality flow processes it.
+Raw PCM stays in memory and is not written to disk. If the user enabled a
+hosted brain earlier in the console, the approved transcript follows that
+existing provider path; otherwise the local companion engine responds. If
+device setup fails, the console falls back to typed input. This is push-to-talk only: it does not
+implement a wake word, background listening, local speech output on Pi, camera
+perception, or a network Pi-to-hub conversation. Automated tests use injected
+audio/model doubles and do not test microphone permissions, acoustic quality,
+or Raspberry Pi hardware.
+
+```sh
+python3 -m pip install -r requirements-pi-voice.txt
+export AURA_VOSK_MODEL_PATH=/opt/aura/models/vosk-model-small-en-us
+python3 scripts/run_companion_console.py
+```
+
+Use a model obtained and reviewed by the device owner. Keep it on the Pi; do not
+put model files, recordings, transcripts, or voice credentials in Git.
+
 Sensor configuration must specify exact board, module, room, GPIO/ADC channel, units, calibration, and safe threshold for each sensor. A generic `gas`, `fire`, or `water` threshold is unsafe because modules use different scales and false-alarm behavior. Until each mapping is calibrated and tested against a known reference, sensor reports must be presented as advisory and must not trigger external or physical actions.
 
 ## Current checks on a non-Pi computer

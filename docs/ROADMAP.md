@@ -498,6 +498,14 @@ Exit: behavior and privacy tests pass; preferences and consent persist correctly
 Status: security hardening is progressing; kiosk UI, event API and simulators exist; real node integration remains.
 
 - Pi node runtime and local speech options with resource limits.
+- Implemented software prototype: the Python console supports optional local
+  Vosk push-to-talk on Linux/Pi and macOS. Microphone capture requires explicit
+  startup opt-in and an Enter press for each bounded utterance; the transcript
+  is reviewed before entering the existing SQLite memory/personality flow.
+  Model files are manually installed, raw PCM is not retained, and device
+  errors return to typed input. Mocked lifecycle tests are in cross-platform
+  CI. Wake-word/background listening, Pi playback, camera and hub integration
+  remain open; no Pi hardware acceptance is claimed.
 - Implemented: sensor and dashboard data routes fail closed unless a shared
   token of at least 32 characters is configured. Token checks use constant-time
   comparison, unauthenticated requests cannot update the service heartbeat, and

@@ -21,7 +21,7 @@ def _ask_typed_message() -> str:
     return input("\nUser message: ").strip()
 
 
-def _confirm_transcript(recognizer: WindowsSpeechRecognizer, transcript: str) -> str | None:
+def _confirm_transcript(recognizer, transcript: str) -> str | None:
     while True:
         print(f"You said: {transcript}")
         choice = input("Use this transcript? [Y/edit/retry/n]: ").strip().lower()
@@ -49,7 +49,7 @@ def _confirm_transcript(recognizer: WindowsSpeechRecognizer, transcript: str) ->
             return typed if typed else None
 
 
-def get_user_message(recognizer: WindowsSpeechRecognizer | None, mic_enabled: bool) -> str:
+def get_user_message(recognizer, mic_enabled: bool) -> str:
     if not mic_enabled or recognizer is None:
         return _ask_typed_message()
 
@@ -58,7 +58,14 @@ def get_user_message(recognizer: WindowsSpeechRecognizer | None, mic_enabled: bo
         if raw:
             return raw
 
-        text = recognizer.listen_once()
+        try:
+            text = recognizer.listen_once()
+        except Exception:
+            print("AURA_MICROPHONE_UNAVAILABLE: check local audio permissions and the selected input device")
+            typed = _ask_typed_message()
+            if typed:
+                return typed
+            continue
         if not text:
             print("No speech recognized. Please type your message instead.")
             typed = _ask_typed_message()
@@ -118,6 +125,23 @@ def get_observation(
             source="console",
         )
     return manual
+
+
+def _build_speech_recognizer(mic_enabled: bool):
+    """Keep microphone use explicit and choose local recognition by platform."""
+    if not mic_enabled:
+        return None
+    if sys.platform == "win32":
+        return WindowsSpeechRecognizer()
+    if sys.platform == "darwin" or sys.platform.startswith("linux"):
+        try:
+            from perception.local_voice import get_default_local_recognizer
+
+            return get_default_local_recognizer()
+        except Exception:
+            print("AURA_LOCAL_SPEECH_UNAVAILABLE: install optional voice packages and configure a local model path")
+            return None
+    return None
 
 
 def _infer_trust_level(relation: str | None) -> str:
@@ -251,11 +275,15 @@ def main(enable_microphone: bool | None = None) -> None:
     speaker = get_speaker_from_env() if voice_enabled else WindowsTTSSpeaker(enabled=False)
 
     if enable_microphone is None:
+        print(
+            "Microphone stays off unless enabled. Audio is processed locally and discarded; "
+            "a transcript you approve is saved to SQLite and may be sent to the configured brain."
+        )
         mic_enabled = input("Enable microphone input? [y/N]: ").strip().lower() == "y"
     else:
         mic_enabled = enable_microphone
 
-    recognizer = WindowsSpeechRecognizer() if mic_enabled else None
+    recognizer = _build_speech_recognizer(mic_enabled)
 
     camera_enabled = input("Enable camera observation? [y/N]: ").strip().lower() == "y"
     camera_observer = get_default_camera_observer() if camera_enabled else None

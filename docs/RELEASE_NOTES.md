@@ -1,5 +1,17 @@
 # AURA development preview — 2026-10-30
 
+## Optional local push-to-talk speech on Pi and Linux (Phase 5)
+
+The Python companion console can use Vosk with a manually installed local model
+on Linux/Raspberry Pi and macOS. Microphone access remains opt-in, opens only
+after the user presses Enter for an individual turn, and stops after at most 15
+seconds. AURA displays the transcript for confirmation before it enters the
+existing SQLite companion flow; raw audio is not persisted. Audio/model
+dependencies are optional and are not installed by the normal preview setup.
+Injected tests cover consent/lifecycle boundaries, transcript handling, and
+cleanup on device errors. This is a push-to-talk prototype, not wake-word or
+background listening; no microphone or Pi hardware acceptance is claimed.
+
 ## Continuous dependency advisories (Phase 12)
 
 Ubuntu CI checks the locked npm dependency tree for high-severity or greater
