@@ -10,6 +10,19 @@ missing prerequisite is available.
 
 These checks establish only the behavior covered by their tests:
 
+- Commit `b5bc888` adds an authenticated, read-only integrity check for an
+  existing named SQLite snapshot. It refuses traversal and symlinks, returns no
+  local filesystem path, and never restores or changes the active database.
+  Local checks passed 108 app Python tests, 30 Node tests, 19 browser E2E tests,
+  lint, production build and native Mac lifecycle tests. Push CI
+  [41035336999](https://github.com/sujanmj/aura-companion/actions/runs/41035336999)
+  and PR CI
+  [41035347627](https://github.com/sujanmj/aura-companion/actions/runs/41035347627)
+  passed on macOS, Windows and Ubuntu and uploaded all three preview archives.
+  The local Mac preview ZIP matches its embedded manifest and has SHA-256
+  `997660d6f230a29e7a02d5dd47edacbd32070e9867c0524029966ac32b441e54`;
+  it is ad-hoc signed, not notarized. This does not establish home backup
+  recovery, cross-device privacy, or physical hardware acceptance.
 - Commit `36a3b38` adds owner-scoped acknowledgment for a delivered routine
   reminder, preserves the distinction between seeing a reminder and completing
   a task/dose, and migrates existing SQLite rows in place. Local checks passed:

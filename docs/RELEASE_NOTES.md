@@ -7,8 +7,16 @@ it or changing the active database. The check refuses invalid names and
 symlinked files, opens the snapshot read-only, and displays whether SQLite's
 integrity check passed. Automated verification passed 108 app Python tests, 30
 Node tests, 19 browser E2E tests, lint, production build, and native Mac lifecycle
-tests. Cross-platform CI is pending. This remains software recovery evidence;
-home restore and hardware acceptance are not claimed.
+tests. Commit `b5bc888` passed push CI
+[41035336999](https://github.com/sujanmj/aura-companion/actions/runs/41035336999)
+and PR CI
+[41035347627](https://github.com/sujanmj/aura-companion/actions/runs/41035347627)
+on macOS, Windows and Ubuntu; both uploaded preview artifacts for all platforms.
+The local Mac preview archive is tied to this commit, verified against its
+embedded manifest, and has SHA-256
+`997660d6f230a29e7a02d5dd47edacbd32070e9867c0524029966ac32b441e54`. It is
+ad-hoc signed, not notarized. This remains software recovery evidence; home
+restore and hardware acceptance are not claimed.
 
 ## Explicit local backup controls (Phases 4 and 12)
 

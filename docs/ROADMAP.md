@@ -1478,6 +1478,13 @@ filesystem path, and reports that it never restores or alters the active databas
 Automated coverage includes valid, corrupt, invalid-name and symlinked snapshots,
 authenticated API and browser verification. Local verification passed 108 app
 Python tests, 30 Node tests, 19 browser E2E tests, lint, production build, and
-native Mac lifecycle tests. Cross-platform CI is pending. This is software
-recovery evidence; home restore, cross-device privacy and hardware acceptance
-remain NOT RUN.
+native Mac lifecycle tests. Commit `b5bc888` passed push CI
+[41035336999](https://github.com/sujanmj/aura-companion/actions/runs/41035336999)
+and PR CI
+[41035347627](https://github.com/sujanmj/aura-companion/actions/runs/41035347627)
+on macOS, Windows and Ubuntu; both uploaded all three preview archives. The
+local Mac development preview for this commit matches its embedded manifest
+and has SHA-256
+`997660d6f230a29e7a02d5dd47edacbd32070e9867c0524029966ac32b441e54`.
+It is ad-hoc signed and not notarized. This is software recovery evidence;
+home restore, cross-device privacy and hardware acceptance remain NOT RUN.
