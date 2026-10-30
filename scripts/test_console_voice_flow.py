@@ -25,10 +25,10 @@ class ConsoleVoiceFlowTests(unittest.TestCase):
         self.assertEqual(prompt.call_count, 2)
 
     def test_initial_device_error_uses_typed_input_without_crashing(self):
-        with patch("builtins.input", return_value="typed fallback") as prompt:
+        with patch("builtins.input", side_effect=["", "typed fallback"]) as prompt:
             self.assertEqual(get_user_message(BrokenRecognizer(), mic_enabled=True), "typed fallback")
 
-        self.assertEqual(prompt.call_count, 1)
+        self.assertEqual(prompt.call_count, 2)
 
     def test_retry_with_no_speech_uses_typed_input(self):
         class SilentRecognizer:
