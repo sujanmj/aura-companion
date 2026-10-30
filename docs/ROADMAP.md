@@ -788,7 +788,11 @@ only after an exact successful one-shot claim and a fresh successful claim
 validation. Empty replies, rejected or ambiguous claim results, and stale
 validation results fail closed. The gate does not connect audio, generate
 replies, access memory or providers, or retry playback. Six focused tests and
-all 112 application Python tests pass locally. Cross-platform CI is pending.
-Validation is still only a point-in-time fence; cancellation and fencing at a
-real playback boundary remain required. Raspberry Pi installation, physical
-speaker playback, and room-to-room acceptance are not claimed.
+all 112 application Python tests pass locally. Commit `1b0d791` passed push CI
+[41069120294](https://github.com/sujanmj/aura-companion/actions/runs/41069120294)
+and PR CI
+[41069129491](https://github.com/sujanmj/aura-companion/actions/runs/41069129491)
+on macOS, Windows and Ubuntu, uploading all three preview archives in each
+run. Validation is still only a point-in-time fence; cancellation and fencing
+at a real playback boundary remain required. Raspberry Pi installation,
+physical speaker playback, and room-to-room acceptance are not claimed.

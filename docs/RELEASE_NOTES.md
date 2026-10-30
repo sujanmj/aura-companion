@@ -635,4 +635,8 @@ The room reply prototype now exposes a fail-closed software gate for a future
 speaker callback. It requires a successful one-shot claim followed by fresh
 validation, and its hardware-free tests cover denied, stale, blank and
 playback-error cases. It does not implement audio output or establish Pi
-hardware acceptance; cross-platform CI is pending.
+hardware acceptance. Commit `1b0d791` passed macOS, Windows and Ubuntu push CI
+[41069120294](https://github.com/sujanmj/aura-companion/actions/runs/41069120294)
+and PR CI
+[41069129491](https://github.com/sujanmj/aura-companion/actions/runs/41069129491),
+with all three preview archives uploaded in each run.
