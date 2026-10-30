@@ -114,7 +114,13 @@ Status: software reliability milestones implemented; hardware acceptance remains
   labels for direct requests. The UI explains that distinction and directs the
   user to disable room perception to remove visual context entirely. Native
   tests cover its default and opt-out; local native build and lifecycle tests
-  pass. Cross-platform CI and physical acceptance remain pending.
+  pass. Commit `17b981f` passed macOS, Windows and Ubuntu push CI in
+  [41008831382](https://github.com/sujanmj/aura-companion/actions/runs/41008831382)
+  and pull-request CI in
+  [41008838161](https://github.com/sujanmj/aura-companion/actions/runs/41008838161)
+  after the Windows job was rerun successfully. Both runs uploaded all three
+  preview archives. Physical camera and persistent-memory acceptance remain
+  outstanding.
 - Fixed: AURA's spoken reply temporarily suppresses microphone transcription and
   cancels any in-flight recognition, then resumes after a quiet grace period.
   Stale speech-completion callbacks cannot reopen the microphone after a newer
