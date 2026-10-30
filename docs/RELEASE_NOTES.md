@@ -1,5 +1,17 @@
 # AURA development preview — 2026-10-30
 
+## Explicit local backup controls (Phases 4 and 12)
+
+Memory lists local SQLite snapshots by timestamp and size, can create a verified
+snapshot on request, and can remove a single selected copy after an explicit
+warning. Automatic backups remain intact unless the owner selects one for
+deletion; neither action replaces the active database. Creation uses SQLite's
+online backup API and checks the copy with `quick_check`. POSIX snapshot files
+are owner-readable/writable; Windows uses inherited directory ACLs. Backups
+are not encrypted by this feature. Local checks passed 105 Python tests,
+30 Node tests, 19 browser E2E tests, lint, and production build. Cross-platform
+CI is pending; home recovery and physical-device acceptance are not claimed.
+
 ## Editable routine reminders (Phase 11)
 
 Memory now lets the owner change a reminder's wording, local time, and selected

@@ -25,7 +25,7 @@ By default this uses `data/aura_memory.db` in this repository, exactly like the 
 AURA_DB_PATH='/absolute/path/to/aura_memory.db' npm start
 ```
 
-Every startup makes a consistent SQLite backup under the database's adjacent `backups/` directory before applying the original schema. No reset or destructive migration runs. Facts, observations, conversation logs, routines, feedback, people, devices and safety records stay in their original tables. Backups contain private memory; manage their retention yourself. The default identity matches the original console (`Sujan M J`); `AURA_USER_ID` selects an existing user ID if needed. Do not run two chat frontends against the same user's memory simultaneously: request ordering is serialized within this application, not across older processes.
+Every startup makes a consistent SQLite backup under the database's adjacent `backups/` directory before applying the original schema. No reset or destructive migration runs. Facts, observations, conversation logs, routines, feedback, people, devices and safety records stay in their original tables. The Memory view lists local snapshots and allows an explicit verified backup or one-at-a-time deletion; there is no automatic pruning. Backups contain private memory for every account in the database and are not encrypted by AURA. New POSIX snapshots use owner-only file permissions; Windows snapshots use inherited directory ACLs. The default identity matches the original console (`Sujan M J`); `AURA_USER_ID` selects an existing user ID if needed. Do not run two chat frontends against the same user's memory simultaneously: request ordering is serialized within this application, not across older processes.
 
 ## Claude Sonnet and other brains
 

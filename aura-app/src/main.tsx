@@ -58,6 +58,7 @@ type Status = {
     dismissed_on: string | null;
     acknowledged_on: string | null;
   }[];
+  backups: { name: string; size_bytes: number; created_at: string }[];
   observation_retention: { days: number };
   preferences: CheckinPreferences;
   conversations: Message[];
@@ -1123,6 +1124,59 @@ function App() {
                   These are the facts in your existing AURA memory.
                   Conversations and feedback continue in the same database.
                 </p>
+                <section className="memory-review">
+                  <h3>Local database backups</h3>
+                  <p>
+                    These snapshots may contain private memory for every account in this database.
+                    AURA keeps them until you remove one; deletion removes that recovery copy and
+                    cannot be undone. It does not change the active database.
+                  </p>
+                  <button
+                    className="primary"
+                    onClick={async () => {
+                      if (!window.confirm(
+                        "Create a verified local recovery snapshot? It will contain private memory for every account in this database.",
+                      )) return;
+                      try {
+                        await api("backups/create", { confirmed: true });
+                        await refresh();
+                        setError("Local database backup created and verified.");
+                      } catch (e) {
+                        setError(String(e));
+                      }
+                    }}
+                  >
+                    Create local backup now
+                  </button>
+                  {status.backups.length === 0 ? (
+                    <p>No local startup backups are available.</p>
+                  ) : (
+                    status.backups.map((backup) => (
+                      <article className="fact" key={backup.name}>
+                        <small>{new Date(backup.created_at).toLocaleString()} · {(backup.size_bytes / 1024).toFixed(1)} KB</small>
+                        <p>{backup.name}</p>
+                        <div className="fact-actions">
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm(
+                                `Delete local backup ${backup.name}? This removes this recovery copy for every account in the database and cannot be undone. The active database will not be changed.`,
+                              )) return;
+                              try {
+                                await api("backups/delete", { name: backup.name, confirmed: true });
+                                await refresh();
+                                setError("Local backup deleted; the active database was not changed.");
+                              } catch (e) {
+                                setError(String(e));
+                              }
+                            }}
+                          >
+                            Delete local backup
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </section>
                 <a className="memory-export" href="/api/memory/export" download>
                   Download all my AURA data (JSON)
                 </a>

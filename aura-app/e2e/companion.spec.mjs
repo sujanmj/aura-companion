@@ -618,6 +618,37 @@ test("memory export downloads the current authenticated account data", async ({
   );
 });
 
+test("local database backups are created, reviewed, and deleted only after explicit confirmation", async ({ page }) => {
+  await connect(page);
+  await page.getByRole("button", { name: "Memory 02" }).click();
+  const backups = page.locator(".memory-review").filter({
+    has: page.getByRole("heading", { name: "Local database backups" }),
+  });
+  await expect(backups).toContainText("private memory for every account");
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("Create a verified local recovery snapshot");
+    void dialog.accept();
+  });
+  await backups.getByRole("button", { name: "Create local backup now" }).click();
+  await expect(page.getByRole("status")).toContainText("created and verified");
+  const status = await page.evaluate(async () => (await fetch("/api/status").then((r) => r.json())));
+  expect(status.backups).toHaveLength(1);
+  expect(status.backups[0].name).toMatch(/^aura-\d{8}T\d{12}\.db$/);
+  expect(status.backups[0].size_bytes).toBeGreaterThan(0);
+  const backup = backups.locator(".fact").filter({ hasText: status.backups[0].name });
+  await expect(backup).toBeVisible();
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("cannot be undone");
+    expect(dialog.message()).toContain("active database will not be changed");
+    void dialog.accept();
+  });
+  await backup.getByRole("button", { name: "Delete local backup" }).click();
+  await expect(page.getByRole("status")).toContainText("active database was not changed");
+  await expect(backups.getByText("No local startup backups are available.")).toBeVisible();
+  const after = await page.evaluate(async () => (await fetch("/api/status").then((r) => r.json())));
+  expect(after.conversations).toEqual(status.conversations);
+});
+
 
 test("note expiry previews a change and persists only after confirmation", async ({ page }) => {
   await connect(page);

@@ -248,6 +248,29 @@ const server = http.createServer(async (req, res) => {
       if (["/api/stt", "/api/tts"].includes(url.pathname))
         return await voice(req, res, url.pathname.slice(5));
       const data = JSON.parse((await body(req)).toString());
+      if (url.pathname === "/api/backups/create") {
+        if (data.confirmed !== true)
+          return json(res, 400, { error: "Confirm creation of the local backup first." });
+        try {
+          return json(res, 201, await memory("create_backup"));
+        } catch {
+          return json(res, 503, { error: "A local database backup could not be created and verified." });
+        }
+      }
+      if (url.pathname === "/api/backups/delete") {
+        if (data.confirmed !== true)
+          return json(res, 400, { error: "Confirm the backup deletion first." });
+        if (typeof data.name !== "string" || !/^aura-\d{8}T\d{12}\.db$/.test(data.name))
+          return json(res, 400, { error: "Choose one valid local backup." });
+        try {
+          const result = await memory("delete_backup", { name: data.name });
+          return result.deleted
+            ? json(res, 200, result)
+            : json(res, 404, { error: "That local backup was not found." });
+        } catch {
+          return json(res, 503, { error: "The local backup could not be removed." });
+        }
+      }
       if (["/api/observations/retention", "/api/observations/retention-preview"].includes(url.pathname)) {
         if (!Number.isInteger(data.days) || ![0, 1, 7, 30, 90, 365].includes(data.days))
           return json(res, 400, { error: "Invalid observation retention." });

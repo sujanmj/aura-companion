@@ -1458,3 +1458,19 @@ API and SQLite store. Local verification passed 99 app Python tests, 30 Node
 tests, all 18 browser E2E tests, lint, and the production build. Cross-platform
 CI for the change is pending. This is a reminder scheduling control, not dose
 tracking or health-device integration.
+
+## 2026-10-30 continuation — explicit local backup controls (Phases 4, 12)
+
+Memory now shows the timestamp and size of AURA's local SQLite startup
+snapshots, offers an explicit create-and-integrity-check action, and allows one
+snapshot to be removed after a warning that database copies can contain every
+account's private memory. Automatic pruning remains off; the active database
+is never replaced or changed by these controls. Creation uses SQLite's online
+backup API so committed WAL data is included, verifies the result with
+`quick_check`, and creates POSIX files with owner-only permissions. Windows
+uses the directory's inherited ACL. Automated tests cover restore-readable
+content, integrity, owner-only POSIX mode, authentication, CSRF, traversal,
+symlink refusal, and confirmation UI. Local verification passed 105 app Python
+tests, 30 Node tests, 19 browser E2E tests, lint, and the production build.
+Cross-platform CI is pending. This is software recovery evidence; home restore,
+cross-device privacy and hardware acceptance remain NOT RUN.

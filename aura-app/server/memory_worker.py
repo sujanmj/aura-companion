@@ -3,13 +3,12 @@ import contextlib
 import json
 import os
 from pathlib import Path
-import sqlite3
 import sys
 import threading
-from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config.env_loader import load_env_file
 from memory.sqlite_store import AuraMemoryStore, DEFAULT_DB_PATH
 from companion.memory_extractor import MemoryExtractor
@@ -19,6 +18,11 @@ from cloud.supabase_sync import (
     enqueue_conversation_deletions,
     start_retry_worker,
     sync_conversation,
+)
+from backup_manager import (
+    create_database_backup,
+    delete_database_backup,
+    list_database_backups,
 )
 from readiness import brain_readiness, test_provider_connection
 from shared_conversation import shared_contribution
@@ -30,11 +34,7 @@ def main():
     path = Path(os.environ.get('AURA_DB_PATH', str(DEFAULT_DB_PATH))).expanduser().resolve()
     # SQLite backup API includes committed WAL contents; never reset/import over memory.
     if path.exists():
-        backup_dir = path.parent / 'backups'
-        backup_dir.mkdir(exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%f')
-        with sqlite3.connect(path) as source, sqlite3.connect(backup_dir / f'aura-{stamp}.db') as dest:
-            source.backup(dest)
+        create_database_backup(path)
     store = AuraMemoryStore(path)
     store.apply_schema()
     start_retry_worker()
@@ -69,6 +69,7 @@ def main():
                               'observations': list(reversed(store.get_latest_observations(user, limit=20))),
                               'routines': store.get_routine_memory(user),
                               'reminders': store.get_routine_reminders(user),
+                              'backups': list_database_backups(path),
                               'people': [
                                   {key: person.get(key) for key in (
                                       'id', 'display_name', 'relation', 'trust_level',
@@ -78,7 +79,12 @@ def main():
                                   for person in store.get_known_people(user)
                               ],
                               'observation_retention': store.observation_retention(user),
-                              'preferences': store.get_companion_preferences(user)}
+                              'preferences': store.get_companion_preferences(user),
+                              'backups': list_database_backups(path)}
+                elif op == 'delete_backup':
+                    result = {'deleted': delete_database_backup(path, req.get('name'))}
+                elif op == 'create_backup':
+                    result = {'backup': create_database_backup(path)}
                 elif op == 'preferences':
                     result = store.get_companion_preferences(user)
                 elif op == 'update_preferences':

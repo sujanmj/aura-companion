@@ -81,6 +81,8 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
       401,
     );
     assert.equal((await post("observations/clear", {})).status, 401);
+    assert.equal((await post("backups/create", { confirmed: true })).status, 401);
+    assert.equal((await post("backups/delete", { name: "aura-20261030T091700000000.db", confirmed: true })).status, 401);
     assert.equal(
       (await post("login", { token }, "", "https://evil.test")).status,
       403,
@@ -572,6 +574,46 @@ test("loopback app: authentication, CSRF, conversation, feedback, persistence, b
     ).json();
     assert.equal(recovered.conversations.length, 8);
     assert.ok(recovered.facts.length > 0);
+    assert.ok(recovered.backups.length > 0);
+    assert.ok(!JSON.stringify(recovered.backups).includes(dir));
+    const startupBackupCount = recovered.backups.length;
+    assert.equal((await post("backups/create", {}, recoveryCookie)).status, 400);
+    assert.equal(
+      (await post("backups/create", { confirmed: true }, recoveryCookie, "https://evil.test")).status,
+      403,
+    );
+    const createdBackupResponse = await post(
+      "backups/create", { confirmed: true }, recoveryCookie,
+    );
+    assert.equal(createdBackupResponse.status, 201);
+    const createdBackup = (await createdBackupResponse.json()).backup;
+    assert.match(createdBackup.name, /^aura-\d{8}T\d{12}\.db$/);
+    assert.ok(createdBackup.size_bytes > 0);
+    assert.equal(
+      (await post("backups/delete", { name: createdBackup.name }, recoveryCookie)).status,
+      400,
+    );
+    assert.equal(
+      (await post("backups/delete", {
+        name: "../memory.db", confirmed: true,
+      }, recoveryCookie)).status,
+      400,
+    );
+    assert.equal(
+      (await post("backups/delete", {
+        name: createdBackup.name, confirmed: true,
+      }, recoveryCookie, "https://evil.test")).status,
+      403,
+    );
+    const deleteBackupResponse = await post(
+      "backups/delete", { name: createdBackup.name, confirmed: true }, recoveryCookie,
+    );
+    assert.equal(deleteBackupResponse.status, 200);
+    const afterBackupDelete = await (
+      await fetch(base + "/api/status", { headers: { Cookie: recoveryCookie } })
+    ).json();
+    assert.equal(afterBackupDelete.backups.length, startupBackupCount);
+    assert.equal(afterBackupDelete.conversations.length, 8);
   } finally {
     await stop();
     await rm(dir, { recursive: true, force: true });
