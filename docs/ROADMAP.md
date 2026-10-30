@@ -1262,5 +1262,10 @@ The native helper now lets the user keep replies visible while muting only new
 ambient replies for the active session. Speech remains enabled by default,
 reminders keep their separate opt-in, and pause resets this session-only choice.
 Native lifecycle tests cover the paused guard and reset. Local Mac build,
-native tests, 28 Node tests, lint and production build pass. CI is pending; no
-acoustic mute or live-speaker acceptance is claimed.
+native tests, 28 Node tests, lint and production build pass. Commit `abda9b0`
+passed macOS, Windows and Ubuntu push CI in
+[41015190985](https://github.com/sujanmj/aura-companion/actions/runs/41015190985)
+and PR CI in
+[41015196752](https://github.com/sujanmj/aura-companion/actions/runs/41015196752),
+with all three preview archives uploaded. No acoustic mute or live-speaker
+acceptance is claimed.
