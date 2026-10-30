@@ -94,6 +94,9 @@ class PiNodeHeartbeatServiceTests(unittest.TestCase):
         self.assertIn("ProtectHome=true", unit)
         self.assertIn("NoNewPrivileges=true", unit)
         self.assertIn("MemoryDenyWriteExecute=true", unit)
+        self.assertIn("CPUQuota=10%", unit)
+        self.assertIn("MemoryMax=128M", unit)
+        self.assertIn("TasksMax=16", unit)
         self.assertIn("EnvironmentFile=/etc/aura/aura-node.env", unit)
         self.assertLess(unit.index("ExecStartPre="), unit.index("ExecStart="))
 

@@ -170,8 +170,9 @@ by the node's operating system. Plain HTTP is permitted only for loopback local
 development. Enable the service with
 `systemctl enable --now aura-pi-node-heartbeat.service`.
 The unit runs as `aura-node` with a read-only filesystem view and does not write
-application state. It is tested on CI only and has not been installed on Pi
-hardware.
+application state. Systemd caps this heartbeat-only process at 10% CPU, 128 MiB
+memory and 16 tasks. Those are configuration limits, not measurements from a Pi.
+It is tested on CI only and has not been installed on Pi hardware.
 
 v0.4 uses one hub token for administration and separate revocable node tokens for
 each enrolled sensor. Keep the API on a **trusted LAN only**; do not expose it

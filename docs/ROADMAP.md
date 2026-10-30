@@ -1229,3 +1229,12 @@ push CI in [41012385491](https://github.com/sujanmj/aura-companion/actions/runs/
 and pull-request CI in [41012390947](https://github.com/sujanmj/aura-companion/actions/runs/41012390947).
 All three preview artifacts were uploaded. No Pi, network deployment, acoustic
 or physical handoff acceptance is claimed.
+
+## 2026-10-30 continuation — bound Pi heartbeat service resources (Phase 5)
+
+The hardened systemd heartbeat-only service now declares 10% CPU, 128 MiB
+memory and 16 task ceilings. Regression coverage checks the unit retains these
+limits alongside its existing sandboxing and fail-closed credential preflight.
+These are configured limits, not Pi measurements, and do not apply to a future
+voice/perception runtime. Local service and Python tests pass; CI is pending.
+No Pi installation or hardware resource measurement is claimed.
