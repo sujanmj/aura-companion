@@ -341,8 +341,25 @@ test("people are added only with recorded consent and can be forgotten", async (
 });
 
 test("scheduled reminders require opt-in, support selected weekdays, and can be deleted", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.holdNextStatusResponse = false;
+    window.heldStatusResponse = false;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      const url = typeof args[0] === "string" ? args[0] : args[0].url;
+      if (url.endsWith("/api/status") && window.holdNextStatusResponse) {
+        window.holdNextStatusResponse = false;
+        window.heldStatusResponse = true;
+        await new Promise((resolve) => { window.releaseStatusResponse = resolve; });
+      }
+      return response;
+    };
+  });
   await connect(page);
+  await page.evaluate(() => { window.holdNextStatusResponse = true; });
   await page.getByRole("button", { name: "Memory 02" }).click();
+  await expect.poll(() => page.evaluate(() => window.heldStatusResponse)).toBe(true);
   await page.getByLabel("What should AURA remind you about?").fill("Stretch");
   await page.getByLabel("Local reminder time").fill("21:00");
   await page.locator(".weekday-options input").nth(5).uncheck();
@@ -350,6 +367,8 @@ test("scheduled reminders require opt-in, support selected weekdays, and can be 
   await expect(add).toBeDisabled();
   await page.getByLabel("Enable this reminder on this Mac.").check();
   await add.click();
+  await expect(page.getByRole("status")).toContainText("Daily reminder saved.");
+  await page.evaluate(() => window.releaseStatusResponse?.());
   const reminder = page.locator(".fact").filter({ hasText: "Stretch" });
   await expect(reminder).toContainText("21:00 local time");
   await expect(reminder).toContainText("Mon, Tue, Wed, Thu, Fri, Sun");

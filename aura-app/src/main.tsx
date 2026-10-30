@@ -243,6 +243,7 @@ function App() {
     [reminderDays, setReminderDays] = useState([1, 2, 3, 4, 5, 6, 7]),
     [reminderConsent, setReminderConsent] = useState(false);
   const stopListen = useRef<(() => void) | null>(null),
+    refreshGeneration = useRef(0),
     bottom = useRef<HTMLDivElement>(null),
     micStarting = useRef(false),
     sending = useRef(false),
@@ -256,7 +257,9 @@ function App() {
     }
   };
   async function refresh() {
+    const generation = ++refreshGeneration.current;
     const data = await api<Status>("status");
+    if (generation !== refreshGeneration.current) return;
     setStatus(data);
     setMessages(data.conversations);
   }
