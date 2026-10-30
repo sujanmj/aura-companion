@@ -1625,3 +1625,18 @@ on macOS, Windows and Ubuntu. Both runs uploaded all three preview archives.
 Push artifact digest prefixes: macOS `1806124c`, Windows `0af4461b`, Ubuntu
 `6ca78d6b`; PR prefixes: macOS `03bf64d9`, Windows `f9bf5a04`, Ubuntu
 `ec4d8d8f`.
+
+## 2026-10-30 continuation — bounded Windows SQLite test cleanup (Phase 12)
+
+A Windows CI run exposed a transient `EBUSY` while the people-memory
+integration test removed SQLite's temporary shared-memory sidecar. The test
+cleanup now uses the same bounded filesystem retry already used by another
+SQLite integration case; application behavior is unchanged. The 30 Node tests
+pass locally. Commit `ceeba90` passed push CI
+[41088487599](https://github.com/sujanmj/aura-companion/actions/runs/41088487599)
+and PR CI
+[41088496958](https://github.com/sujanmj/aura-companion/actions/runs/41088496958)
+on macOS, Windows and Ubuntu. Both runs uploaded all three preview archives.
+Push artifact digest prefixes: macOS `dc9b7a70`, Windows `7cf20bbe`, Ubuntu
+`bc65140f`; PR prefixes: macOS `524ffb56`, Windows `1af4db46`, Ubuntu
+`f5aa38e5`.

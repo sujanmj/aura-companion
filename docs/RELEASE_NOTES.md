@@ -735,3 +735,14 @@ on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
 Push artifact digest prefixes: macOS `1806124c`, Windows `0af4461b`, Ubuntu
 `6ca78d6b`; PR prefixes: macOS `03bf64d9`, Windows `f9bf5a04`, Ubuntu
 `ec4d8d8f`.
+
+## Windows SQLite test cleanup
+
+The people-memory integration test now retries temporary-directory removal for
+bounded transient Windows file locks on SQLite sidecars. The Node suite passes
+locally. Commit `ceeba90` passed push CI
+[41088487599](https://github.com/sujanmj/aura-companion/actions/runs/41088487599)
+and PR CI
+[41088496958](https://github.com/sujanmj/aura-companion/actions/runs/41088496958)
+on macOS, Windows and Ubuntu; both runs uploaded previews for all three
+platforms.
