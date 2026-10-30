@@ -640,3 +640,10 @@ hardware acceptance. Commit `1b0d791` passed macOS, Windows and Ubuntu push CI
 and PR CI
 [41069129491](https://github.com/sujanmj/aura-companion/actions/runs/41069129491),
 with all three preview archives uploaded in each run.
+
+The Memory screen now supports short, user-entered event notes for a person
+whose name is already consented in AURA. Each note requires its own permission
+confirmation, stays local, appears in memory export, and can be removed alone
+or by forgetting the person. AURA recalls it only when the user mentions that
+person, and labels it unverified. It does not identify people from camera
+images. Local tests and build pass; cross-platform CI is pending.
