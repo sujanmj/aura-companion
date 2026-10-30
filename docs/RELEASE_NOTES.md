@@ -653,5 +653,7 @@ on macOS, Windows and Ubuntu and uploaded all three preview archives.
 
 The preview package check now also blocks common GitHub OAuth, AWS, Google,
 npm, Slack, and legacy OpenAI key patterns. All 117 Python tests pass locally.
-This is a narrow secret-marker check, not a comprehensive repository secret
-audit; cross-platform CI is pending.
+Commit `ce6d4a0` passed PR CI
+[41073880193](https://github.com/sujanmj/aura-companion/actions/runs/41073880193)
+on macOS, Windows and Ubuntu and uploaded all three preview archives. This is
+a narrow secret-marker check, not a comprehensive repository secret audit.

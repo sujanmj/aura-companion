@@ -818,6 +818,8 @@ confirmation, camera identification, or hardware behavior.
 The preview packager now rejects additional common credential formats for
 GitHub OAuth, AWS access keys, Google API keys, npm, Slack, and legacy OpenAI
 keys. Disposable-repository tests verify each marker is refused, and all 117
-application Python tests pass locally. Cross-platform CI is pending. The scan
+application Python tests pass locally. Commit `ce6d4a0` passed PR CI
+[41073880193](https://github.com/sujanmj/aura-companion/actions/runs/41073880193)
+on macOS, Windows and Ubuntu, uploading all three preview archives. The scan
 is a narrow accidental-leak guard, not a comprehensive secret audit or proof
 that credentials are absent from the repository.
