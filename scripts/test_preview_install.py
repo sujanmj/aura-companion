@@ -172,6 +172,11 @@ def _seed_legacy_database(database: Path) -> None:
                VALUES (?, ?, ?, ?)""",
             (user_id, "user", "legacy conversation survives upgrade", None),
         )
+        connection.execute(
+            """INSERT INTO routine_reminders (user_id, label, local_time)
+               VALUES (?, ?, ?)""",
+            (user_id, "legacy reminder survives upgrade", "08:15"),
+        )
         connection.commit()
     finally:
         connection.close()
@@ -215,6 +220,15 @@ def test_clean_preview_install() -> dict[str, object]:
             for conversation in conversations if isinstance(conversation, dict)
         ):
             raise RuntimeError("Preview startup did not preserve the legacy conversation")
+        reminders = legacy_status.get("reminders")
+        if not isinstance(reminders, list) or not any(
+            reminder.get("label") == "legacy reminder survives upgrade"
+            and reminder.get("local_time") == "08:15"
+            and reminder.get("days_of_week") == "1,2,3,4,5,6,7"
+            and reminder.get("acknowledged_on") is None
+            for reminder in reminders if isinstance(reminder, dict)
+        ):
+            raise RuntimeError("Preview startup did not preserve and migrate the legacy reminder")
         if not legacy_status.get("backups"):
             raise RuntimeError("Legacy memory upgrade did not create its startup backup")
         _check_integrity(legacy_database, "Upgraded legacy")
@@ -231,10 +245,22 @@ def test_clean_preview_install() -> dict[str, object]:
                 "SELECT fact_value FROM memory_facts WHERE fact_key=?",
                 ("upgrade_smoke_marker",),
             ).fetchone()
+            original_reminder = connection.execute(
+                "SELECT label, local_time FROM routine_reminders WHERE user_id=1",
+            ).fetchone()
+            backup_reminder_columns = {
+                row[1] for row in connection.execute("PRAGMA table_info(routine_reminders)")
+            }
         finally:
             connection.close()
         if not saved_fact or saved_fact[0] != "legacy-fact-survives":
             raise RuntimeError("Startup backup did not retain the pre-migration memory fact")
+        if not original_reminder or tuple(original_reminder) != (
+            "legacy reminder survives upgrade", "08:15",
+        ):
+            raise RuntimeError("Startup backup did not retain the pre-migration reminder")
+        if {"days_of_week", "acknowledged_on"} & backup_reminder_columns:
+            raise RuntimeError("Legacy test fixture already contains the reminder migration fields")
         connection = sqlite3.connect(legacy_database)
         try:
             reminder_columns = {
@@ -261,7 +287,7 @@ def test_clean_preview_install() -> dict[str, object]:
         "database": "temporary_and_integrity_checked",
         "legacy_schema_upgrade": "existing_fact_and_conversation_preserved",
         "legacy_startup_backup": "created_before_migration_and_integrity_checked",
-        "legacy_column_migrations": "reminders_and_device_events",
+        "legacy_reminder_migration": "schedule_and_acknowledgment_fields",
     }
 
 
