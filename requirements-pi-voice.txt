@@ -2,4 +2,4 @@
 # Install manually after choosing and installing a local Vosk model; AURA never
 # downloads a model or opens the microphone until the user starts a voice turn.
 vosk==0.3.45
-sounddevice>=0.5.2,<0.6
+sounddevice>=0.5.6,<0.6

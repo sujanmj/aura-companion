@@ -504,8 +504,15 @@ Status: security hardening is progressing; kiosk UI, event API and simulators ex
   is reviewed before entering the existing SQLite memory/personality flow.
   Model files are manually installed, raw PCM is not retained, and device
   errors return to typed input. Mocked lifecycle tests are in cross-platform
-  CI. Wake-word/background listening, Pi playback, camera and hub integration
-  remain open; no Pi hardware acceptance is claimed.
+  CI. Commit `010735b` passed push CI
+  [41098719544](https://github.com/sujanmj/aura-companion/actions/runs/41098719544)
+  and PR CI
+  [41098727230](https://github.com/sujanmj/aura-companion/actions/runs/41098727230)
+  on macOS, Windows and Ubuntu; both runs uploaded all three preview archives.
+  The follow-up CI changes add optional voice requirements to the dependency
+  audit; that updated audit is awaiting this follow-up run. Wake-word and
+  background listening, Pi playback, camera and hub integration remain open;
+  no Pi hardware acceptance is claimed.
 - Implemented: sensor and dashboard data routes fail closed unless a shared
   token of at least 32 characters is configured. Token checks use constant-time
   comparison, unauthenticated requests cannot update the service heartbeat, and

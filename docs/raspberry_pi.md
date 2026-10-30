@@ -92,13 +92,19 @@ audio/model doubles and do not test microphone permissions, acoustic quality,
 or Raspberry Pi hardware.
 
 ```sh
-python3 -m pip install -r requirements-pi-voice.txt
+sudo apt install libportaudio2 python3-venv
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements-pi-voice.txt
 export AURA_VOSK_MODEL_PATH=/opt/aura/models/vosk-model-small-en-us
 python3 scripts/run_companion_console.py
 ```
 
 Use a model obtained and reviewed by the device owner. Keep it on the Pi; do not
 put model files, recordings, transcripts, or voice credentials in Git.
+`vosk` is pinned to its available `0.3.45` release; check wheel compatibility
+and package provenance on the target OS before installing it. The software
+prototype does not establish deployment support for a specific Pi OS image.
 
 Sensor configuration must specify exact board, module, room, GPIO/ADC channel, units, calibration, and safe threshold for each sensor. A generic `gas`, `fire`, or `water` threshold is unsafe because modules use different scales and false-alarm behavior. Until each mapping is calibrated and tested against a known reference, sensor reports must be presented as advisory and must not trigger external or physical actions.
 

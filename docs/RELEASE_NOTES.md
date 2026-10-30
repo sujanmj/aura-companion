@@ -11,6 +11,14 @@ dependencies are optional and are not installed by the normal preview setup.
 Injected tests cover consent/lifecycle boundaries, transcript handling, and
 cleanup on device errors. This is a push-to-talk prototype, not wake-word or
 background listening; no microphone or Pi hardware acceptance is claimed.
+Commit `010735b` passed push CI
+[41098719544](https://github.com/sujanmj/aura-companion/actions/runs/41098719544)
+and PR CI
+[41098727230](https://github.com/sujanmj/aura-companion/actions/runs/41098727230)
+on macOS, Windows and Ubuntu; each uploaded all three preview archives. The
+push archive SHA-256 prefixes are macOS `26ee08b2`, Windows `84de1dab`, and
+Ubuntu `5d61c697`; PR prefixes are macOS `932de5d8`, Windows `413c688b`, and
+Ubuntu `ed06d217`.
 
 ## Continuous dependency advisories (Phase 12)
 

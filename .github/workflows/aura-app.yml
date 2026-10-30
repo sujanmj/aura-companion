@@ -1,7 +1,7 @@
 name: AURA application
 on:
   push:
-    paths: ['aura-app/**', 'brain/**', 'companion/**', 'memory/**', 'api/**', 'devices/**', 'cloud/**', 'config/**', 'scripts/**', 'deploy/systemd/**', 'requirements-test.txt', '.github/workflows/aura-app.yml']
+    paths: ['aura-app/**', 'brain/**', 'companion/**', 'memory/**', 'api/**', 'devices/**', 'cloud/**', 'config/**', 'scripts/**', 'deploy/systemd/**', 'requirements-test.txt', 'requirements-pi-voice.txt', '.github/workflows/aura-app.yml']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -33,7 +33,7 @@ jobs:
         run: |
           python -m venv "$RUNNER_TEMP/aura-pip-audit"
           "$RUNNER_TEMP/aura-pip-audit/bin/python" -m pip install --disable-pip-version-check pip-audit==2.10.1
-          "$RUNNER_TEMP/aura-pip-audit/bin/pip-audit" -r ../requirements.txt -r ../requirements-test.txt
+          "$RUNNER_TEMP/aura-pip-audit/bin/pip-audit" -r ../requirements.txt -r ../requirements-test.txt -r ../requirements-pi-voice.txt
       - run: npm run build
       - if: runner.os == 'macOS'
         run: npm run macos:app
