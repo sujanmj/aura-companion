@@ -77,10 +77,22 @@ These checks establish only the behavior covered by their tests:
   and PR run
   [41023365160](https://github.com/sujanmj/aura-companion/actions/runs/41023365160),
   both with all three preview artifacts uploaded.
-  Latest node-status refinement treats `online=true` without a valid last-seen
-  time as malformed/unavailable in both the CLI and Command Center. All 19
-  sensor-admin test cases pass locally, including the new inconsistent-record
-  regression case; exact-tree CI is pending.
+  Node-status refinement treats `online=true` without a valid last-seen time as
+  malformed/unavailable in both the CLI and Command Center. All 19 focused
+  sensor-admin tests pass locally; push run
+  [41024614388](https://github.com/sujanmj/aura-companion/actions/runs/41024614388)
+  and PR run
+  [41024608660](https://github.com/sujanmj/aura-companion/actions/runs/41024608660)
+  passed on all three platforms and uploaded all preview artifacts.
+  Future-dated heartbeats now report offline and cannot start or validate a
+  room claim. The 96 app Python tests, 30 Node tests, 18 browser E2E tests,
+  lint and build pass locally. Push run
+  [41024839694](https://github.com/sujanmj/aura-companion/actions/runs/41024839694)
+  passed on all three platforms and uploaded every preview artifact. PR run
+  [41024846598](https://github.com/sujanmj/aura-companion/actions/runs/41024846598)
+  passed on Mac and Ubuntu; a Windows rerun is in progress after its first job
+  was cancelled. A first Mac run exceeded the whole-test timeout under runner
+  load; its retry passed. No physical node or room playback is claimed.
   Revocation establishes hub credential rejection, not physical device
   shutdown.
 

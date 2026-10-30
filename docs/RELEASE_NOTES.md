@@ -37,6 +37,17 @@ workflow in
 which uploaded all preview archives. These results verify software only; Pi
 installation and physical node shutdown are untested.
 
+An inconsistent node record with `online=true` but no valid last-seen time is
+now shown as unavailable in the CLI and Command Center. Future-dated heartbeat
+records are offline and cannot pass a room invitation or claim check. The 96
+app Python tests, 30 Node tests, 19 sensor-admin tests, 18 browser E2E tests,
+lint and production build pass locally. Push CI
+[41024839694](https://github.com/sujanmj/aura-companion/actions/runs/41024839694)
+passed on all three platforms and uploaded preview artifacts. The matching PR
+run [41024846598](https://github.com/sujanmj/aura-companion/actions/runs/41024846598)
+has passed on Mac and Ubuntu; its Windows rerun is still in progress. These
+checks do not establish a physical Pi or room-playback behavior.
+
 The sensor API now tells HTTP caches not to store any JSON response, including
 unauthorized errors. Header regression tests cover both success and auth-failure
 responses. Local validation is green; cross-platform CI is pending. The live

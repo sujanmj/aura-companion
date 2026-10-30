@@ -1375,3 +1375,21 @@ pass locally. Commit `f32a159` passed all three platforms in the push run
 and PR run
 [41023365160](https://github.com/sujanmj/aura-companion/actions/runs/41023365160);
 both uploaded macOS, Windows and Ubuntu preview archives.
+
+## 2026-10-30 continuation — reject inconsistent and future-dated node status (Phase 5)
+
+The CLI and Command Center mark records with `online=true` but no valid
+last-seen timestamp as unavailable. Heartbeats dated in the future now count as
+offline, and room invitation, claim and claim-validation paths all reject them.
+A temporary-database regression test checks both status and handoff denial.
+The status-shape change passed push run
+[41024614388](https://github.com/sujanmj/aura-companion/actions/runs/41024614388)
+and PR run
+[41024608660](https://github.com/sujanmj/aura-companion/actions/runs/41024608660)
+on all three platforms, with preview artifacts uploaded. The future-time guard
+passes all 96 app Python tests, 30 Node tests, 18 browser E2E tests, lint and
+build locally. Push CI
+[41024839694](https://github.com/sujanmj/aura-companion/actions/runs/41024839694)
+passed on all three platforms and uploaded all previews. Its PR Mac and Ubuntu
+jobs passed; the Windows retry is running after cancellation, and a slow Mac
+browser attempt passed on retry. This is software-only evidence.
