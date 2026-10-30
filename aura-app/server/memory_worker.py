@@ -27,6 +27,7 @@ from backup_manager import (
 )
 from readiness import brain_readiness, test_provider_connection
 from shared_conversation import shared_contribution
+from grounded_answer import answer_from_sources
 from companion.private_session import generate_private_response
 
 
@@ -72,7 +73,7 @@ def main():
             req = json.loads(line)
             with contextlib.redirect_stdout(sys.stderr):
                 op = req['op']
-                if op != 'private_chat':
+                if op not in ('private_chat', 'grounded_answer'):
                     store.expire_observations(user)
                     expire_conversations_with_cloud_cleanup(store, user)
                 if op == 'private_chat':
@@ -331,6 +332,10 @@ def main():
                     )
                 elif op == 'shared_chat':
                     result = shared_contribution(req.get('message'), req.get('consent'), req.get('history'))
+                elif op == 'grounded_answer':
+                    result = answer_from_sources(
+                        req.get('question'), req.get('sources'), req.get('consent')
+                    )
                 elif op == 'chat':
                     message = req['message']
                     if not isinstance(message, str) or not 0 < len(message.strip()) <= 8000:

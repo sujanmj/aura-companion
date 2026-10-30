@@ -684,7 +684,7 @@ function App() {
               </div>
             ) : tab === "conversation" ? (
               <>
-                <OnlineLookup />
+                <OnlineLookup provider={status.provider} />
                 <details className="memory-review" name="conversation-extras">
                   <summary>Ask one private question without saved memories</summary>
                   <p>This turn uses only this message and a temporary in-memory session. AURA will not read or write your saved conversations, facts, observations, routines, backups or cloud history. The message and reply stay in this browser view until you clear them or close/refresh the tab. The selected provider is {status.provider}; a non-local provider receives this message and may process or retain it under its own policy. No tools, microphone, camera or online lookup are started.</p>

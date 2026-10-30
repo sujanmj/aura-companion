@@ -230,10 +230,20 @@ or notarized release based only on these automated checks.
 
 Open **Check an online source** in Conversation, type the exact query and approve
 it. Each request needs fresh agreement. Only that text goes to English Wikipedia;
-no AURA memories, ambient speech, provider credentials or account cookie are sent.
-Results remain in the current view, with source links, retrieval time and
-Wikipedia contributor attribution. They are not saved or sent to the language
-model. Clear removes them; Cancel stops waiting but cannot retract a sent query.
+no AURA memories, ambient speech or provider credentials are sent. Results stay
+in the current view with numbered source links, retrieval time and Wikipedia
+contributor attribution. The server holds excerpts in memory for up to ten
+minutes so the user can clear them or request a temporary answer; this cache is
+bounded and is not written to SQLite.
+
+After reviewing the excerpts, the user may write a separate question and approve
+sending it and the displayed excerpts to AURA's configured language model. This
+turn reads and writes no personal memory, has no tools, and is not saved in chat
+history. Any generated answer is labeled as based on excerpts, not independently
+verified. A local-only configuration returns an honest unavailable message
+without contacting a model. Clearing the results removes the server-side cache;
+expired results cannot be used to request another answer. A hosted provider may
+retain an approved question and excerpts under its own policy.
 
 This first source adapter retrieves public-knowledge summaries. It is not
 multi-source verification, general web search, current-news coverage or automatic

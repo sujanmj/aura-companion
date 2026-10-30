@@ -953,7 +953,22 @@ test("online route needs approval, isolates memory and bounds repeated requests"
     const before = await (await fetch(base + "/api/memory/export", { headers: { Cookie: cookie } })).json();
     const response = await post("online/lookup", { query: "test", approved: true }, cookie);
     assert.equal(response.status, 200);
-    assert.equal((await response.json()).sources[0].url, "https://en.wikipedia.org/?curid=42");
+    const lookup = await response.json();
+    assert.equal(lookup.sources[0].url, "https://en.wikipedia.org/?curid=42");
+    assert.match(lookup.lookup_id, /^[A-Za-z0-9_-]{32}$/);
+    assert.equal((await post("online/answer", { lookup_id: lookup.lookup_id, question: "What is this?" }, cookie)).status, 400);
+    const answerResponse = await post("online/answer", {
+      lookup_id: lookup.lookup_id, question: "What is this?", approved: true,
+    }, cookie);
+    assert.equal(answerResponse.status, 200);
+    const answer = await answerResponse.json();
+    assert.equal(answer.saved, false);
+    assert.equal(answer.online_verified, false);
+    assert.ok(answer.response);
+    assert.equal((await post("online/clear", { lookup_id: lookup.lookup_id }, cookie)).status, 200);
+    assert.equal((await post("online/answer", {
+      lookup_id: lookup.lookup_id, question: "What is this?", approved: true,
+    }, cookie)).status, 410);
     assert.equal((await post("online/lookup", { query: "again", approved: true }, cookie)).status, 429);
     const after = await (await fetch(base + "/api/memory/export", { headers: { Cookie: cookie } })).json();
     assert.deepEqual(after.records, before.records);

@@ -667,6 +667,28 @@ not close the unresolved Phase 2 hardware acceptance gates.
 - Keep online lookup separate from ambient tool execution; every consequential
   action continues to require explicit user approval.
 
+## 2026-10-31 continuation — temporary source-bounded answers (Phase 10)
+
+The existing exact-query Wikipedia check can now optionally answer a separate
+user-written question from the reviewed excerpts. This is a second explicit
+approval: only the question and up to three displayed excerpts go to the
+configured language model. The request has no personal memory or tools and is
+not added to chat history. The source results use numbered links; the answer is
+labeled temporary and not independently verified. Local-only mode does not
+call a model. The server keeps reviewed excerpts only in a bounded, ten-minute
+in-memory cache, and Clear removes the cache entry. Expired or cleared results
+cannot be reused. Source content is treated as untrusted prompt data and is
+rendered as inert text.
+
+Automated verification: 131 app Python tests, 30 Node tests, all 19 browser
+tests, TypeScript checking, lint, and production build pass locally. The
+loopback integration test verifies approval, expiry/clear behavior and no
+change to persistent memory export; provider output is injected in unit tests
+and was not live-tested. CI for this continuation is pending. Wikipedia remains
+the only source adapter, so this is not multi-source verification, live-news
+coverage, or automatic fact-checking. Hosted providers may retain an approved
+question and excerpts under their own policy.
+
 ### Phase 11 — Opt-in routine and wellness support
 
 - Implemented for Mac preview: user-created daily local reminders require an

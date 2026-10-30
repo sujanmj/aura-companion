@@ -779,14 +779,25 @@ test("a private turn skips saved memory and stays out of conversation history", 
 
 
 test("online lookup requires exact-query approval and renders inert attributed excerpts", async ({ page }) => {
+  await page.route("**/api/status", async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, json: { ...(await response.json()), provider: "claude" } });
+  });
   await connect(page);
   let calls = 0;
   await page.route("**/api/online/lookup", async route => {
     calls++;
     expect(route.request().postDataJSON()).toEqual({ query: "Raspberry Pi computers", approved: true });
     await route.fulfill({ json: { query: "Raspberry Pi computers", retrieved_at: "2026-10-29T00:00:00Z", unavailable: 0,
+      lookup_id: "12345678901234567890123456789012",
       sources: [{ id: 42, title: "Raspberry Pi", url: "https://en.wikipedia.org/?curid=42",
         excerpt: '<img src=x onerror="window.injectionRan=true">Test source text.', truncated: false, ambiguous: false }] } });
+  });
+  await page.route("**/api/online/answer", async route => {
+    expect(route.request().postDataJSON()).toEqual({ lookup_id: "12345678901234567890123456789012",
+      question: "What does the excerpt say?", approved: true });
+    await route.fulfill({ json: { response: "The excerpt describes the topic [1].", provider: "claude",
+      saved: false, online_verified: false, answered_at: "2026-10-29T00:00:00Z" } });
   });
   await page.getByText("Check an online source", { exact: true }).click();
   const query = page.getByLabel("Query to send to Wikipedia");
@@ -801,10 +812,19 @@ test("online lookup requires exact-query approval and renders inert attributed e
   await approval.check();
   await submit.click();
   await expect(page.getByRole("region", { name: "Online source results" })).toContainText("not independently verified facts");
-  await expect(page.getByRole("link", { name: "Raspberry Pi — Wikipedia" })).toHaveAttribute("href", "https://en.wikipedia.org/?curid=42");
+  await expect(page.getByRole("link", { name: "[1] Raspberry Pi — Wikipedia" })).toHaveAttribute("href", "https://en.wikipedia.org/?curid=42");
   expect(await page.evaluate(() => window.injectionRan)).toBeUndefined();
   await expect(approval).not.toBeChecked();
   await expect(submit).toBeDisabled();
+  const answerQuestion = page.getByLabel("Question for AURA to answer from these excerpts");
+  const answerApproval = page.getByLabel("I reviewed the question and excerpts and approve sending them for a temporary answer.");
+  const answerButton = page.getByRole("button", { name: "Answer from these sources" });
+  await answerQuestion.fill("What does the excerpt say?");
+  await expect(answerButton).toBeDisabled();
+  await answerApproval.check();
+  await answerButton.click();
+  await expect(page.getByRole("article", { name: "Source-based answer" })).toContainText("The excerpt describes the topic [1].");
+  await expect(page.getByRole("article", { name: "Source-based answer" })).toContainText("not independently verified");
   await page.screenshot({ path: "test-results/online-lookup.png", fullPage: true });
   await page.getByRole("button", { name: "Clear online results" }).click();
   await expect(page.getByRole("region", { name: "Online source results" })).toHaveCount(0);

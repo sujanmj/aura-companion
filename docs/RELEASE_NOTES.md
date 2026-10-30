@@ -1,4 +1,20 @@
-# AURA development preview — 2026-10-30
+# AURA development preview — 2026-10-31
+
+## Temporary answers from reviewed online sources (Phase 10)
+
+After checking an exact query on Wikipedia, you can optionally ask AURA to
+answer a separate question using the displayed excerpts. A second confirmation
+is required before the configured language model receives the question and
+those excerpts. The temporary turn has no saved-memory access or tools and is
+not written to chat history. Numbered citations link to the reviewed excerpts;
+the answer is not independently verified. Results are held in a bounded,
+ten-minute in-memory cache and can be cleared. Local-only mode does not contact
+a language model. A hosted provider may retain approved content under its own
+policy.
+
+Local checks pass: 131 app Python tests, 30 Node tests, 19 browser tests,
+TypeScript checking, lint and production build. CI is pending. No live provider,
+multi-source, news or Raspberry Pi acceptance is claimed.
 
 ## Local voice retry recovery (Phase 5)
 
